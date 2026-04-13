@@ -1,0 +1,71 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/intent",
+    "crates/planning",
+    "crates/adversarial",
+    "crates/simulation",
+    "crates/learning",
+    "crates/runtime",
+    "crates/intelligence",
+    "crates/domain",
+    "crates/pack",
+    "crates/notes",
+    "examples/vendor-selection",
+    "examples/expense-approval",
+    "examples/loan-application",
+    "examples/resolution-showcase",
+    "examples/debate-loop",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT"
+repository = "https://github.com/Reflective-Labs/organism.zone"
+publish = false
+
+[workspace.dependencies]
+# Internal crates
+organism-intent = { path = "crates/intent", version = "0.1.0" }
+organism-planning = { path = "crates/planning", version = "0.1.0" }
+organism-adversarial = { path = "crates/adversarial", version = "0.1.0" }
+organism-simulation = { path = "crates/simulation", version = "0.1.0" }
+organism-learning = { path = "crates/learning", version = "0.1.0" }
+organism-runtime = { path = "crates/runtime", version = "0.1.0" }
+organism-pack = { path = "crates/pack", version = "0.1.0" }
+organism-intelligence = { path = "crates/intelligence", version = "0.1.0" }
+organism-domain = { path = "crates/domain", version = "0.1.0" }
+organism-notes = { path = "crates/notes", version = "0.1.0" }
+
+# Shared deps
+anyhow = "1"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
+new_without_default = "allow"
+return_self_not_must_use = "allow"
+should_implement_trait = "allow"
+unused_async = "allow"
+
+[profile.release]
+codegen-units = 1
+lto = true

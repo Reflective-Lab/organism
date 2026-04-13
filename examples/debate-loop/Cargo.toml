@@ -1,0 +1,16 @@
+[package]
+name = "example-debate-loop"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+converge-kernel = { path = "../../../converge/crates/kernel" }
+converge-pack = { path = "../../../converge/crates/pack" }
+organism-pack = { path = "../../crates/pack" }
+organism-domain = { path = "../../crates/domain" }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }

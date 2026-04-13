@@ -1,0 +1,31 @@
+[package]
+name = "organism-notes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Note and vault capability for Organism — vault management, source adapters, cleanup, enrichment"
+
+[dependencies]
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+# Apple Notes source adapter
+base64 = { version = "0.22", optional = true }
+html2md = { version = "0.2", optional = true }
+
+# Web capture source adapter
+organism-intelligence = { path = "../intelligence", features = ["web"], optional = true }
+
+[features]
+default = []
+cleanup = []
+sources-apple-notes = ["dep:base64", "dep:html2md"]
+sources-web = ["dep:organism-intelligence"]
+
+[lints]
+workspace = true

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provningsanmälan - Flerstegsformulär</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .wizard-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .wizard-header {
+            background: #003366;
+            color: white;
+            padding: 20px;
+            border-left: 5px solid #ff6600;
+        }
+        .wizard-header h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+        }
+        .wizard-header p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        .progress-bar {
+            background: #e0e0e0;
+            height: 8px;
+            position: relative;
+        }
+        .progress-fill {
+            background: #ff6600;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            padding: 10px;
+            font-size: 13px;
+            color: #666;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .step {
+            display: none;
+            padding: 30px;
+        }
+        .step.active {
+            display: block;
+        }
+        .step h2 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            color: #003366;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        label.required::after {
+            content: " *";
+            color: #d00;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #003366;
+            box-shadow: 0 0 0 2px rgba(0,51,102,0.2);
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .error {
+            border-color: #d00 !important;
+        }
+        .error-text {
+            color: #d00;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .wizard-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 30px;
+            background: #fafafa;
+            border-top: 1px solid #e0e0e0;
+        }
+        .btn {
+            padding: 12px 30px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-prev {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-prev:hover {
+            background: #d0d0d0;
+        }
+        .btn-prev:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-next, .btn-submit {
+            background: #ff6600;
+            color: white;
+        }
+        .btn-next:hover, .btn-submit:hover {
+            background: #e55c00;
+        }
+        .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .checkbox-option input {
+            width: auto;
+            margin-top: 3px;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .radio-option input {
+            width: auto;
+        }
+        .success-page {
+            text-align: center;
+            padding: 60px 30px;
+        }
+        .success-page h2 {
+            color: #2e7d32;
+            margin-bottom: 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            color: #003366;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Tillbaka till formulärlistan</a>
+
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <h1>Anmälan till prövning</h1>
+            <p>Hermods Komvux Stockholm</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 20%"></div>
+        </div>
+        <div class="progress-text" id="progressText">Steg 1 av 5 - 20% slutfört</div>
+
+        <form id="wizardForm">
+            <!-- Step 1: Email verification -->
+            <div class="step active" data-step="1">
+                <h2>Steg 1: E-postverifiering</h2>
+                <div class="form-group">
+                    <label for="epost" class="required">E-postadress</label>
+                    <input type="email" id="epost" name="epost" required>
+                    <div class="help-text">Vi skickar bekräftelse till denna adress</div>
+                </div>
+                <div class="form-group">
+                    <label for="epost_confirm" class="required">Bekräfta e-postadress</label>
+                    <input type="email" id="epost_confirm" name="epost_confirm" required>
+                </div>
+            </div>
+
+            <!-- Step 2: Personal information -->
+            <div class="step" data-step="2">
+                <h2>Steg 2: Personuppgifter</h2>
+                <div class="form-group">
+                    <label for="personnummer" class="required">Personnummer</label>
+                    <input type="text" id="personnummer" name="personnummer" required
+                           placeholder="ÅÅÅÅMMDD-XXXX">
+                    <div class="help-text">12 siffror med bindestreck</div>
+                </div>
+                <div class="form-group">
+                    <label for="fornamn" class="required">Förnamn</label>
+                    <input type="text" id="fornamn" name="fornamn" required>
+                </div>
+                <div class="form-group">
+                    <label for="efternamn" class="required">Efternamn</label>
+                    <input type="text" id="efternamn" name="efternamn" required>
+                </div>
+            </div>
+
+            <!-- Step 3: Contact information -->
+            <div class="step" data-step="3">
+                <h2>Steg 3: Kontaktuppgifter</h2>
+                <div class="form-group">
+                    <label for="telefon" class="required">Mobilnummer</label>
+                    <input type="tel" id="telefon" name="telefon" required
+                           placeholder="+46...">
+                </div>
+                <div class="form-group">
+                    <label for="gatuadress" class="required">Gatuadress</label>
+                    <input type="text" id="gatuadress" name="gatuadress" required>
+                </div>
+                <div class="form-group">
+                    <label for="postnummer" class="required">Postnummer</label>
+                    <input type="text" id="postnummer" name="postnummer" required
+                           placeholder="XXX XX">
+                </div>
+                <div class="form-group">
+                    <label for="ort" class="required">Ort</label>
+                    <input type="text" id="ort" name="ort" required>
+                </div>
+            </div>
+
+            <!-- Step 4: Course selection -->
+            <div class="step" data-step="4">
+                <h2>Steg 4: Kursval</h2>
+                <div class="form-group">
+                    <label for="kurs" class="required">Vilken kurs vill du pröva i?</label>
+                    <select id="kurs" name="kurs" required>
+                        <option value="">-- Välj kurs --</option>
+                        <option value="sv1">Svenska 1</option>
+                        <option value="sv2">Svenska 2</option>
+                        <option value="sv3">Svenska 3</option>
+                        <option value="en5">Engelska 5</option>
+                        <option value="en6">Engelska 6</option>
+                        <option value="en7">Engelska 7</option>
+                        <option value="ma1b">Matematik 1b</option>
+                        <option value="ma1c">Matematik 1c</option>
+                        <option value="ma2b">Matematik 2b</option>
+                        <option value="ma2c">Matematik 2c</option>
+                        <option value="ma3c">Matematik 3c</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="provdatum" class="required">Önskat provtillfälle</label>
+                    <select id="provdatum" name="provdatum" required>
+                        <option value="">-- Välj datum --</option>
+                        <option value="2025-03-15">Lördag 15 mars 2025 kl 09:00</option>
+                        <option value="2025-03-29">Lördag 29 mars 2025 kl 09:00</option>
+                        <option value="2025-04-12">Lördag 12 april 2025 kl 09:00</option>
+                        <option value="2025-04-26">Lördag 26 april 2025 kl 09:00</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Har du prövat i denna kurs tidigare?</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="tidigare_provning" value="nej" checked>
+                            <span>Nej, detta är första gången</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="tidigare_provning" value="ja">
+                            <span>Ja, jag har prövat tidigare</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Confirmation -->
+            <div class="step" data-step="5">
+                <h2>Steg 5: Bekräftelse</h2>
+                <div class="form-group">
+                    <label for="kommentar">Övriga kommentarer</label>
+                    <textarea id="kommentar" name="kommentar" rows="4"
+                              placeholder="Ange eventuella särskilda behov eller frågor..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="villkor" name="villkor" required>
+                        <span>Jag har läst och godkänner villkoren för prövning samt att mina uppgifter behandlas enligt GDPR. *</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="bekraftelse" name="bekraftelse">
+                        <span>Jag vill ha en bekräftelse via SMS</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Success page -->
+            <div class="step" data-step="success">
+                <div class="success-page">
+                    <h2>✓ Tack för din anmälan!</h2>
+                    <p>Din anmälan har registrerats.</p>
+                    <p>En bekräftelse har skickats till din e-postadress.</p>
+                    <p style="margin-top: 30px; color: #666;">
+                        Referensnummer: <strong id="refNumber"></strong>
+                    </p>
+                </div>
+            </div>
+        </form>
+
+        <div class="wizard-footer" id="wizardFooter">
+            <button type="button" class="btn btn-prev" id="btnPrev" disabled>← Föregående</button>
+            <button type="button" class="btn btn-next" id="btnNext">Nästa →</button>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('wizardForm');
+        const steps = document.querySelectorAll('.step[data-step]:not([data-step="success"])');
+        const totalSteps = steps.length;
+        let currentStep = 1;
+
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const footer = document.getElementById('wizardFooter');
+
+        function updateProgress() {
+            const percent = Math.round((currentStep / totalSteps) * 100);
+            progressFill.style.width = percent + '%';
+            progressText.textContent = `Steg ${currentStep} av ${totalSteps} - ${percent}% slutfört`;
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            const targetStep = document.querySelector(`.step[data-step="${step}"]`);
+            if (targetStep) {
+                targetStep.classList.add('active');
+            }
+
+            btnPrev.disabled = step === 1;
+
+            if (step === totalSteps) {
+                btnNext.textContent = 'Skicka anmälan';
+                btnNext.classList.remove('btn-next');
+                btnNext.classList.add('btn-submit');
+            } else {
+                btnNext.textContent = 'Nästa →';
+                btnNext.classList.remove('btn-submit');
+                btnNext.classList.add('btn-next');
+            }
+
+            updateProgress();
+        }
+
+        function validateStep(step) {
+            const currentStepEl = document.querySelector(`.step[data-step="${step}"]`);
+            const inputs = currentStepEl.querySelectorAll('input[required], select[required], textarea[required]');
+            let valid = true;
+
+            inputs.forEach(input => {
+                input.classList.remove('error');
+                const errorEl = input.parentElement.querySelector('.error-text');
+                if (errorEl) errorEl.remove();
+
+                if (!input.value.trim()) {
+                    valid = false;
+                    input.classList.add('error');
+                }
+
+                // Email confirmation check
+                if (step === 1 && input.id === 'epost_confirm') {
+                    const email = document.getElementById('epost').value;
+                    if (input.value !== email) {
+                        valid = false;
+                        input.classList.add('error');
+                        const err = document.createElement('div');
+                        err.className = 'error-text';
+                        err.textContent = 'E-postadresserna matchar inte';
+                        input.parentElement.appendChild(err);
+                    }
+                }
+
+                // Checkbox validation
+                if (input.type === 'checkbox' && input.required && !input.checked) {
+                    valid = false;
+                    input.classList.add('error');
+                }
+            });
+
+            return valid;
+        }
+
+        function showSuccess() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.querySelector('.step[data-step="success"]').classList.add('active');
+            footer.style.display = 'none';
+            progressFill.style.width = '100%';
+            progressText.textContent = '100% slutfört - Anmälan inskickad';
+
+            // Generate reference number
+            const ref = 'HRM-' + Date.now().toString(36).toUpperCase();
+            document.getElementById('refNumber').textContent = ref;
+        }
+
+        btnNext.addEventListener('click', () => {
+            if (validateStep(currentStep)) {
+                if (currentStep === totalSteps) {
+                    showSuccess();
+                } else {
+                    currentStep++;
+                    showStep(currentStep);
+                }
+            }
+        });
+
+        btnPrev.addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        });
+
+        // Initialize
+        showStep(1);
+    </script>
+<script src="formfiller-logger.js"></script>
+</body>
+</html>

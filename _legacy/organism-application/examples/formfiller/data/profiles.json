@@ -1,0 +1,46 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "name": "Kenneth - Default",
+    "personal": {
+      "first_name": "Kenneth",
+      "last_name": "Pernyer",
+      "date_of_birth": "1964-01-21",
+      "gender": "Male",
+      "nationality": "Swedish"
+    },
+    "contact": {
+      "email": "kenneth@pernyer.se",
+      "phone": "+46706460992",
+      "phone_alt": null
+    },
+    "address": {
+      "street": "Ulvaklev 1",
+      "street2": null,
+      "city": "Ängelsberg",
+      "postal_code": "737 90",
+      "region": "Västmanland",
+      "country": "Sweden"
+    },
+    "identification": {
+      "personal_number": "19640121-1013",
+      "passport_number": null,
+      "id_card_number": null,
+      "drivers_license": null
+    },
+    "intents": [
+      {
+        "name": "Generic Application",
+        "content": "I am applying for this opportunity because...",
+        "tags": ["template"]
+      }
+    ],
+    "custom_fields": [
+      {
+        "key": "personal_number_short",
+        "value": "640121-1013",
+        "description": "Personnummer 10-digit format"
+      }
+    ]
+  }
+]

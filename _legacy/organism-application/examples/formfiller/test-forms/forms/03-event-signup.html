@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evenemangsanmälan</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="index.html" class="back-link">← Tillbaka till formulärlistan</a>
+
+    <div class="form-container">
+        <div class="form-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-top-color: #c73a5a;">
+            <h1>Tech Conference 2025</h1>
+            <p>Anmälan till årets största teknikkonferens</p>
+        </div>
+
+        <form id="eventForm" action="#" method="post">
+            <div class="form-body">
+                <div class="success-message" id="successMsg">
+                    Tack för din anmälan! Biljett skickas till din e-post.
+                </div>
+
+                <div class="form-section">
+                    <h2>Deltagare</h2>
+
+                    <div class="inline-fields">
+                        <div class="form-group">
+                            <label for="fornamn" class="required">Förnamn</label>
+                            <input type="text" id="fornamn" name="fornamn" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="efternamn" class="required">Efternamn</label>
+                            <input type="text" id="efternamn" name="efternamn" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="epost" class="required">E-post</label>
+                        <input type="email" id="epost" name="epost" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefon" class="required">Telefon</label>
+                        <input type="tel" id="telefon" name="telefon" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="foretag">Företag/Organisation</label>
+                        <input type="text" id="foretag" name="foretag">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="titel">Titel/Roll</label>
+                        <input type="text" id="titel" name="titel" placeholder="Ex: Developer, CTO">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Biljettval</h2>
+
+                    <div class="form-group">
+                        <label class="required">Biljetttyp</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="biljett" value="standard" required>
+                                <span>Standard (1 500 kr)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="biljett" value="premium">
+                                <span>Premium inkl. lunch (2 500 kr)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="biljett" value="vip">
+                                <span>VIP inkl. middag (4 500 kr)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Vilka dagar deltar du?</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" name="dagar" value="dag1" checked>
+                                <span>Dag 1 - 15 mars (Keynotes)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" name="dagar" value="dag2" checked>
+                                <span>Dag 2 - 16 mars (Workshops)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Matpreferenser</h2>
+
+                    <div class="form-group">
+                        <label for="kost">Kostpreferens</label>
+                        <select id="kost" name="kost">
+                            <option value="normal">Ingen särskild diet</option>
+                            <option value="vegetarian">Vegetarisk</option>
+                            <option value="vegan">Vegansk</option>
+                            <option value="glutenfri">Glutenfri</option>
+                            <option value="laktosfri">Laktosfri</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="allergier">Allergier</label>
+                        <input type="text" id="allergier" name="allergier"
+                               placeholder="Ange eventuella allergier">
+                    </div>
+                </div>
+            </div>
+
+            <div class="submit-section">
+                <button type="submit">Slutför anmälan</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('eventForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('successMsg').classList.add('show');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        });
+    </script>
+<script src="formfiller-logger.js"></script>
+</body>
+</html>

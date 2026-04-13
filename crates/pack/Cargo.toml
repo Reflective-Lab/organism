@@ -1,0 +1,19 @@
+[package]
+name = "organism-pack"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "The public contract for Organism — one import, full planning loop"
+
+[dependencies]
+organism-intent.workspace = true
+organism-planning.workspace = true
+organism-adversarial.workspace = true
+organism-simulation.workspace = true
+organism-learning.workspace = true
+
+[lints]
+workspace = true

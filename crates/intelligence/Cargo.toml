@@ -1,0 +1,31 @@
+[package]
+name = "organism-intelligence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Business intelligence providers for Organism — OCR, Vision, LinkedIn, Patent, Billing, Web, Social"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+reqwest = { version = "0.12", features = ["json", "blocking"], optional = true }
+base64 = { version = "0.22", optional = true }
+sha2 = { version = "0.10", optional = true }
+url = { version = "2", optional = true }
+
+[features]
+default = []
+ocr = ["dep:sha2", "dep:base64", "dep:reqwest"]
+vision = ["dep:reqwest", "dep:base64"]
+linkedin = []
+patent = ["dep:reqwest", "dep:base64"]
+billing = ["dep:reqwest"]
+web = ["dep:reqwest", "dep:url"]
+social = ["web"]
+
+[lints]
+workspace = true

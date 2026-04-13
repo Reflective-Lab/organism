@@ -1,0 +1,12 @@
+[package]
+name = "example-resolution-showcase"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+organism-pack = { path = "../../crates/pack" }
+organism-domain = { path = "../../crates/domain" }
+organism-runtime = { path = "../../crates/runtime" }
+serde_json = "1"
+chrono = "0.4"

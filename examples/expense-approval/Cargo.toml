@@ -1,0 +1,15 @@
+[package]
+name = "example-expense-approval"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+converge-kernel = { path = "../../../converge/crates/kernel" }
+converge-pack = { path = "../../../converge/crates/pack" }
+organism-pack = { path = "../../crates/pack" }
+organism-domain = { path = "../../crates/domain" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }

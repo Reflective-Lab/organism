@@ -1,0 +1,37 @@
+{
+  "dataset_version": "team-capacity-2026-q3-v1",
+  "records": [
+    {
+      "team_id": "backend_platform",
+      "team_name": "Backend Platform",
+      "skills": ["backend", "platform"],
+      "available_capacity": 320.0,
+      "max_utilization": 0.85,
+      "headcount": 9
+    },
+    {
+      "team_id": "data_ml",
+      "team_name": "Data and ML",
+      "skills": ["data", "ml"],
+      "available_capacity": 200.0,
+      "max_utilization": 0.82,
+      "headcount": 6
+    },
+    {
+      "team_id": "experience_qa",
+      "team_name": "Experience QA",
+      "skills": ["qa", "frontend"],
+      "available_capacity": 180.0,
+      "max_utilization": 0.85,
+      "headcount": 5
+    },
+    {
+      "team_id": "shared_services",
+      "team_name": "Shared Services",
+      "skills": ["qa", "platform", "analytics"],
+      "available_capacity": 120.0,
+      "max_utilization": 0.8,
+      "headcount": 4
+    }
+  ]
+}

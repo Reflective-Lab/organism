@@ -1,0 +1,36 @@
+[package]
+name = "organism-core"
+description = "Organism runtime primitives — intent packets, admission control, planning huddle, adversarial agents, simulation swarm, commit barrier"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "LicenseRef-Proprietary"
+repository = "https://github.com/kpernyer/organism-core"
+documentation = "https://docs.rs/organism-core"
+keywords = ["organism", "intent", "planning", "adversarial", "runtime"]
+categories = ["algorithms", "simulation"]
+
+[dependencies]
+converge-core = { path = "../converge-core/converge-core" }
+thiserror = "2"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tracing-test = "0.2"
+proptest = "1.4"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+similar_names = "allow"
+too_many_lines = "allow"
+too_many_arguments = "allow"
+items_after_statements = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservlista - Questback Style</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Questback-inspired overrides */
+        .form-container {
+            max-width: 700px;
+            border-radius: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+        .form-header {
+            background: #003366;
+            border-top: none;
+            border-left: 5px solid #ff6600;
+            padding: 30px;
+        }
+        .form-header h1 {
+            font-size: 22px;
+        }
+        .form-body {
+            padding: 30px;
+        }
+        .form-section {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .form-group {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-left: 3px solid #003366;
+        }
+        label {
+            color: #003366;
+            font-size: 15px;
+        }
+        input, select, textarea {
+            border-radius: 0;
+            border-color: #ccc;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #003366;
+            box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.2);
+        }
+        button[type="submit"] {
+            background: #ff6600;
+            border-radius: 0;
+            padding: 14px 40px;
+            font-size: 16px;
+        }
+        button[type="submit"]:hover {
+            background: #e55c00;
+            box-shadow: none;
+            transform: none;
+        }
+        .required-notice {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Tillbaka till formulärlistan</a>
+
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Anmälan till reservlista</h1>
+            <p>Prövningstillfälle - Vårtermin 2025</p>
+        </div>
+
+        <form id="waitlistForm" action="#" method="post">
+            <div class="form-body">
+                <div class="success-message" id="successMsg">
+                    Du är nu registrerad på reservlistan. Vi kontaktar dig om en plats blir ledig.
+                </div>
+
+                <p class="required-notice">Fält markerade med * är obligatoriska</p>
+
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="personnummer" class="required">1. Personnummer</label>
+                        <input type="text" id="personnummer" name="personnummer" required
+                               placeholder="ÅÅÅÅMMDD-XXXX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fornamn" class="required">2. Förnamn</label>
+                        <input type="text" id="fornamn" name="fornamn" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="efternamn" class="required">3. Efternamn</label>
+                        <input type="text" id="efternamn" name="efternamn" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="epost" class="required">4. E-postadress</label>
+                        <input type="email" id="epost" name="epost" required>
+                        <div class="help-text">Vi skickar bekräftelse till denna adress</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefon" class="required">5. Mobilnummer</label>
+                        <input type="tel" id="telefon" name="telefon" required
+                               placeholder="+46...">
+                        <div class="help-text">Vi ringer dig om plats blir ledig</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gatuadress" class="required">6. Gatuadress</label>
+                        <input type="text" id="gatuadress" name="gatuadress" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="postnummer" class="required">7. Postnummer</label>
+                        <input type="text" id="postnummer" name="postnummer" required
+                               placeholder="XXX XX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ort" class="required">8. Ort</label>
+                        <input type="text" id="ort" name="ort" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="kurs" class="required">9. Vilken kurs vill du pröva i?</label>
+                        <select id="kurs" name="kurs" required>
+                            <option value="">Välj kurs...</option>
+                            <option value="sv1">Svenska 1</option>
+                            <option value="sv2">Svenska 2</option>
+                            <option value="sv3">Svenska 3</option>
+                            <option value="en5">Engelska 5</option>
+                            <option value="en6">Engelska 6</option>
+                            <option value="ma1b">Matematik 1b</option>
+                            <option value="ma1c">Matematik 1c</option>
+                            <option value="ma2b">Matematik 2b</option>
+                            <option value="ma2c">Matematik 2c</option>
+                            <option value="ma3c">Matematik 3c</option>
+                            <option value="ma4">Matematik 4</option>
+                            <option value="sh1b">Samhällskunskap 1b</option>
+                            <option value="hi1b">Historia 1b</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="provdatum" class="required">10. Önskat provtillfälle</label>
+                        <select id="provdatum" name="provdatum" required>
+                            <option value="">Välj datum...</option>
+                            <option value="2025-02-15">Lördag 15 februari 2025</option>
+                            <option value="2025-03-08">Lördag 8 mars 2025</option>
+                            <option value="2025-03-22">Lördag 22 mars 2025</option>
+                            <option value="2025-04-05">Lördag 5 april 2025</option>
+                            <option value="2025-04-26">Lördag 26 april 2025</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="meddelande">11. Övriga kommentarer</label>
+                        <textarea id="meddelande" name="meddelande"
+                                  placeholder="Ange eventuella frågor eller särskilda önskemål..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="background: white; border-left-color: #ff6600;">
+                        <div class="checkbox-option">
+                            <input type="checkbox" id="godkanner" name="godkanner" required>
+                            <span>Jag godkänner att mina personuppgifter lagras och behandlas enligt GDPR. *</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="submit-section" style="background: #003366;">
+                <button type="submit">Skicka anmälan</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('waitlistForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('successMsg').classList.add('show');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        });
+    </script>
+<script src="formfiller-logger.js"></script>
+</body>
+</html>

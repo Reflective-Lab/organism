@@ -1,0 +1,55 @@
+[package]
+name = "spike-batch-anomaly"
+description = "Spike 4: Batch anomaly detection — converge-analytics + converge-optimization anomaly triage"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "LicenseRef-Proprietary"
+repository = "https://github.com/kpernyer/organism-application"
+
+[[bin]]
+name = "batch-anomaly"
+path = "src/main.rs"
+
+[dependencies]
+# Converge ecosystem — the only direct dependencies
+converge-core = { path = "../../../converge-core/converge-core" }
+converge-analytics = { path = "../../../converge-analytics" }
+converge-optimization = { path = "../../../converge-optimization", features = ["sat"] }
+
+# Async runtime (for optional graph/vector features)
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Utilities
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Optional: Graph features via converge-experience SurrealDB
+converge-experience = { path = "../../../converge-experience", features = ["surrealdb"], optional = true }
+
+# Optional: Vector storage via converge-experience LanceDB
+# converge-experience with lancedb feature can be enabled separately
+
+[features]
+default = []
+graph = ["dep:converge-experience"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+similar_names = "allow"
+too_many_lines = "allow"
+too_many_arguments = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
