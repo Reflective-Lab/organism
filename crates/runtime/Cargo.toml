@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
+description = "Curated embedded runtime for Organism — registry, readiness, and pipeline wiring"
 
 [dependencies]
 organism-intent.workspace = true

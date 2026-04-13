@@ -1,4 +1,4 @@
-# organism.zone
+# Organism
 
 **Organizational intelligence runtime.** Layer 2 in the Reflective Labs stack — sits on top of [Converge](https://github.com/Reflective-Lab/converge), under SaaS product layers.
 
@@ -30,8 +30,10 @@ Where Converge answers *"what actions are allowed to happen?"*, Organism answers
 | [`adversarial`](crates/adversarial) | Assumption breakers, skeptics, constraint checkers |
 | [`simulation`](crates/simulation) | Outcome / cost / policy / causal / operational simulation |
 | [`learning`](crates/learning) | Planning priors, calibration |
-| [`runtime`](crates/runtime) | Agent orchestration, LLM integration, HITL |
-| [`converge-client`](crates/converge-client) | Client for Converge's commit boundary (via `converge-client` + `converge-pack` v3.0.0) |
+| [`runtime`](crates/runtime) | Curated embedded runtime: registry, readiness, pipeline wiring |
+| [`intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, billing |
+| [`notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
+| [`domain`](crates/domain) | Organizational pack library and blueprints |
 
 ## Develop
 
@@ -43,4 +45,4 @@ just lint
 
 ## Strategy
 
-Canonical strategy: `~/dev/brand/organism-business/strategy/STRATEGY.md`.
+Canonical strategy: `~/dev/brand-kb/organism-business/strategy/STRATEGY.md`.

@@ -3,7 +3,7 @@
 > This file is the menu. Apps built on Organism read this to discover what's available.
 >
 > If you need a capability that isn't here, file a request:
-> `gh issue create --repo Reflective-Labs/organism.zone --label capability-request --title "Request: <capability>"`
+> `gh issue create --repo Reflective-Lab/organism --label capability-request --title "Request: <capability>"`
 >
 > Before building something fundamental, check what **Converge** already provides:
 > `../converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine,
@@ -182,7 +182,7 @@ If your app needs something organism doesn't have:
 1. Check this file — it might exist under a feature flag you haven't enabled
 2. Check `../converge/CAPABILITIES.md` — it might be infrastructure Converge already provides
 3. Check `_legacy/` — it might have patterns to revitalize
-4. File a request: `gh issue create --repo Reflective-Labs/organism.zone --label capability-request`
+4. File a request: `gh issue create --repo Reflective-Lab/organism --label capability-request`
 
 Include: what your app needs, what contract it expects (trait? types? function?), and urgency.
 

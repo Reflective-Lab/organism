@@ -5,7 +5,6 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
 description = "Note and vault capability for Organism — vault management, source adapters, cleanup, enrichment"
 
 [dependencies]
@@ -19,7 +18,7 @@ base64 = { version = "0.22", optional = true }
 html2md = { version = "0.2", optional = true }
 
 # Web capture source adapter
-organism-intelligence = { path = "../intelligence", features = ["web"], optional = true }
+organism-intelligence = { workspace = true, features = ["web"], optional = true }
 
 [features]
 default = []

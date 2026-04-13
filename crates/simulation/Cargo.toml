@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
+description = "Simulation swarm for Organism — multi-dimension stress-testing before commit"
 
 [dependencies]
 organism-planning.workspace = true

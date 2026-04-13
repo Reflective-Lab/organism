@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
+description = "Planning layer for Organism — huddle, debate loop, plan annotations"
 
 [dependencies]
 organism-intent.workspace = true

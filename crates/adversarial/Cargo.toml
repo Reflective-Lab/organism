@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
+description = "Adversarial review for Organism — challenges, skeptics, governance signals"
 
 [dependencies]
 organism-planning.workspace = true
