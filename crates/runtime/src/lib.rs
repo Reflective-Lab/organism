@@ -1,15 +1,23 @@
-//! Organism runtime.
+//! # Organism Runtime
 //!
-//! Wires intent → planning → adversarial review → simulation → Converge.
-//! Owns LLM integration and human-in-the-loop checkpoints.
+//! This crate is the curated in-process execution API for Organism.
+//! Consumers model planning semantics in `organism-pack`, then use
+//! `organism-runtime` to resolve packs, check readiness, and wire the
+//! planning loop to Converge.
 //!
-//! Converge integration: organism crates use `converge-pack`, `converge-kernel`,
-//! and `converge-model` directly. The Rust type system enforces the axioms —
-//! no wrapper layer needed. For remote deployment, use `converge-client` (the
-//! Converge crate) directly.
+//! Converge integration: organism crates use `converge-pack`,
+//! `converge-kernel`, and `converge-model` directly. The Rust type system
+//! enforces the axioms — no wrapper layer needed. For remote deployment,
+//! use `converge-client` directly.
 
 pub mod readiness;
 pub mod registry;
+
+pub use readiness::{
+    BudgetProbe, CredentialProbe, GapSeverity, PackProbe, ReadinessConfirmation, ReadinessGap,
+    ReadinessItem, ReadinessProbe, ReadinessReport, ResourceKind, check as check_readiness,
+};
+pub use registry::{RegisteredCapability, RegisteredPack, Registry, StructuralResolver};
 
 use organism_intent::IntentPacket;
 

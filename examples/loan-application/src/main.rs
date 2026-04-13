@@ -448,7 +448,7 @@ impl Suggestor for LoanDecisionAgent {
             .unwrap_or("blocked");
 
         // Simulate across 5 dimensions
-        let dimensions = vec![
+        let dimensions = [
             DimensionResult {
                 dimension: SimulationDimension::Outcome,
                 passed: avg_score >= 0.6,
@@ -648,17 +648,17 @@ fn main() {
         Ok(result) => {
             // Admission
             for fact in result.context.get(ContextKey::Signals) {
-                if fact.id == "admission:result" {
-                    if let Ok(a) = serde_json::from_str::<serde_json::Value>(&fact.content) {
-                        println!(
-                            "[Admission] {}",
-                            if a["feasible"].as_bool().unwrap_or(false) {
-                                "ADMITTED"
-                            } else {
-                                "REJECTED"
-                            }
-                        );
-                    }
+                if fact.id == "admission:result"
+                    && let Ok(a) = serde_json::from_str::<serde_json::Value>(&fact.content)
+                {
+                    println!(
+                        "[Admission] {}",
+                        if a["feasible"].as_bool().unwrap_or(false) {
+                            "ADMITTED"
+                        } else {
+                            "REJECTED"
+                        }
+                    );
                 }
             }
 

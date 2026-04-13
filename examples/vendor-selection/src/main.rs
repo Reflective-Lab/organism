@@ -288,7 +288,7 @@ where
                         "score": score,
                     })
                     .to_string(),
-                    &format!("{criterion}_evaluator"),
+                    format!("{criterion}_evaluator"),
                 )
                 .with_confidence(1.0),
             )

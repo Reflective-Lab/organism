@@ -41,3 +41,7 @@ pub use cloud::{
     OcrConfidence, OcrError, OcrImage, OcrInput, OcrOutputFormat, OcrPreprocessing, OcrProvenance,
     OcrProvider, OcrRequest, OcrResult, OcrSpan, OcrTable,
 };
+pub use receipt::{
+    OllamaReceiptConfig, OllamaReceiptOcrProvider, TesseractCliConfig, TesseractCliOcrProvider,
+    ocr_request_for_path,
+};

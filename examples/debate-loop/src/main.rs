@@ -358,21 +358,21 @@ fn main() {
             let final_review = evaluations
                 .iter()
                 .find(|e| e.id == "challenge:final-review");
-            if let Some(review) = final_review {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&review.content) {
-                    let approved = json
-                        .get("approved")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-                    println!(
-                        "\nVerdict: {}",
-                        if approved {
-                            "PLAN APPROVED"
-                        } else {
-                            "PLAN NEEDS WORK"
-                        }
-                    );
-                }
+            if let Some(review) = final_review
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&review.content)
+            {
+                let approved = json
+                    .get("approved")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                println!(
+                    "\nVerdict: {}",
+                    if approved {
+                        "PLAN APPROVED"
+                    } else {
+                        "PLAN NEEDS WORK"
+                    }
+                );
             }
         }
         Err(e) => println!("Engine error: {e}"),

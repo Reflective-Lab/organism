@@ -2,8 +2,11 @@
 //!
 //! Intent resolution queries the registry to find what's available.
 //! Apps register what they've wired up; the resolver searches across it.
+//! Most downstream applications should start from [`Registry::with_standard_packs`]
+//! and add app-specific capabilities on top.
 
 use organism_domain::pack::{AgentMeta, ContextKey, InvariantClass, InvariantMeta, PackProfile};
+use organism_domain::packs;
 use organism_intent::resolution::{
     IntentBinding, IntentResolver, PackRequirement, ResolutionLevel,
 };
@@ -43,6 +46,116 @@ impl Registry {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Build a registry preloaded with Organism's built-in domain packs.
+    #[must_use]
+    pub fn with_standard_packs() -> Self {
+        let mut registry = Self::new();
+        registry.register_standard_packs();
+        registry
+    }
+
+    /// Register Organism's built-in domain packs.
+    pub fn register_standard_packs(&mut self) {
+        self.register_pack_with_profile_if_missing(
+            "customers",
+            packs::customers::AGENTS,
+            packs::customers::INVARIANTS,
+            &packs::customers::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "legal",
+            packs::legal::AGENTS,
+            packs::legal::INVARIANTS,
+            &packs::legal::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "autonomous_org",
+            packs::autonomous_org::AGENTS,
+            packs::autonomous_org::INVARIANTS,
+            &packs::autonomous_org::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "partnerships",
+            packs::partnerships::AGENTS,
+            packs::partnerships::INVARIANTS,
+            &packs::partnerships::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "people",
+            packs::people::AGENTS,
+            packs::people::INVARIANTS,
+            &packs::people::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "procurement",
+            packs::procurement::AGENTS,
+            packs::procurement::INVARIANTS,
+            &packs::procurement::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "linkedin_research",
+            packs::linkedin_research::AGENTS,
+            packs::linkedin_research::INVARIANTS,
+            &packs::linkedin_research::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "knowledge",
+            packs::knowledge::AGENTS,
+            packs::knowledge::INVARIANTS,
+            &packs::knowledge::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "growth_marketing",
+            packs::growth_marketing::AGENTS,
+            packs::growth_marketing::INVARIANTS,
+            &packs::growth_marketing::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "ops_support",
+            packs::ops_support::AGENTS,
+            packs::ops_support::INVARIANTS,
+            &packs::ops_support::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "performance",
+            packs::performance::AGENTS,
+            packs::performance::INVARIANTS,
+            &packs::performance::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "product_engineering",
+            packs::product_engineering::AGENTS,
+            packs::product_engineering::INVARIANTS,
+            &packs::product_engineering::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "virtual_teams",
+            packs::virtual_teams::AGENTS,
+            packs::virtual_teams::INVARIANTS,
+            &packs::virtual_teams::PROFILE,
+        );
+        self.register_pack_with_profile_if_missing(
+            "reskilling",
+            packs::reskilling::AGENTS,
+            packs::reskilling::INVARIANTS,
+            &packs::reskilling::PROFILE,
+        );
+    }
+
+    fn register_pack_with_profile_if_missing(
+        &mut self,
+        name: &'static str,
+        agents: &[AgentMeta],
+        invariants: &[InvariantMeta],
+        profile: &PackProfile,
+    ) {
+        if self.packs.iter().any(|pack| pack.name == name) {
+            return;
+        }
+
+        self.register_pack_with_profile(name, agents, invariants, profile);
     }
 
     /// Register a domain pack with full metadata and profile.
@@ -532,8 +645,7 @@ fn collect_prefixes(value: &serde_json::Value, prefixes: &mut Vec<String>) {
         serde_json::Value::String(s) => {
             if let Some(colon) = s.find(':') {
                 let candidate = &s[..=colon];
-                if candidate.len() >= 3
-                    && candidate.chars().next().is_some_and(char::is_alphabetic)
+                if candidate.len() >= 3 && candidate.chars().next().is_some_and(char::is_alphabetic)
                 {
                     prefixes.push(candidate.to_string());
                 }
@@ -643,96 +755,11 @@ fn extract_keywords(outcome: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use organism_domain::packs;
     use organism_intent::resolution::DeclarativeBinding;
     use organism_intent::{ForbiddenAction, IntentPacket, Reversibility};
 
     fn full_registry() -> Registry {
-        let mut r = Registry::new();
-        r.register_pack_with_profile(
-            "customers",
-            packs::customers::AGENTS,
-            packs::customers::INVARIANTS,
-            &packs::customers::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "legal",
-            packs::legal::AGENTS,
-            packs::legal::INVARIANTS,
-            &packs::legal::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "autonomous_org",
-            packs::autonomous_org::AGENTS,
-            packs::autonomous_org::INVARIANTS,
-            &packs::autonomous_org::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "partnerships",
-            packs::partnerships::AGENTS,
-            packs::partnerships::INVARIANTS,
-            &packs::partnerships::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "people",
-            packs::people::AGENTS,
-            packs::people::INVARIANTS,
-            &packs::people::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "procurement",
-            packs::procurement::AGENTS,
-            packs::procurement::INVARIANTS,
-            &packs::procurement::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "linkedin_research",
-            packs::linkedin_research::AGENTS,
-            packs::linkedin_research::INVARIANTS,
-            &packs::linkedin_research::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "knowledge",
-            packs::knowledge::AGENTS,
-            packs::knowledge::INVARIANTS,
-            &packs::knowledge::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "growth_marketing",
-            packs::growth_marketing::AGENTS,
-            packs::growth_marketing::INVARIANTS,
-            &packs::growth_marketing::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "ops_support",
-            packs::ops_support::AGENTS,
-            packs::ops_support::INVARIANTS,
-            &packs::ops_support::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "performance",
-            packs::performance::AGENTS,
-            packs::performance::INVARIANTS,
-            &packs::performance::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "product_engineering",
-            packs::product_engineering::AGENTS,
-            packs::product_engineering::INVARIANTS,
-            &packs::product_engineering::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "virtual_teams",
-            packs::virtual_teams::AGENTS,
-            packs::virtual_teams::INVARIANTS,
-            &packs::virtual_teams::PROFILE,
-        );
-        r.register_pack_with_profile(
-            "reskilling",
-            packs::reskilling::AGENTS,
-            packs::reskilling::INVARIANTS,
-            &packs::reskilling::PROFILE,
-        );
+        let mut r = Registry::with_standard_packs();
         r.register_capability("web", "URL capture and metadata extraction");
         r.register_capability("ocr", "Document understanding");
         r.register_capability("linkedin", "Professional network research");
@@ -742,6 +769,29 @@ mod tests {
 
     fn intent(outcome: &str) -> IntentPacket {
         IntentPacket::new(outcome, chrono::Utc::now() + chrono::Duration::hours(1))
+    }
+
+    #[test]
+    fn standard_registry_includes_builtin_domain_packs() {
+        let registry = Registry::with_standard_packs();
+
+        assert_eq!(registry.packs().len(), 14);
+        assert!(registry.packs().iter().any(|pack| pack.name == "knowledge"));
+        assert!(
+            registry
+                .packs()
+                .iter()
+                .any(|pack| pack.name == "linkedin_research")
+        );
+    }
+
+    #[test]
+    fn standard_registry_registration_is_idempotent() {
+        let mut registry = Registry::with_standard_packs();
+
+        registry.register_standard_packs();
+
+        assert_eq!(registry.packs().len(), 14);
     }
 
     // ── Dimension 1: Fact prefix ───────────────────────────────────

@@ -21,8 +21,8 @@ Authority is never inherited from reasoning. Plans must pass adversarial review 
 
 | Layer | Technology |
 |---|---|
-| System logic | Rust (Edition 2024, rust-version 1.94) |
-| Converge contract | `converge-pack`, `converge-model`, `converge-kernel` (v3.0.0) |
+| System logic | Rust (Edition 2024, rust-version 1.90) |
+| Converge contract | `converge-pack`, `converge-model`, `converge-kernel` (v3.0.3) |
 | Task runner | just |
 
 ## Build
@@ -33,7 +33,6 @@ just test       # Run tests
 just lint       # Format + clippy pedantic
 just focus      # Session opener
 just sync       # Team sync
-just status     # Build health
 ```
 
 ## Rules
@@ -51,12 +50,13 @@ just status     # Build health
 
 ## Crate Layout
 
-### Core contract
+### Public surfaces
 | Crate | Responsibility |
 |---|---|
-| `pack` | **Public surface** — re-exports the full planning loop contract in one import |
+| `pack` | **Curated planning contract** — re-exports the full planning loop in one import |
+| `runtime` | **Curated embedding surface** — runtime wiring, registry, resolution, readiness |
 
-### Planning loop (internal, re-exported via pack)
+### Planning loop building blocks
 | Crate | Responsibility |
 |---|---|
 | `intent` | Intent packets, admission control, decomposition |
@@ -64,7 +64,11 @@ just status     # Build health
 | `adversarial` | Challenges, skepticism taxonomy, adversarial signals |
 | `simulation` | 5-dimension simulation swarm, runner trait |
 | `learning` | Episodes, prediction error, prior calibration |
-| `runtime` | Agent orchestration, LLM integration, HITL, commit boundary |
+
+Default downstream rule:
+- Start with `organism-pack` + `organism-runtime`
+- Add `organism-intelligence`, `organism-notes`, and `organism-domain` only if your app needs them
+- Reach for `intent`, `planning`, `adversarial`, `simulation`, or `learning` directly only when extending Organism itself
 
 ### Capabilities (provider-shaped)
 | Crate | Responsibility |
@@ -81,16 +85,30 @@ just status     # Build health
 
 | Workflow | Purpose |
 |---|---|
-| `/focus` / `just focus` | Session opener |
-| `/sync` / `just sync` | Team sync |
-| `/status` / `just status` | Build health |
-| `/checkpoint` | End-of-session |
-| `/fix` | Fix a GitHub issue |
-| `/ticket` | Create an agent-ready issue |
+| `/focus` / `just focus` | Session opener — orient yourself, see team activity |
+| `/sync` / `just sync` | Team sync — who did what, PRs waiting, unclaimed issues |
+| `/next` | Pick next task from backlog |
+| `/dev` | Start local development environment |
+| `/fix` | Fix a GitHub issue by number |
+| `/check` | Run lint, check, and tests |
 | `/pr` | Create a pull request |
+| `/ticket` | Create an agent-ready issue |
 | `/review` | Review a PR |
-| `/merge` | Squash-merge a PR |
 | `/wip` | Save and push WIP |
+| `/done` | End-of-session — update milestones, record what moved |
+| `/deploy` | Deploy to staging or production |
+| `/audit` | Security, dependency, compliance, and drift audit |
+| `/help` | Show available workflows |
+
+### Daily habit
+
+```
+Morning:    /focus → /sync → /next
+Work:       /fix, /check, /pr
+Evening:    /done
+Monday:     /audit
+Anytime:    /help
+```
 
 ## Legacy
 

@@ -364,14 +364,6 @@ mod tests {
         let binding = DeclarativeBinding::new()
             .capability("vision", "scene understanding")
             .build();
-        // Use a key name that will not exist in the test environment
-
-        // Use a key name that is very unlikely to be set
-        let binding = DeclarativeBinding::new()
-            .capability("vision", "scene understanding")
-            .build();
-
-        // Use a fake env var that won't exist
 
         let probe =
             CredentialProbe::new().require("vision", "ORGANISM_TEST_KEY_THAT_DOES_NOT_EXIST");

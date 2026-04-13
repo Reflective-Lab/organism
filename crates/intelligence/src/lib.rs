@@ -24,6 +24,9 @@ pub mod secret;
 #[cfg(feature = "ocr")]
 pub mod ocr;
 
+#[cfg(feature = "pdf")]
+pub mod pdf;
+
 #[cfg(feature = "vision")]
 pub mod vision;
 

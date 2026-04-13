@@ -24,6 +24,7 @@ organism-intelligence = { path = "../intelligence", features = ["web"], optional
 [features]
 default = []
 cleanup = []
+enrichment = []
 sources-apple-notes = ["dep:base64", "dep:html2md"]
 sources-web = ["dep:organism-intelligence"]
 

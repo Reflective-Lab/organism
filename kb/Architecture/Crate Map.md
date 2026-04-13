@@ -5,7 +5,26 @@ tags: [architecture]
 
 All crates live under `crates/`. Version 0.1.0.
 
-## Planning Loop
+## Public Contract Crates
+
+These crates are the intended downstream-facing API surfaces. See also:
+[[Architecture/API Surfaces]].
+
+```
+organism-pack          → intent, planning, adversarial,   Curated planning contract
+                         simulation, learning
+organism-runtime       → pack, domain                      Curated embedding API
+organism-intelligence  (no internal deps)                  Provider-shaped capabilities
+organism-notes         → intelligence                      Note lifecycle capabilities
+organism-domain        (no internal deps)                  Organizational pack library
+```
+
+Default downstream rule:
+- Start with `organism-pack` + `organism-runtime`
+- Add `organism-intelligence`, `organism-notes`, and `organism-domain` only if your app needs them
+- Reach for `organism-intent`, `organism-planning`, `organism-adversarial`, `organism-simulation`, or `organism-learning` only when extending Organism itself
+
+## Planning Loop Building Blocks
 
 ```
 intent           (no internal deps)     Intent packets, admission, decomposition
@@ -14,18 +33,6 @@ adversarial      (no internal deps)     Challenges, skepticism taxonomy, adversa
 simulation       (no internal deps)     Dimension results, simulation runner trait
 learning         (no internal deps)     Episodes, prediction error, prior calibration
 runtime          → all above            Agent orchestration, LLM integration, HITL, commit boundary
-```
-
-## Capabilities (provider-shaped — acquire data from the world)
-
-```
-intelligence     (no internal deps)     OCR, vision, web, social, patent, linkedin, billing
-```
-
-## Domain Packs (pack-shaped — encode reusable org workflows)
-
-```
-domain           (no internal deps)     13 organizational packs + 8 blueprints + knowledge lifecycle
 ```
 
 ## Converge Integration

@@ -16,6 +16,7 @@ reqwest = { version = "0.12", features = ["json", "blocking"], optional = true }
 base64 = { version = "0.22", optional = true }
 sha2 = { version = "0.10", optional = true }
 url = { version = "2", optional = true }
+pdf-extract = { version = "0.7", optional = true }
 
 [features]
 default = []
@@ -26,6 +27,7 @@ patent = ["dep:reqwest", "dep:base64"]
 billing = ["dep:reqwest"]
 web = ["dep:reqwest", "dep:url"]
 social = ["web"]
+pdf = ["dep:pdf-extract"]
 
 [lints]
 workspace = true

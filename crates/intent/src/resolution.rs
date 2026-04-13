@@ -172,6 +172,6 @@ mod tests {
         assert_eq!(binding.invariants.len(), 1);
         assert_eq!(binding.packs[0].pack_name, "customers");
         assert_eq!(binding.packs[0].source, ResolutionLevel::Declarative);
-        assert_eq!(binding.resolution.completeness_confidence, 1.0);
+        assert!((binding.resolution.completeness_confidence - 1.0).abs() < f64::EPSILON);
     }
 }

@@ -17,6 +17,12 @@ use thiserror::Error;
 pub enum AppleNotesImportError {
     #[error("apple notes script failed: {0}")]
     AppleScriptExecutionFailed(String),
+    #[error("apple notes import run not found: {0}")]
+    ImportRunNotFound(String),
+    #[error("no completed apple notes import run found")]
+    NoCompletedImportRun,
+    #[error("invalid apple notes import artifact: {0}")]
+    InvalidImportedNote(String),
     #[error(transparent)]
     Vault(#[from] VaultError),
     #[error(transparent)]
@@ -44,6 +50,21 @@ pub struct AppleNotesImportReport {
     pub reused_attachment_count: usize,
     pub locked_note_count: usize,
     pub timed_out_note_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppleNotesPublishReport {
+    pub run_id: String,
+    pub published_at: DateTime<Utc>,
+    pub source_run_id: String,
+    pub source_raw_root: String,
+    pub source_manifest_path: String,
+    pub published_root: String,
+    pub report_path: String,
+    pub note_count: usize,
+    pub attachment_count: usize,
+    pub created_note_count: usize,
+    pub updated_note_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -159,15 +180,82 @@ struct ExistingImportedNote {
     source_attachment_count: usize,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct AppleNotesPublishCounts {
+    note_count: usize,
+    attachment_count: usize,
+    created_note_count: usize,
+    updated_note_count: usize,
+}
+
 const APPLE_NOTES_METADATA_BATCH_SIZE: usize = 100;
 const APPLE_NOTES_SELECTED_EXPORT_CHUNK_SIZE: usize = 10;
 const APPLE_NOTES_SCAN_TIMEOUT: Duration = Duration::from_secs(30);
 const APPLE_NOTES_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
 const APPLE_NOTES_SELECTED_NOTES_TIMEOUT: Duration = Duration::from_secs(45);
 const APPLE_NOTES_SINGLE_NOTE_TIMEOUT: Duration = Duration::from_secs(25);
+const APPLE_NOTES_PUBLISHED_ROOT: &str = "Imported/Apple Notes";
 
 pub fn import_apple_notes(vault: &ObsidianVault) -> AppleNotesImportResult<AppleNotesImportReport> {
     import_apple_notes_with_progress(vault, |_| {})
+}
+
+pub fn publish_apple_notes(
+    vault: &ObsidianVault,
+    source_run_id: Option<&str>,
+) -> AppleNotesImportResult<AppleNotesPublishReport> {
+    vault.ensure_root()?;
+
+    let (source_manifest, source_manifest_relative_path) =
+        load_completed_apple_notes_manifest(vault, source_run_id)?;
+    let source_note_root_relative = PathBuf::from(&source_manifest.note_root);
+    let source_note_root = vault.resolve_relative_path(&source_note_root_relative)?;
+    if !source_note_root.exists() {
+        return Err(AppleNotesImportError::InvalidImportedNote(format!(
+            "missing source note root: {}",
+            source_manifest.note_root
+        )));
+    }
+
+    let published_root_relative = PathBuf::from(APPLE_NOTES_PUBLISHED_ROOT);
+    let published_root = vault.resolve_relative_path(&published_root_relative)?;
+    fs::create_dir_all(&published_root)?;
+    let existing_published_notes = index_existing_imported_notes_under(&published_root)?;
+
+    let publish_run =
+        vault.prepare_pipeline_run(VaultPipelineStage::Enriched, "apple-notes-publish")?;
+    let report_relative_path = publish_run.relative_root.join("report.json");
+    let published_at = Utc::now();
+    let mut counts = AppleNotesPublishCounts::default();
+
+    publish_apple_notes_directory(
+        vault,
+        &source_note_root,
+        &source_note_root,
+        &published_root_relative,
+        &existing_published_notes,
+        &source_manifest.run_id,
+        &path_to_relative_string(&source_manifest_relative_path),
+        published_at,
+        &mut counts,
+    )?;
+
+    let report = AppleNotesPublishReport {
+        run_id: publish_run.run_id,
+        published_at,
+        source_run_id: source_manifest.run_id,
+        source_raw_root: source_manifest.raw_root,
+        source_manifest_path: path_to_relative_string(&source_manifest_relative_path),
+        published_root: path_to_relative_string(&published_root_relative),
+        report_path: path_to_relative_string(&report_relative_path),
+        note_count: counts.note_count,
+        attachment_count: counts.attachment_count,
+        created_note_count: counts.created_note_count,
+        updated_note_count: counts.updated_note_count,
+    };
+
+    write_publish_report(vault, &report_relative_path, &report)?;
+    Ok(report)
 }
 
 pub fn import_apple_notes_with_progress<F>(
@@ -412,6 +500,192 @@ where
         locked_note_count,
         timed_out_note_count,
     })
+}
+
+fn load_completed_apple_notes_manifest(
+    vault: &ObsidianVault,
+    requested_run_id: Option<&str>,
+) -> AppleNotesImportResult<(AppleNotesImportManifest, PathBuf)> {
+    let raw_root = vault.root().join(".raw").join("apple-notes");
+    if !raw_root.exists() {
+        return Err(AppleNotesImportError::NoCompletedImportRun);
+    }
+
+    if let Some(run_id) = requested_run_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let manifest_relative_path = Path::new(".raw")
+            .join("apple-notes")
+            .join(run_id)
+            .join("manifest.json");
+        let manifest_path = vault.resolve_relative_path(&manifest_relative_path)?;
+        if !manifest_path.exists() {
+            return Err(AppleNotesImportError::ImportRunNotFound(run_id.to_string()));
+        }
+        let manifest =
+            serde_json::from_str::<AppleNotesImportManifest>(&fs::read_to_string(&manifest_path)?)?;
+        if manifest.status != AppleNotesImportStatus::Completed {
+            return Err(AppleNotesImportError::InvalidImportedNote(format!(
+                "run is not completed: {run_id}"
+            )));
+        }
+        return Ok((manifest, manifest_relative_path));
+    }
+
+    let mut completed_manifests = Vec::new();
+    let children = fs::read_dir(&raw_root)?.collect::<Result<Vec<_>, _>>()?;
+    for child in children {
+        let manifest_path = child.path().join("manifest.json");
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let manifest =
+            serde_json::from_str::<AppleNotesImportManifest>(&fs::read_to_string(&manifest_path)?)?;
+        if manifest.status != AppleNotesImportStatus::Completed {
+            continue;
+        }
+
+        let manifest_relative_path = manifest_path
+            .strip_prefix(vault.root())
+            .map(PathBuf::from)
+            .map_err(|_| {
+                AppleNotesImportError::InvalidImportedNote(manifest_path.display().to_string())
+            })?;
+        completed_manifests.push((manifest.imported_at, manifest, manifest_relative_path));
+    }
+
+    completed_manifests
+        .into_iter()
+        .max_by_key(|(imported_at, _, _)| *imported_at)
+        .map(|(_, manifest, path)| (manifest, path))
+        .ok_or(AppleNotesImportError::NoCompletedImportRun)
+}
+
+fn publish_apple_notes_directory(
+    vault: &ObsidianVault,
+    source_note_root: &Path,
+    directory: &Path,
+    published_root_relative: &Path,
+    existing_published_notes: &HashMap<String, ExistingImportedNote>,
+    source_run_id: &str,
+    source_manifest_path: &str,
+    published_at: DateTime<Utc>,
+    counts: &mut AppleNotesPublishCounts,
+) -> AppleNotesImportResult<()> {
+    let children = fs::read_dir(directory)?.collect::<Result<Vec<_>, _>>()?;
+    for child in children {
+        let source_path = child.path();
+        if source_path.is_dir() {
+            publish_apple_notes_directory(
+                vault,
+                source_note_root,
+                &source_path,
+                published_root_relative,
+                existing_published_notes,
+                source_run_id,
+                source_manifest_path,
+                published_at,
+                counts,
+            )?;
+            continue;
+        }
+
+        if !is_markdown_path(&source_path) {
+            continue;
+        }
+
+        let imported_note = parse_existing_imported_note(&source_path)?.ok_or_else(|| {
+            AppleNotesImportError::InvalidImportedNote(source_path.display().to_string())
+        })?;
+        let source_relative_path = source_path
+            .strip_prefix(vault.root())
+            .map(PathBuf::from)
+            .map_err(|_| {
+                AppleNotesImportError::InvalidImportedNote(source_path.display().to_string())
+            })?;
+        let source_note_relative_path = source_path
+            .strip_prefix(source_note_root)
+            .map(PathBuf::from)
+            .map_err(|_| {
+                AppleNotesImportError::InvalidImportedNote(source_path.display().to_string())
+            })?;
+        let target_relative_path = existing_published_notes
+            .get(&imported_note.note_id)
+            .and_then(|existing| {
+                existing
+                    .source_note_path
+                    .strip_prefix(vault.root())
+                    .ok()
+                    .map(PathBuf::from)
+            })
+            .unwrap_or_else(|| published_root_relative.join(&source_note_relative_path));
+
+        let source_body = fs::read_to_string(&source_path)?;
+        let target_body = render_published_apple_note_markdown(
+            &source_body,
+            source_run_id,
+            source_manifest_path,
+            &path_to_relative_string(&source_relative_path),
+            published_at,
+        );
+        vault.save_note(
+            &path_to_relative_string(&target_relative_path),
+            &target_body,
+        )?;
+
+        let target_path = vault.resolve_relative_path(&target_relative_path)?;
+        let target_asset_dir = note_asset_directory(&target_path);
+        if target_asset_dir.exists() {
+            fs::remove_dir_all(&target_asset_dir)?;
+        }
+        if let Some(source_asset_dir) = &imported_note.source_asset_dir {
+            copy_directory(source_asset_dir, &target_asset_dir)?;
+            counts.attachment_count += imported_note.source_attachment_count;
+        }
+
+        counts.note_count += 1;
+        if existing_published_notes.contains_key(&imported_note.note_id) {
+            counts.updated_note_count += 1;
+        } else {
+            counts.created_note_count += 1;
+        }
+    }
+
+    Ok(())
+}
+
+fn render_published_apple_note_markdown(
+    raw_body: &str,
+    source_run_id: &str,
+    source_manifest_path: &str,
+    raw_note_path: &str,
+    published_at: DateTime<Utc>,
+) -> String {
+    let published_at = published_at.to_rfc3339();
+    let (frontmatter, remainder, had_frontmatter) = match split_frontmatter(raw_body) {
+        Some((frontmatter, remainder)) => (frontmatter.to_string(), remainder.to_string(), true),
+        None => (String::new(), raw_body.to_string(), false),
+    };
+
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "kind", "source_capture");
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "provenance", "imported_source");
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "review_state", "unreviewed");
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "managed_by", "apple_notes_publish");
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "source_system", "apple_notes");
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "raw_run_id", source_run_id);
+    let frontmatter =
+        upsert_frontmatter_pair(&frontmatter, "raw_manifest_path", source_manifest_path);
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "raw_note_path", raw_note_path);
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "published_at", &published_at);
+    let frontmatter = upsert_frontmatter_pair(&frontmatter, "indexed_at", &published_at);
+
+    if had_frontmatter {
+        format!("---\n{frontmatter}\n---\n{remainder}")
+    } else {
+        format!("---\n{frontmatter}\n---\n\n{remainder}")
+    }
 }
 
 pub fn scan_apple_notes() -> AppleNotesImportResult<AppleNotesScanReport> {
@@ -846,6 +1120,16 @@ fn write_manifest(
     Ok(())
 }
 
+fn write_publish_report(
+    vault: &ObsidianVault,
+    report_path: &Path,
+    report: &AppleNotesPublishReport,
+) -> AppleNotesImportResult<()> {
+    let body = serde_json::to_string_pretty(report)?;
+    vault.write_text_file(report_path, &body)?;
+    Ok(())
+}
+
 enum CommandRunResult {
     Completed(Output),
     TimedOut,
@@ -1092,6 +1376,14 @@ fn index_existing_imported_notes(
     ] {
         collect_existing_imported_notes(&root, &mut index)?;
     }
+    Ok(index)
+}
+
+fn index_existing_imported_notes_under(
+    root: &Path,
+) -> AppleNotesImportResult<HashMap<String, ExistingImportedNote>> {
+    let mut index = HashMap::new();
+    collect_existing_imported_notes(root, &mut index)?;
     Ok(index)
 }
 
@@ -1545,8 +1837,9 @@ fn sanitize_image_extension(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppleScriptNote, note_asset_directory, parse_apple_note_frontmatter,
-        render_apple_note_markdown,
+        AppleNotesFolderScan, AppleNotesImportManifest, AppleNotesImportStatus,
+        AppleNotesScanReport, AppleScriptNote, note_asset_directory, parse_apple_note_frontmatter,
+        publish_apple_notes, render_apple_note_markdown,
     };
     use crate::vault::ObsidianVault;
     use chrono::Utc;
@@ -1652,6 +1945,200 @@ Body
             .expect("asset directory name");
         assert!(asset_dir_name.len() <= 255);
         assert!(asset_dir.join("attachment-001.png").exists());
+    }
+
+    #[test]
+    fn publishes_completed_raw_run_into_visible_import_root() {
+        let root = temp_dir("apple-notes-publish");
+        let vault = ObsidianVault::from_root(&root);
+        vault.ensure_root().expect("vault root");
+
+        let run_id = "20260413T090841Z";
+        let raw_note_relative = PathBuf::from(format!(
+            ".raw/apple-notes/{run_id}/notes/iCloud/Notes/Test.md"
+        ));
+        let raw_note_path = root.join(&raw_note_relative);
+        fs::create_dir_all(raw_note_path.parent().expect("raw note parent"))
+            .expect("raw note parent");
+        fs::write(
+            &raw_note_path,
+            r#"---
+title: "Test"
+source_created_at: "2026-04-10T08:12:14Z"
+source_updated_at: "2026-04-11T19:42:03Z"
+tags:
+  - imported/apple-notes
+source:
+  system: apple_notes
+  account: "iCloud"
+  folder: "Notes"
+  note_id: "x-coredata://example"
+  locked: false
+  content_state: "available"
+---
+
+Body
+"#,
+        )
+        .expect("raw note");
+        let raw_asset_dir = note_asset_directory(&raw_note_path);
+        fs::create_dir_all(&raw_asset_dir).expect("raw asset dir");
+        fs::write(raw_asset_dir.join("attachment-001.png"), "png").expect("raw attachment");
+
+        let manifest_relative = PathBuf::from(format!(".raw/apple-notes/{run_id}/manifest.json"));
+        let manifest = AppleNotesImportManifest {
+            manifest_version: 1,
+            source_system: "apple_notes".to_string(),
+            status: AppleNotesImportStatus::Completed,
+            run_id: run_id.to_string(),
+            imported_at: Utc::now(),
+            raw_root: format!(".raw/apple-notes/{run_id}"),
+            note_root: format!(".raw/apple-notes/{run_id}/notes"),
+            scan: AppleNotesScanReport {
+                account_count: 1,
+                folder_count: 1,
+                note_count: 1,
+                folders: vec![AppleNotesFolderScan {
+                    account: "iCloud".to_string(),
+                    folder: "Notes".to_string(),
+                    note_count: 1,
+                }],
+            },
+            note_count: 1,
+            attachment_count: 1,
+            reused_note_count: 0,
+            reused_attachment_count: 0,
+            locked_note_count: 0,
+            timed_out_note_count: 0,
+        };
+        fs::write(
+            root.join(&manifest_relative),
+            serde_json::to_string_pretty(&manifest).expect("manifest json"),
+        )
+        .expect("manifest");
+
+        let report = publish_apple_notes(&vault, Some(run_id)).expect("publish");
+        assert_eq!(report.source_run_id, run_id);
+        assert_eq!(report.note_count, 1);
+        assert_eq!(report.attachment_count, 1);
+        assert_eq!(report.created_note_count, 1);
+        assert_eq!(report.updated_note_count, 0);
+        assert!(root.join(PathBuf::from(&report.report_path)).exists());
+
+        let published_note = root.join("Imported/Apple Notes/iCloud/Notes/Test.md");
+        assert!(published_note.exists());
+        let published_body = fs::read_to_string(&published_note).expect("published note body");
+        assert!(published_body.contains("kind: \"source_capture\""));
+        assert!(published_body.contains("provenance: \"imported_source\""));
+        assert!(published_body.contains("review_state: \"unreviewed\""));
+        assert!(published_body.contains("managed_by: \"apple_notes_publish\""));
+        assert!(published_body.contains(&format!(
+            "raw_note_path: \"{}\"",
+            raw_note_relative.display()
+        )));
+        assert!(
+            note_asset_directory(&published_note)
+                .join("attachment-001.png")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn republishes_existing_note_id_in_place() {
+        let root = temp_dir("apple-notes-republish");
+        let vault = ObsidianVault::from_root(&root);
+        vault.ensure_root().expect("vault root");
+
+        let existing_note = root.join("Imported/Apple Notes/iCloud/Notes/Old Name.md");
+        fs::create_dir_all(existing_note.parent().expect("existing note parent"))
+            .expect("existing note parent");
+        fs::write(
+            &existing_note,
+            r#"---
+title: "Old Name"
+source:
+  system: apple_notes
+  account: "iCloud"
+  folder: "Notes"
+  note_id: "x-coredata://same-note"
+  locked: false
+  content_state: "available"
+updated: "2026-04-11T19:42:03Z"
+---
+
+Old body
+"#,
+        )
+        .expect("existing note");
+
+        let run_id = "20260413T090842Z";
+        let raw_note_path = root.join(format!(
+            ".raw/apple-notes/{run_id}/notes/iCloud/Notes/New Name.md"
+        ));
+        fs::create_dir_all(raw_note_path.parent().expect("raw note parent"))
+            .expect("raw note parent");
+        fs::write(
+            &raw_note_path,
+            r#"---
+title: "New Name"
+source:
+  system: apple_notes
+  account: "iCloud"
+  folder: "Notes"
+  note_id: "x-coredata://same-note"
+  locked: false
+  content_state: "available"
+updated: "2026-04-12T19:42:03Z"
+---
+
+Updated body
+"#,
+        )
+        .expect("raw note");
+
+        let manifest = AppleNotesImportManifest {
+            manifest_version: 1,
+            source_system: "apple_notes".to_string(),
+            status: AppleNotesImportStatus::Completed,
+            run_id: run_id.to_string(),
+            imported_at: Utc::now(),
+            raw_root: format!(".raw/apple-notes/{run_id}"),
+            note_root: format!(".raw/apple-notes/{run_id}/notes"),
+            scan: AppleNotesScanReport {
+                account_count: 1,
+                folder_count: 1,
+                note_count: 1,
+                folders: vec![AppleNotesFolderScan {
+                    account: "iCloud".to_string(),
+                    folder: "Notes".to_string(),
+                    note_count: 1,
+                }],
+            },
+            note_count: 1,
+            attachment_count: 0,
+            reused_note_count: 0,
+            reused_attachment_count: 0,
+            locked_note_count: 0,
+            timed_out_note_count: 0,
+        };
+        let manifest_path = root.join(format!(".raw/apple-notes/{run_id}/manifest.json"));
+        fs::write(
+            manifest_path,
+            serde_json::to_string_pretty(&manifest).expect("manifest json"),
+        )
+        .expect("manifest");
+
+        let report = publish_apple_notes(&vault, Some(run_id)).expect("publish");
+        assert_eq!(report.created_note_count, 0);
+        assert_eq!(report.updated_note_count, 1);
+        assert!(existing_note.exists());
+        assert!(
+            !root
+                .join("Imported/Apple Notes/iCloud/Notes/New Name.md")
+                .exists()
+        );
+        let published_body = fs::read_to_string(existing_note).expect("existing note body");
+        assert!(published_body.contains("Updated body"));
     }
 
     fn temp_dir(label: &str) -> PathBuf {

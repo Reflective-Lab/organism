@@ -29,14 +29,17 @@ Each example wires organism types (`IntentPacket`, `Challenge`, `SkepticismKind`
 
 ```toml
 [dependencies]
-# The planning loop — one import, full pipeline contract
+# Planning contract — one import, full pipeline semantics
 organism-pack = { path = "../organism/crates/pack" }
+
+# Embedded runtime API — resolution, readiness, runtime wiring
+organism-runtime = { path = "../organism/crates/runtime" }
 
 # Capabilities
 organism-notes = { path = "../organism/crates/notes", features = ["cleanup", "sources-web"] }
 organism-intelligence = { path = "../organism/crates/intelligence", features = ["ocr", "vision"] }
 
-# Domain packs and blueprints
+# Domain pack library and blueprints
 organism-domain = { path = "../organism/crates/domain" }
 
 # Converge integration (run the engine)
@@ -44,7 +47,12 @@ converge-kernel = { path = "../converge/crates/kernel" }
 converge-pack = { path = "../converge/crates/pack" }
 ```
 
-`organism-pack` gives you the full pipeline: `IntentPacket`, `Challenge`, `SimulationResult`, `LearningEpisode` — everything. No need to import individual crates.
+Recommended downstream shape mirrors Converge:
+- `organism-pack` for the planning contract
+- `organism-runtime` for in-process embedding, resolution, and readiness
+- `organism-intelligence`, `organism-notes`, and `organism-domain` as optional libraries
+
+`organism-pack` gives you the full planning contract: `IntentPacket`, `Challenge`, `SimulationResult`, `LearningEpisode`, and the resolution types. App code should usually not depend directly on `organism-intent`, `organism-planning`, `organism-adversarial`, `organism-simulation`, or `organism-learning` unless you are extending Organism itself.
 
 ---
 
@@ -60,13 +68,15 @@ IntentPacket → Admission (4 dimensions) → Huddle → Adversarial Review (5 s
 | Crate | What it does | Key types |
 |---|---|---|
 | `organism-intent` | Intent admission and decomposition | `IntentPacket`, `AdmissionResult`, `FeasibilityDimension` (Capability/Context/Resources/Authority), `IntentNode` tree, `Reversibility`, `ExpiryAction` |
-| `organism-planning` | Multi-model collaborative planning | `Plan`, `PlanAnnotation` (impact/cost/risk), `Reasoner` trait, `HuddleParticipant`, `ReasoningSystem` (6 kinds), `PlanBundle` |
+| `organism-planning` | Multi-model collaborative planning | `Plan`, `PlanAnnotation` (impact/cost/risk), `Reasoner` trait, `Huddle`, `ReasoningSystem` (6 kinds), `PlanBundle` |
 | `organism-adversarial` | Institutionalized disagreement | `Challenge`, `SkepticismKind` (AssumptionBreaking/ConstraintChecking/CausalSkepticism/EconomicSkepticism/OperationalSkepticism), `Severity`, `AdversarialSignal`, `Skeptic` trait |
 | `organism-simulation` | Parallel stress-testing | `SimulationResult`, `DimensionResult`, `SimulationDimension` (Outcome/Cost/Policy/Causal/Operational), `SimulationRecommendation` (Proceed/ProceedWithCaution/DoNotProceed), `SimulationRunner` trait |
 | `organism-learning` | Calibrate priors from outcomes | `LearningEpisode`, `PredictionError`, `ErrorDimension`, `Lesson`, `PriorCalibration`, `LearningSignal` |
-| `organism-runtime` | Pipeline orchestration | `CommitBoundary` trait, wires all stages together |
+| `organism-runtime` | Embedded runtime surface | `Runtime`, `CommitBoundary`, `Registry`, `StructuralResolver`, `check_readiness`, built-in probes |
 
-**How apps use this:** Build `Suggestor` implementations that use organism types for structured reasoning. See `examples/expense-approval` for the pattern — each pipeline stage is a Suggestor that reads from context and emits proposals using organism's typed contracts.
+The five phase crates above are the building blocks behind `organism-pack`. App code should normally import the re-exported types from `organism-pack` and the embedding helpers from `organism-runtime`.
+
+**How apps use this:** Build `Suggestor` implementations that use `organism-pack` types for structured reasoning, and use `organism-runtime` for registry/resolution/readiness concerns. See `examples/expense-approval` and `examples/resolution-showcase` for the intended pattern.
 
 ---
 
@@ -83,7 +93,7 @@ Vault-native note lifecycle. CRUD, ingestion, cleanup, enrichment.
 | `sources::apple_notes` | `sources-apple-notes` | **Live** | macOS Apple Notes ingestion via AppleScript — scan, batch export, reuse detection, inline image extraction |
 | `sources::web` | `sources-web` | **Live** | URL capture → raw snapshot + vault note, uses organism-intelligence web provider |
 | `cleanup` | `cleanup` | **Live** | Exact duplicate detection, Jaccard similarity candidates, merge suggestions |
-| `enrichment` | — | Planned | Title cleanup, structure extraction, entity extraction, OCR hookup |
+| `enrichment` | `enrichment` | Partial | Freshness/value analysis live. More derived passes planned: structure extraction, entity extraction, OCR hookup |
 | `indexing` | — | Planned | Backlinks, chunks, embeddings, attachment fingerprints, provenance |
 
 **Deps:** `chrono`, `serde`, `thiserror`. Optional: `base64`, `html2md`, `organism-intelligence`.
@@ -103,6 +113,7 @@ Provider-shaped data acquisition. API adapters that produce observations with pr
 | `ocr::receipt` | `ocr` | **Live** | Receipt-specific extraction (TesseractCli, Ollama) |
 | `ocr::photos` | `ocr` | **Live** | Photo ingestion with OCR |
 | `ocr::screenshots` | `ocr` | **Live** | Screenshot ingestion with UI chrome detection |
+| `pdf` | `pdf` | **Live** | Text-native PDF extraction, chunking, metadata capture |
 | `vision` | `vision` | **Live** | Scene understanding — Claude, GPT-4o, Gemini, Pixtral |
 | `web` | `web` | **Live** | URL capture, metadata extraction, HTML parsing |
 | `social` | `social` | **Live** | Normalized social profile extraction (LinkedIn, X, Instagram, Facebook) |
@@ -159,6 +170,8 @@ When wired to Converge, pack agents implement `converge_pack::Suggestor`. Bluepr
 | `loan-application` | Parallel eval (4 agents) → all 5 skepticism kinds → 5D simulation → learning episode capture | `cargo run -p example-loan-application` |
 
 Each example uses `converge-kernel::Engine` with organism types as real `Suggestor` implementations. Copy the pattern for your own domain.
+
+Current reference downstream for the curated API shape: Monterro consumes Organism as `organism-pack` + `organism-runtime` and Converge as `converge-pack` + `converge-kernel`.
 
 ---
 

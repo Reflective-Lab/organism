@@ -7,9 +7,7 @@
 //!   Intent → Admission → Planning → Adversarial Review → Simulation → Converge
 //!
 //! Uses organism-domain autonomous_org + procurement packs.
-//! Uses organism-adversarial Challenge/SkepticismKind types.
-//! Uses organism-simulation SimulationResult/Recommendation types.
-//! Uses organism-intent IntentPacket/AdmissionResult types.
+//! Uses `organism-pack` as the curated planning contract.
 
 use converge_kernel::{AgentEffect, ContextKey, Engine, ProposedFact, Suggestor};
 use converge_pack::Context as ContextView;
@@ -36,7 +34,7 @@ use organism_pack::{
 // ── Stage 1: Intent Admission ──────────────────────────────────────
 
 /// Evaluates whether the expense intent is feasible before planning begins.
-/// Uses organism-intent's 4 feasibility dimensions.
+/// Uses Organism's 4 feasibility dimensions through `organism-pack`.
 struct IntentAdmissionAgent;
 
 impl Suggestor for IntentAdmissionAgent {
@@ -208,7 +206,7 @@ impl Suggestor for PolicyPlanningAgent {
 
 // ── Stage 3: Adversarial Review ────────────────────────────────────
 
-/// Challenges the approval plan using organism-adversarial types.
+/// Challenges the approval plan using the adversarial types re-exported by `organism-pack`.
 /// Maps to: autonomous_org::policy_enforcer (skeptic role)
 ///
 /// This is the organism differentiator — plans get challenged before commit.
@@ -318,7 +316,7 @@ impl Suggestor for PolicySkepticAgent {
 
 // ── Stage 4: Simulation ────────────────────────────────────────────
 
-/// Simulates the budget impact using organism-simulation types.
+/// Simulates the budget impact using the simulation types re-exported by `organism-pack`.
 /// Maps to: autonomous_org::budget_monitor + spend_validator
 struct BudgetSimulationAgent;
 
@@ -419,7 +417,7 @@ impl Suggestor for BudgetSimulationAgent {
             runs: 1,
             dimensions: vec![cost_result, policy_result, operational_result],
             overall_confidence: overall,
-            recommendation: recommendation.clone(),
+            recommendation,
         };
 
         let decision = match recommendation {
@@ -470,13 +468,13 @@ fn main() {
     println!("Packs used:");
     print_pack(
         "autonomous_org",
-        &organism_domain::packs::autonomous_org::AGENTS,
-        &organism_domain::packs::autonomous_org::INVARIANTS,
+        organism_domain::packs::autonomous_org::AGENTS,
+        organism_domain::packs::autonomous_org::INVARIANTS,
     );
     print_pack(
         "procurement",
-        &organism_domain::packs::procurement::AGENTS,
-        &organism_domain::packs::procurement::INVARIANTS,
+        organism_domain::packs::procurement::AGENTS,
+        organism_domain::packs::procurement::INVARIANTS,
     );
     println!();
 
@@ -522,28 +520,26 @@ fn main() {
         Ok(result) => {
             // Show admission
             for fact in result.context.get(ContextKey::Signals) {
-                if fact.id == "admission:result" {
-                    if let Ok(admission) = serde_json::from_str::<serde_json::Value>(&fact.content)
-                    {
-                        let feasible = admission
-                            .get("feasible")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        println!(
-                            "[Admission] {} ",
-                            if feasible { "ADMITTED" } else { "REJECTED" }
-                        );
-                        if let Some(dims) = admission.get("dimensions").and_then(|v| v.as_array()) {
-                            for d in dims {
-                                let dim =
-                                    d.get("dimension").and_then(|v| v.as_str()).unwrap_or("?");
-                                let kind = d.get("kind").and_then(|v| v.as_str()).unwrap_or("?");
-                                let reason = d.get("reason").and_then(|v| v.as_str()).unwrap_or("");
-                                println!("  {dim}: {kind} — {reason}");
-                            }
+                if fact.id == "admission:result"
+                    && let Ok(admission) = serde_json::from_str::<serde_json::Value>(&fact.content)
+                {
+                    let feasible = admission
+                        .get("feasible")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    println!(
+                        "[Admission] {} ",
+                        if feasible { "ADMITTED" } else { "REJECTED" }
+                    );
+                    if let Some(dims) = admission.get("dimensions").and_then(|v| v.as_array()) {
+                        for d in dims {
+                            let dim = d.get("dimension").and_then(|v| v.as_str()).unwrap_or("?");
+                            let kind = d.get("kind").and_then(|v| v.as_str()).unwrap_or("?");
+                            let reason = d.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+                            println!("  {dim}: {kind} — {reason}");
                         }
-                        println!();
                     }
+                    println!();
                 }
             }
 
@@ -573,29 +569,28 @@ fn main() {
 
             // Show adversarial review
             for fact in result.context.get(ContextKey::Evaluations) {
-                if fact.id == "adversarial:review" {
-                    if let Ok(review) = serde_json::from_str::<serde_json::Value>(&fact.content) {
-                        let verdict = review
-                            .get("verdict")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("?");
-                        let challenges = review
-                            .get("challenges")
-                            .and_then(|v| v.as_u64())
-                            .unwrap_or(0);
-                        println!("[Adversarial] {verdict} ({challenges} challenges)");
-                        if let Some(details) = review.get("details").and_then(|v| v.as_array()) {
-                            for d in details {
-                                let kind = d.get("kind").and_then(|v| v.as_str()).unwrap_or("?");
-                                let severity =
-                                    d.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
-                                let desc =
-                                    d.get("description").and_then(|v| v.as_str()).unwrap_or("");
-                                println!("  [{severity}] {kind}: {desc}");
-                            }
+                if fact.id == "adversarial:review"
+                    && let Ok(review) = serde_json::from_str::<serde_json::Value>(&fact.content)
+                {
+                    let verdict = review
+                        .get("verdict")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let challenges = review
+                        .get("challenges")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    println!("[Adversarial] {verdict} ({challenges} challenges)");
+                    if let Some(details) = review.get("details").and_then(|v| v.as_array()) {
+                        for d in details {
+                            let kind = d.get("kind").and_then(|v| v.as_str()).unwrap_or("?");
+                            let severity =
+                                d.get("severity").and_then(|v| v.as_str()).unwrap_or("?");
+                            let desc = d.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                            println!("  [{severity}] {kind}: {desc}");
                         }
-                        println!();
                     }
+                    println!();
                 }
             }
 

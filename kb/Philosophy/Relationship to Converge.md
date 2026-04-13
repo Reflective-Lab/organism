@@ -52,4 +52,11 @@ Organism uses `converge-pack`, `converge-kernel`, and `converge-model` directly.
 Do NOT depend on `converge-core`, `converge-runtime`, or other internal crates.
 Full contract: `~/dev/work/converge/kb/Architecture/API Surfaces.md`.
 
+Organism mirrors that split on its own side:
+- `organism-pack` is the planning contract
+- `organism-runtime` is the curated embedding surface
+- `organism-intelligence`, `organism-notes`, and `organism-domain` are opt-in libraries
+
+Prefer those surfaces over direct dependencies on phase subcrates in app code.
+
 See also: [[Philosophy/Key Invariants]], [[Architecture/Converge Contract]]

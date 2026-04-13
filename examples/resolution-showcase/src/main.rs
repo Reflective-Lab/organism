@@ -7,10 +7,11 @@
 //! light up a specific dimension. Shows exactly how organism decides
 //! which packs, capabilities, and invariants an intent needs.
 
-use organism_domain::packs;
 use organism_pack::*;
-use organism_runtime::readiness::{BudgetProbe, CredentialProbe, PackProbe, ReadinessReport};
-use organism_runtime::registry::{Registry, StructuralResolver};
+use organism_runtime::{
+    BudgetProbe, CredentialProbe, GapSeverity, PackProbe, ReadinessReport, Registry,
+    StructuralResolver, check_readiness,
+};
 
 fn main() {
     println!("=== Organism Resolution Showcase ===");
@@ -22,7 +23,6 @@ fn main() {
     // ── 1. Fact prefix matching ────────────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "1. Fact Prefix",
         IntentPacket::new("process incoming leads", one_hour()).with_context(serde_json::json!({
             "pending": ["lead:acme-001", "lead:beta-002"],
@@ -34,7 +34,6 @@ fn main() {
     // ── 2. Constraint → invariant matching ─────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "2. Constraint → Invariant",
         {
             let mut i = IntentPacket::new("finalize vendor agreement", one_hour());
@@ -47,7 +46,6 @@ fn main() {
     // ── 3. Context key flow ────────────────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "3. Context Key Flow",
         IntentPacket::new("aggregate vendor scores into strategy", one_hour()).with_context(
             serde_json::json!({
@@ -61,7 +59,6 @@ fn main() {
     // ── 4. Domain entity matching ──────────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "4. Domain Entity",
         IntentPacket::new(
             "onboard new employee and provision access to all systems",
@@ -73,7 +70,6 @@ fn main() {
     // ── 5. Keyword matching ────────────────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "5. Keyword",
         IntentPacket::new(
             "plan Q3 marketing campaign with attribution tracking",
@@ -85,7 +81,6 @@ fn main() {
     // ── 6. Reversibility ───────────────────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "6. Reversibility",
         IntentPacket::new("terminate contractor and revoke all access", one_hour())
             .with_reversibility(Reversibility::Irreversible),
@@ -95,7 +90,6 @@ fn main() {
     // ── 7. Forbidden action filtering ──────────────────────────────
     run_scenario(
         &resolver,
-        &registry,
         "7. Forbidden Filtering",
         {
             let mut i = IntentPacket::new("research potential vendor", one_hour())
@@ -136,93 +130,7 @@ fn main() {
 // ── Helpers ────────────────────────────────────────────────────────
 
 fn build_full_registry() -> Registry {
-    let mut r = Registry::new();
-
-    // Register all 14 packs with profiles
-    r.register_pack_with_profile(
-        "customers",
-        packs::customers::AGENTS,
-        packs::customers::INVARIANTS,
-        &packs::customers::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "legal",
-        packs::legal::AGENTS,
-        packs::legal::INVARIANTS,
-        &packs::legal::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "autonomous_org",
-        packs::autonomous_org::AGENTS,
-        packs::autonomous_org::INVARIANTS,
-        &packs::autonomous_org::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "partnerships",
-        packs::partnerships::AGENTS,
-        packs::partnerships::INVARIANTS,
-        &packs::partnerships::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "people",
-        packs::people::AGENTS,
-        packs::people::INVARIANTS,
-        &packs::people::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "procurement",
-        packs::procurement::AGENTS,
-        packs::procurement::INVARIANTS,
-        &packs::procurement::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "linkedin_research",
-        packs::linkedin_research::AGENTS,
-        packs::linkedin_research::INVARIANTS,
-        &packs::linkedin_research::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "knowledge",
-        packs::knowledge::AGENTS,
-        packs::knowledge::INVARIANTS,
-        &packs::knowledge::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "growth_marketing",
-        packs::growth_marketing::AGENTS,
-        packs::growth_marketing::INVARIANTS,
-        &packs::growth_marketing::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "ops_support",
-        packs::ops_support::AGENTS,
-        packs::ops_support::INVARIANTS,
-        &packs::ops_support::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "performance",
-        packs::performance::AGENTS,
-        packs::performance::INVARIANTS,
-        &packs::performance::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "product_engineering",
-        packs::product_engineering::AGENTS,
-        packs::product_engineering::INVARIANTS,
-        &packs::product_engineering::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "virtual_teams",
-        packs::virtual_teams::AGENTS,
-        packs::virtual_teams::INVARIANTS,
-        &packs::virtual_teams::PROFILE,
-    );
-    r.register_pack_with_profile(
-        "reskilling",
-        packs::reskilling::AGENTS,
-        packs::reskilling::INVARIANTS,
-        &packs::reskilling::PROFILE,
-    );
+    let mut r = Registry::with_standard_packs();
 
     // Register available capabilities
     r.register_capability("web", "URL capture and metadata extraction");
@@ -238,7 +146,6 @@ fn one_hour() -> chrono::DateTime<chrono::Utc> {
 
 fn run_scenario(
     resolver: &StructuralResolver<'_>,
-    _registry: &Registry,
     title: &str,
     intent: IntentPacket,
     description: &str,
@@ -300,8 +207,7 @@ fn run_scenario_with_readiness(
         .with_token_budget(50_000)
         .with_spend_budget(2.50);
 
-    let report =
-        organism_runtime::readiness::check(&binding, &[&cred_probe, &pack_probe, &budget_probe]);
+    let report = check_readiness(&binding, &[&cred_probe, &pack_probe, &budget_probe]);
     print_readiness(&report);
     println!();
 }
@@ -348,9 +254,9 @@ fn print_readiness(report: &ReadinessReport) {
     }
     for g in &report.gaps {
         let icon = match g.severity {
-            organism_runtime::readiness::GapSeverity::Blocking => "BLOCK",
-            organism_runtime::readiness::GapSeverity::Degraded => "WARN ",
-            organism_runtime::readiness::GapSeverity::Advisory => "INFO ",
+            GapSeverity::Blocking => "BLOCK",
+            GapSeverity::Degraded => "WARN ",
+            GapSeverity::Advisory => "INFO ",
         };
         println!("     [{icon}] {} — {}", g.resource, g.reason);
         if let Some(suggestion) = &g.suggestion {

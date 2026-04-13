@@ -357,17 +357,17 @@ const MAX_NOTE_ASSET_SUFFIX_BYTES: usize = ".assets".len();
 
 pub fn sanitize_directory_name(value: &str) -> String {
     truncate_path_component(
-        &value
-        .trim()
-        .chars()
-        .filter_map(|character| match character {
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => Some('-'),
-            value if value.is_control() => None,
-            value => Some(value),
-        })
-        .collect::<String>()
-        .trim()
-        .trim_matches('.'),
+        value
+            .trim()
+            .chars()
+            .filter_map(|character| match character {
+                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => Some('-'),
+                value if value.is_control() => None,
+                value => Some(value),
+            })
+            .collect::<String>()
+            .trim()
+            .trim_matches('.'),
         MAX_PATH_COMPONENT_BYTES,
     )
 }
