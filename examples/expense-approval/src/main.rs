@@ -37,6 +37,7 @@ use organism_pack::{
 /// Uses Organism's 4 feasibility dimensions through `organism-pack`.
 struct IntentAdmissionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for IntentAdmissionAgent {
     fn name(&self) -> &str {
         "intent_admission"
@@ -49,7 +50,7 @@ impl Suggestor for IntentAdmissionAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -147,6 +148,7 @@ impl Suggestor for IntentAdmissionAgent {
 /// Maps to: autonomous_org::approval_router + autonomous_org::policy_enforcer
 struct PolicyPlanningAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PolicyPlanningAgent {
     fn name(&self) -> &str {
         "policy_planning"
@@ -159,7 +161,7 @@ impl Suggestor for PolicyPlanningAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let expense = signals.iter().find(|s| s.id == "expense:parsed");
         let Some(expense) = expense else {
@@ -212,6 +214,7 @@ impl Suggestor for PolicyPlanningAgent {
 /// This is the organism differentiator — plans get challenged before commit.
 struct PolicySkepticAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for PolicySkepticAgent {
     fn name(&self) -> &str {
         "policy_skeptic"
@@ -224,7 +227,7 @@ impl Suggestor for PolicySkepticAgent {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let Some(plan_fact) = strategies.first() else {
             return AgentEffect::empty();
@@ -320,6 +323,7 @@ impl Suggestor for PolicySkepticAgent {
 /// Maps to: autonomous_org::budget_monitor + spend_validator
 struct BudgetSimulationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for BudgetSimulationAgent {
     fn name(&self) -> &str {
         "budget_simulation"
@@ -332,7 +336,7 @@ impl Suggestor for BudgetSimulationAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let evaluations = ctx.get(ContextKey::Evaluations);
 
@@ -460,7 +464,8 @@ impl Suggestor for BudgetSimulationAgent {
 
 // ── Main ───────────────────────────────────────────────────────────
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Organism Expense Approval ===");
     println!("    Intent → Admission → Planning → Adversarial → Simulation → Converge\n");
 
@@ -516,7 +521,7 @@ fn main() {
     );
     println!("Running pipeline...\n");
 
-    match engine.run(ctx) {
+    match engine.run(ctx).await {
         Ok(result) => {
             // Show admission
             for fact in result.context.get(ContextKey::Signals) {

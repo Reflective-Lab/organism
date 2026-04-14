@@ -8,10 +8,12 @@ repository.workspace = true
 description = "Learning layer for Organism — episodes, prediction error, prior calibration"
 
 [dependencies]
+converge-pack.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 thiserror.workspace = true
+chrono.workspace = true
 
 [lints]
 workspace = true

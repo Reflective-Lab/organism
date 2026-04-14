@@ -61,6 +61,7 @@ fn call_claude(system: &str, user: &str) -> String {
 /// On subsequent runs (after challenges appear), revises the plan.
 struct LlmPlannerAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LlmPlannerAgent {
     fn name(&self) -> &str {
         "llm_planner"
@@ -85,7 +86,7 @@ impl Suggestor for LlmPlannerAgent {
         !has_plan || (has_challenges && !has_revised)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let intent = seeds
             .first()
@@ -175,6 +176,7 @@ impl Suggestor for LlmPlannerAgent {
 /// challenges weak assumptions, missing constraints, or operational risks.
 struct LlmSkepticAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LlmSkepticAgent {
     fn name(&self) -> &str {
         "llm_skeptic"
@@ -199,7 +201,7 @@ impl Suggestor for LlmSkepticAgent {
         (has_initial_plan && !has_challenges) || (has_revised_plan && !has_final_review)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let evaluations = ctx.get(ContextKey::Evaluations);
 
@@ -291,7 +293,8 @@ impl Suggestor for LlmSkepticAgent {
 
 // ── Main ───────────────────────────────────────────────────────────
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Organism Debate Loop ===");
     println!("    Planner (LLM) vs Skeptic (LLM) → Converge\n");
 
@@ -317,7 +320,7 @@ fn main() {
     let mut ctx = converge_kernel::Context::new();
     let _ = ctx.add_input(ContextKey::Seeds, "intent-1", intent.to_string());
 
-    match engine.run(ctx) {
+    match engine.run(ctx).await {
         Ok(result) => {
             println!("\n--- Debate converged ---\n");
 

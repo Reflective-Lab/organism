@@ -7,8 +7,10 @@
 //! Plans flow through converge's PromotionGate like any other proposal.
 //! No special bypass; standard convergence pipeline applies.
 
+pub mod dd;
 pub mod debate;
 pub mod huddle;
+pub mod suggestor;
 
 use organism_intent::IntentPacket;
 use serde::{Deserialize, Serialize};

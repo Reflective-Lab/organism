@@ -10,6 +10,7 @@ description = "The public contract for Organism — one import, full planning lo
 [dependencies]
 organism-intent.workspace = true
 organism-planning.workspace = true
+converge-pack.workspace = true
 organism-adversarial.workspace = true
 organism-simulation.workspace = true
 organism-learning.workspace = true

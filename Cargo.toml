@@ -38,6 +38,10 @@ organism-intelligence = { path = "crates/intelligence", version = "0.1.0" }
 organism-domain = { path = "crates/domain", version = "0.1.0" }
 organism-notes = { path = "crates/notes", version = "0.1.0" }
 
+# Converge contract
+converge-pack = { path = "../converge/crates/pack" }
+converge-provider-api = { path = "../converge/crates/provider-api" }
+
 # Shared deps
 anyhow = "1"
 async-trait = "0.1"

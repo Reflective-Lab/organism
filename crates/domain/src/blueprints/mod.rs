@@ -4,6 +4,7 @@
 //! business process. Cross-pack invariants enforce the handoffs.
 
 pub mod campaign_to_revenue;
+pub mod diligence_to_decision;
 pub mod hire_to_retire;
 pub mod idea_to_launch;
 pub mod issue_to_resolution;

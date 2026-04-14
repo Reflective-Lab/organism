@@ -29,6 +29,7 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 ## Architecture
 
 - [[Architecture/Crate Map]] — the crates and their responsibilities
+- [[Architecture/Remember-Organism-When]] — what to consolidate back from apps
 - [[Architecture/Pipeline Flow]] — step-by-step data flow
 - [[Architecture/Converge Contract]] — which Converge crates to use and how
 - [[Architecture/Two-Sided Capabilities]] — provider-shaped + pack-shaped capability model

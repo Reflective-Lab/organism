@@ -23,8 +23,7 @@ Organism is a **client** of Converge. Converge does not know Organism exists.
 - The commit boundary and authorization barrier
 - Policy and authority primitives
 - Traceability and audit
-- Packs and business domain truths
-- SaaS product UX
+- Foundational packs and commit-boundary truths
 
 ## What Organism Owns
 
@@ -33,6 +32,7 @@ Organism is a **client** of Converge. Converge does not know Organism exists.
 - Adversarial governance (assumption breakers, skeptics)
 - Simulation swarm (outcome, cost, policy, causal, operational)
 - Organizational learning (calibrating priors from outcomes)
+- Organizational workflow packs and blueprints layered on top of Converge
 
 ## The Authority Rule
 
@@ -59,4 +59,4 @@ Organism mirrors that split on its own side:
 
 Prefer those surfaces over direct dependencies on phase subcrates in app code.
 
-See also: [[Philosophy/Key Invariants]], [[Architecture/Converge Contract]]
+See also: [[Philosophy/Key Invariants]], [[Architecture/Converge Contract]], [[Architecture/Remember-Organism-When]]

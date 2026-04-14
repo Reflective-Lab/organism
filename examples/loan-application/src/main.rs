@@ -40,6 +40,7 @@ use organism_pack::{
 
 struct LoanAdmissionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LoanAdmissionAgent {
     fn name(&self) -> &str {
         "loan_admission"
@@ -52,7 +53,7 @@ impl Suggestor for LoanAdmissionAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -140,6 +141,7 @@ impl Suggestor for LoanAdmissionAgent {
 
 struct CreditCheckAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for CreditCheckAgent {
     fn name(&self) -> &str {
         "credit_check"
@@ -151,7 +153,7 @@ impl Suggestor for CreditCheckAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let app = get_application(ctx);
         let credit = app
             .get("credit_score")
@@ -200,6 +202,7 @@ impl Suggestor for CreditCheckAgent {
 
 struct DocumentVerificationAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for DocumentVerificationAgent {
     fn name(&self) -> &str {
         "document_verification"
@@ -211,7 +214,7 @@ impl Suggestor for DocumentVerificationAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let app = get_application(ctx);
         let docs = app
             .get("documents")
@@ -228,6 +231,7 @@ impl Suggestor for DocumentVerificationAgent {
 
 struct ComplianceCheckAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ComplianceCheckAgent {
     fn name(&self) -> &str {
         "compliance_check"
@@ -239,7 +243,7 @@ impl Suggestor for ComplianceCheckAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let app = get_application(ctx);
         let citizen = app
             .get("us_citizen")
@@ -267,6 +271,7 @@ impl Suggestor for ComplianceCheckAgent {
 
 struct RiskAssessmentAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskAssessmentAgent {
     fn name(&self) -> &str {
         "risk_assessment"
@@ -278,7 +283,7 @@ impl Suggestor for RiskAssessmentAgent {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let app = get_application(ctx);
         let years = app
             .get("employment_years")
@@ -308,6 +313,7 @@ impl Suggestor for RiskAssessmentAgent {
 
 struct LoanSkepticAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LoanSkepticAgent {
     fn name(&self) -> &str {
         "loan_skeptic"
@@ -319,7 +325,7 @@ impl Suggestor for LoanSkepticAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Strategies)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let app = get_application(ctx);
         let requested = app
@@ -419,6 +425,7 @@ impl Suggestor for LoanSkepticAgent {
 
 struct LoanDecisionAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for LoanDecisionAgent {
     fn name(&self) -> &str {
         "loan_decision"
@@ -430,7 +437,7 @@ impl Suggestor for LoanDecisionAgent {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let Some(review_fact) = strategies.first() else {
             return AgentEffect::empty();
@@ -599,7 +606,8 @@ fn emit_evaluation(
 
 // ── Main ───────────────────────────────────────────────────────────
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Organism Loan Application ===");
     println!("    Intent → Admission → Parallel Eval → Adversarial → Simulation (5D) → Learning\n");
 
@@ -644,7 +652,7 @@ fn main() {
     );
     println!("Running 7-agent pipeline...\n");
 
-    match engine.run(ctx) {
+    match engine.run(ctx).await {
         Ok(result) => {
             // Admission
             for fact in result.context.get(ContextKey::Signals) {

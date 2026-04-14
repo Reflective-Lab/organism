@@ -7,6 +7,15 @@
 //! priors that planning consults.
 //!
 //! Cycle: Intent → Plan → Execute → Observe → Learn → Calibrate priors.
+//!
+//! # Adapter
+//!
+//! The [`adapter`] module bridges converge experience events to organism
+//! learning types. After an engine run, call [`adapter::build_episode`] to
+//! create a `LearningEpisode` and [`adapter::calibrate_priors`] to update
+//! planning priors.
+
+pub mod adapter;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

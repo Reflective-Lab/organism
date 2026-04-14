@@ -76,6 +76,12 @@ pub use organism_intent::{
 pub use organism_planning::{
     CostEstimate, Impact, Likelihood, Plan, PlanAnnotation, PlanBundle, PlanContribution, PlanStep,
     Reasoner, ReasoningSystem, Risk, RiskImpact,
+    suggestor::{HuddleSeedSuggestor, NamedPlan, SharedBudget},
+    dd::{
+        BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdLlm, DdSearch,
+        DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdLlm, FailoverDdSearch,
+        GapDetectorSuggestor, SearchHit, SynthesisSuggestor,
+    },
 };
 
 // ── Adversarial ────────────────────────────────────────────────────
@@ -99,4 +105,5 @@ pub use organism_simulation::{
 pub use organism_learning::{
     AdversarialContext, ErrorDimension, LearningEpisode, LearningSignal, Lesson, PredictionError,
     PriorCalibration, SignalKind,
+    adapter::{build_episode, calibrate_priors, extract_signals, has_infra_failure},
 };

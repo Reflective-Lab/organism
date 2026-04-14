@@ -1,5 +1,6 @@
 pub mod autonomous_org;
 pub mod customers;
+pub mod due_diligence;
 pub mod growth_marketing;
 pub mod knowledge;
 pub mod legal;

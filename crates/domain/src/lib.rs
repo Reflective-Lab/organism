@@ -27,6 +27,7 @@
 //! - [`packs::virtual_teams`] — Team formation, personas, content publishing
 //! - [`packs::linkedin_research`] — Signal extraction, dossier building
 //! - [`packs::reskilling`] — Skills assessment, learning plans, credentials
+//! - [`packs::due_diligence`] — Convergent research, fact extraction, gap detection, synthesis
 //!
 //! # Blueprints
 //!
@@ -39,6 +40,7 @@
 //! - [`blueprints::campaign_to_revenue`] — Growth Marketing → Customers → Money
 //! - [`blueprints::partner_to_value`] — Partnerships → Legal → Delivery
 //! - [`blueprints::patent_research`] — Knowledge → Legal → IP pipeline
+//! - [`blueprints::diligence_to_decision`] — DueDiligence → Legal → Knowledge
 
 pub mod blueprints;
 pub mod pack;

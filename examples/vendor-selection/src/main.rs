@@ -21,6 +21,7 @@ use converge_pack::Context as ContextView;
 /// Maps to: partnerships::vendor_assessor
 struct VendorDataAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for VendorDataAgent {
     fn name(&self) -> &str {
         "vendor_data"
@@ -33,7 +34,7 @@ impl Suggestor for VendorDataAgent {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -66,6 +67,7 @@ impl Suggestor for VendorDataAgent {
 /// Maps to: partnerships::contract_negotiator (price dimension)
 struct PriceEvaluator;
 
+#[async_trait::async_trait]
 impl Suggestor for PriceEvaluator {
     fn name(&self) -> &str {
         "price_evaluator"
@@ -78,7 +80,7 @@ impl Suggestor for PriceEvaluator {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         evaluate_vendors(ctx, "price", |vendor| {
             let price = vendor
                 .get("price")
@@ -101,6 +103,7 @@ impl Suggestor for PriceEvaluator {
 /// Maps to: partnerships::vendor_assessor (compliance dimension)
 struct ComplianceEvaluator;
 
+#[async_trait::async_trait]
 impl Suggestor for ComplianceEvaluator {
     fn name(&self) -> &str {
         "compliance_evaluator"
@@ -113,7 +116,7 @@ impl Suggestor for ComplianceEvaluator {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         evaluate_vendors(ctx, "compliance", |vendor| {
             if vendor
                 .get("compliant")
@@ -132,6 +135,7 @@ impl Suggestor for ComplianceEvaluator {
 /// Maps to: partnerships::risk_monitor
 struct RiskEvaluator;
 
+#[async_trait::async_trait]
 impl Suggestor for RiskEvaluator {
     fn name(&self) -> &str {
         "risk_evaluator"
@@ -144,7 +148,7 @@ impl Suggestor for RiskEvaluator {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         evaluate_vendors(ctx, "risk", |vendor| {
             let years = vendor
                 .get("years_in_business")
@@ -167,6 +171,7 @@ impl Suggestor for RiskEvaluator {
 /// Maps to: partnerships::performance_reviewer (timeline dimension)
 struct TimelineEvaluator;
 
+#[async_trait::async_trait]
 impl Suggestor for TimelineEvaluator {
     fn name(&self) -> &str {
         "timeline_evaluator"
@@ -179,7 +184,7 @@ impl Suggestor for TimelineEvaluator {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         evaluate_vendors(ctx, "timeline", |vendor| {
             let weeks = vendor
                 .get("delivery_weeks")
@@ -205,6 +210,7 @@ impl Suggestor for TimelineEvaluator {
 /// enforced via HITL gate when confidence >= 0.75.
 struct ConsensusAgent;
 
+#[async_trait::async_trait]
 impl Suggestor for ConsensusAgent {
     fn name(&self) -> &str {
         "consensus"
@@ -217,7 +223,7 @@ impl Suggestor for ConsensusAgent {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
     }
 
-    fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let mut scores: std::collections::HashMap<String, (f64, u32)> =
             std::collections::HashMap::new();
@@ -300,7 +306,8 @@ where
 
 // ── Main ───────────────────────────────────────────────────────────
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("=== Organism Vendor Selection ===");
     println!("    (partnerships pack + converge-kernel)\n");
 
@@ -364,7 +371,7 @@ fn main() {
 
     println!("Evaluating 3 vendors across 4 criteria...\n");
 
-    match engine.run(ctx) {
+    match engine.run(ctx).await {
         Ok(result) => {
             println!("Converged.\n");
             for fact in result.context.get(ContextKey::Proposals) {
