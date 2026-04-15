@@ -3,20 +3,17 @@
 **Organizational intelligence runtime.** Layer 2 in the Reflective Labs stack — sits on top of [Converge](https://github.com/Reflective-Lab/converge), under SaaS product layers.
 
 ```
-┌─────────────────────────────────────────┐
-│  SaaS Products                          │
-│  (specific organism configurations)     │
-└──────────────────┬──────────────────────┘
-                   │ runs on
-┌──────────────────▼──────────────────────┐
-│  Organism                               │
-│  intent · planning · adaptation         │
-└──────────────────┬──────────────────────┘
-                   │ calls into
-┌──────────────────▼──────────────────────┐
-│  Converge                               │
-│  axioms · authority · commit            │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Helm          Decision frameworks          │
+├─────────────────────────────────────────────┤
+│  Axiom         Truth validation & codegen   │
+├─────────────────────────────────────────────┤
+│  Organism      Reasoning, planning, debate  │  ← you are here
+├─────────────────────────────────────────────┤
+│  Converge      Engine, governance, commit   │
+├─────────────────────────────────────────────┤
+│  Providers     LLMs, tools, storage         │
+└─────────────────────────────────────────────┘
 ```
 
 Where Converge answers *"what actions are allowed to happen?"*, Organism answers *"how does an autonomous organization think, plan, and evolve?"*
