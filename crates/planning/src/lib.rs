@@ -10,6 +10,7 @@
 pub mod dd;
 pub mod debate;
 pub mod huddle;
+pub mod kb;
 pub mod suggestor;
 
 use organism_intent::IntentPacket;

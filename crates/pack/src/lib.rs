@@ -78,9 +78,14 @@ pub use organism_planning::{
     Reasoner, ReasoningSystem, Risk, RiskImpact,
     suggestor::{HuddleSeedSuggestor, NamedPlan, SharedBudget},
     dd::{
-        BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdLlm, DdSearch,
-        DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdLlm, FailoverDdSearch,
-        GapDetectorSuggestor, SearchHit, SynthesisSuggestor,
+        BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdHooks,
+        DdFactSummary, DdLlm, DdSearch, DepthResearchSuggestor, FactExtractorSuggestor,
+        FailoverDdLlm, FailoverDdSearch, GapDetectorSuggestor, HookPatterns, SearchHit,
+        SynthesisSuggestor, consolidate_dd_hypotheses, extract_hooks_from_facts,
+    },
+    kb::{
+        HubCategory, KbConfig, RootPageDef, slugify, sanitize_filename,
+        update_root_pages, write_dd_to_vault, write_or_append_hub,
     },
 };
 
