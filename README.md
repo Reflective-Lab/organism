@@ -1,6 +1,6 @@
 # Organism
 
-**Organizational intelligence runtime.** Layer 2 in the Reflective Labs stack — sits on top of [Converge](https://github.com/Reflective-Lab/converge), under SaaS product layers.
+**Organizational intelligence runtime.** The reasoning layer between human intent and governed execution.
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -16,32 +16,201 @@
 └─────────────────────────────────────────────┘
 ```
 
-Where Converge answers *"what actions are allowed to happen?"*, Organism answers *"how does an autonomous organization think, plan, and evolve?"*
+Where [Converge](https://github.com/Reflective-Lab/converge) answers *"what actions are allowed to happen?"*, Organism answers *"how does an autonomous organization think, plan, and evolve?"*
+
+```
+Human intent → Organism (reason, plan, debate, simulate) → Converge (authority, commit) → World
+```
+
+## The Intent Pipeline
+
+Every intent flows through a mandatory six-stage sequence. No shortcuts, no "trusted plan" exceptions.
+
+```
+IntentPacket → Admission (4 dimensions) → Decomposition (intent tree)
+  → Huddle (multi-model planning) → Adversarial Review (5 skepticism kinds)
+  → Simulation Swarm (5 dimensions) → Converge commit
+```
+
+### 1. Intent Admission
+
+The system assesses feasibility across four dimensions before committing resources:
+
+- **Capability** — can we do this?
+- **Context** — do we have enough information?
+- **Resources** — do we have the budget?
+- **Authority** — is this permitted?
+
+Verdict: Feasible, FeasibleWithConstraints, Uncertain, or Infeasible. Infeasible intents are rejected early.
+
+### 2. Decomposition
+
+Complex intents break into an `IntentNode` tree. Authority can only **narrow** during decomposition — a subtask never has more authority than its parent.
+
+### 3. Huddle
+
+Multiple reasoners run in parallel — LLM, constraint solver, ML prediction, causal analysis, cost estimation, domain model. Each produces candidate plans. Failures are dropped, survivors proceed to debate.
+
+### 4. Adversarial Review
+
+Institutionalized disagreement. Five kinds of skepticism challenge every plan:
+
+| Skepticism | Asks |
+|---|---|
+| **Assumption Breaking** | What are the unstated assumptions? |
+| **Constraint Checking** | Do declared constraints hold? |
+| **Causal Skepticism** | What are the second-order effects? |
+| **Economic Skepticism** | What does this really cost? |
+| **Operational Skepticism** | Can the organization actually execute this? |
+
+Blocker findings stop the plan. Plans revise, adversaries challenge again — the loop converges when there's nothing left to challenge.
+
+### 5. Simulation Swarm
+
+Five dimensions tested in parallel:
+
+- **Outcome** — does the plan achieve the intent?
+- **Cost** — resource consumption envelope
+- **Policy** — violations of declared policies?
+- **Causal** — second-order effects and confounders
+- **Operational** — can the team and systems execute?
+
+Each dimension returns probability distributions, not point estimates. The swarm produces a recommendation: Proceed, ProceedWithCaution, or DoNotProceed.
+
+### 6. Commit to Converge
+
+The surviving plan becomes a `ProposedFact` submitted to Converge's commit boundary. Organism has **zero authority** here — Converge recomputes all authority at the promotion gate. Producing a plan never grants the right to execute it.
+
+## Organizational Learning
+
+The system learns from execution outcomes. Every completed intent produces a `LearningEpisode` linking the original intent → plan → predicted outcomes → actual outcomes → errors → lessons.
+
+Learning signals flow **backward** into planning priors — never directly into authority. The system learns to plan better, not to bypass governance.
+
+## Intent Resolution
+
+Maps intent to the packs, capabilities, and invariants needed to fulfill it. Four levels, each building on the last:
+
+| Level | How | Confidence |
+|---|---|---|
+| **Declarative** | App explicitly declares requirements | 1.0 |
+| **Structural** | Match fact prefixes to packs (deterministic) | 0.85 |
+| **Semantic** | Huddle matches intent to pack descriptions (LLM) | 0.5–0.9 |
+| **Learned** | Prior calibration from execution history | Compounds over time |
+
+The flywheel: more intents → more episodes → better Level 4 → fewer manual bindings → faster resolution → more intents processed.
+
+## Domain Packs
+
+Organizational workflow packs encoding how organizations operate. Each defines agents, lifecycles, and invariants.
+
+| Pack | Lifecycle |
+|---|---|
+| `knowledge` | Signal → Hypothesis → Experiment → Decision → Canonical |
+| `customers` | Lead → Enrich → Score → Route → Propose → Close → Handoff |
+| `people` | Hire → Identity → Access → Onboard → Pay → Offboard |
+| `legal` | Contract → Review → Sign → Execute |
+| `autonomous_org` | Policy → Enforce → Approve → Budget → Delegate |
+| `performance` | Reviews → Goals → Feedback → Calibration → Compensation |
+| `growth_marketing` | Campaign → Channel → Budget → Experiment → Attribution |
+| `product_engineering` | Roadmap → Feature → Task → Release → Incident → Postmortem |
+| `ops_support` | Ticket → Triage → Route → SLA → Escalate → Resolve |
+| `procurement` | Request → Approve → Order → Asset → Subscription → Renewal |
+| `partnerships` | Source → Assess → Negotiate → Integrate → Review |
+| `virtual_teams` | Team → Persona → Content → Review → Publish |
+| `linkedin_research` | Signal → Evidence → Dossier → Path → Approval |
+| `reskilling` | Assess → Validate → Plan → Track → Credential |
+| `due_diligence` | Research → Extract → Detect Gaps → Synthesize |
+
+### Blueprints
+
+Compose organism-domain packs with Converge foundational packs (trust, money, delivery, data_metrics) into end-to-end workflows:
+
+| Blueprint | Packs Composed |
+|---|---|
+| `lead_to_cash` | Customers → Delivery → Legal → Money |
+| `hire_to_retire` | Legal → People → Trust → Money |
+| `procure_to_pay` | Procurement → Legal → Money |
+| `issue_to_resolution` | Ops Support → Knowledge |
+| `idea_to_launch` | Product Engineering → Delivery |
+| `campaign_to_revenue` | Growth Marketing → Customers → Money |
+| `partner_to_value` | Partnerships → Legal → Delivery |
+| `patent_research` | Knowledge → Legal → IP pipeline |
+| `diligence_to_decision` | Due Diligence → Legal → Knowledge |
+
+## Intelligence
+
+Provider-shaped data acquisition from the world. Every result wrapped in `Observation<T>` with correlation ID, latency, cost, and vendor tracking.
+
+| Capability | Providers |
+|---|---|
+| **OCR** | Tesseract, Apple Vision, Mistral, DeepSeek, LightOn |
+| **Vision** | Claude, GPT-4o, Gemini, Pixtral |
+| **Web** | URL capture, metadata extraction, HTML parsing |
+| **Social** | LinkedIn, X, Instagram, Facebook (normalized profiles) |
+| **Patent** | USPTO, EPO, WIPO, Google Patents, Lens |
+| **PDF** | Text extraction, chunking, metadata capture |
+| **Billing** | Stripe ACP (checkout, payments, metering) |
 
 ## Crates
 
+### Public API
+
 | Crate | Role |
 |---|---|
-| [`intent`](crates/intent) | Intent packets, admission control, decomposition |
-| [`planning`](crates/planning) | Huddle, debate loop |
-| [`adversarial`](crates/adversarial) | Assumption breakers, skeptics, constraint checkers |
-| [`simulation`](crates/simulation) | Outcome / cost / policy / causal / operational simulation |
-| [`learning`](crates/learning) | Planning priors, calibration |
-| [`runtime`](crates/runtime) | Curated embedded runtime: registry, readiness, pipeline wiring |
-| [`intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, billing |
-| [`notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
-| [`domain`](crates/domain) | Organizational pack library and blueprints |
-| [`pack`](crates/pack) | Pack authoring utilities |
+| [`organism-pack`](crates/pack) | Curated planning contract — one import, full pipeline semantics |
+| [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, commit boundary |
+| [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, billing |
+| [`organism-notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
+| [`organism-domain`](crates/domain) | Organizational pack library and blueprints |
+
+### Internal Phase Crates
+
+Use these only when extending Organism itself:
+
+| Crate | Role |
+|---|---|
+| [`organism-intent`](crates/intent) | Intent packets, admission control, decomposition, resolution |
+| [`organism-planning`](crates/planning) | Huddle, debate loop, plan annotations, 6 reasoning systems |
+| [`organism-adversarial`](crates/adversarial) | Challenge types, 5 skepticism kinds, Skeptic trait |
+| [`organism-simulation`](crates/simulation) | 5 simulation dimensions, SimulationRunner trait |
+| [`organism-learning`](crates/learning) | Episodes, prediction error, prior calibration |
+
+### Depending on Organism
+
+```toml
+[dependencies]
+# Planning contract — one import, full pipeline semantics
+organism-pack = { path = "../organism/crates/pack" }
+
+# Embedded runtime — resolution, readiness, commit boundary
+organism-runtime = { path = "../organism/crates/runtime" }
+
+# Converge integration
+converge-kernel = "3"
+converge-pack = "3"
+```
+
+## Converge Integration
+
+Organism uses Converge types directly — no wrapper layers. The Rust type system enforces the axioms.
+
+| Mode | Crate | Purpose |
+|---|---|---|
+| Embedded | `converge-kernel` | In-process engine, context, suggestors |
+| Authoring | `converge-pack` | Suggestor trait, ProposedFact, Invariant |
+| Reading | `converge-model` | Governed semantic types (Fact, Proposal, PromotionRecord) |
+| Remote | `converge-client` | gRPC wire protocol for out-of-process deployment |
 
 ## Examples
 
-| Example | What it shows |
+| Example | What it demonstrates |
 |---|---|
-| [`vendor-selection`](examples/vendor-selection) | Multi-criteria vendor evaluation |
-| [`expense-approval`](examples/expense-approval) | Policy-gated expense workflow |
-| [`loan-application`](examples/loan-application) | Risk-assessed loan decisioning |
-| [`resolution-showcase`](examples/resolution-showcase) | Conflict resolution via debate |
-| [`debate-loop`](examples/debate-loop) | Adversarial planning loop |
+| [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, domain pack metadata |
+| [`expense-approval`](examples/expense-approval) | Full pipeline: admission → planning → adversarial → simulation |
+| [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
+| [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
+| [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
 
 ## Develop
 
@@ -53,4 +222,4 @@ just lint
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — Copyright 2025–2026 Reflective Group AB
