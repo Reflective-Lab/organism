@@ -19,7 +19,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
@@ -27,21 +27,21 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "0.1.0" }
-organism-planning = { path = "crates/planning", version = "0.1.0" }
-organism-adversarial = { path = "crates/adversarial", version = "0.1.0" }
-organism-simulation = { path = "crates/simulation", version = "0.1.0" }
-organism-learning = { path = "crates/learning", version = "0.1.0" }
-organism-runtime = { path = "crates/runtime", version = "0.1.0" }
-organism-pack = { path = "crates/pack", version = "0.1.0" }
-organism-intelligence = { path = "crates/intelligence", version = "0.1.0" }
-organism-domain = { path = "crates/domain", version = "0.1.0" }
-organism-notes = { path = "crates/notes", version = "0.1.0" }
+organism-intent = { path = "crates/intent", version = "1.0.0" }
+organism-planning = { path = "crates/planning", version = "1.0.0" }
+organism-adversarial = { path = "crates/adversarial", version = "1.0.0" }
+organism-simulation = { path = "crates/simulation", version = "1.0.0" }
+organism-learning = { path = "crates/learning", version = "1.0.0" }
+organism-runtime = { path = "crates/runtime", version = "1.0.0" }
+organism-pack = { path = "crates/pack", version = "1.0.0" }
+organism-intelligence = { path = "crates/intelligence", version = "1.0.0" }
+organism-domain = { path = "crates/domain", version = "1.0.0" }
+organism-notes = { path = "crates/notes", version = "1.0.0" }
 
 # Converge contract
-converge-pack = { path = "../converge/crates/pack" }
-converge-kernel = { path = "../converge/crates/kernel" }
-converge-provider-api = { path = "../converge/crates/provider-api" }
+converge-pack = "3.2.1"
+converge-kernel = "3.2.1"
+converge-provider-api = "3.2.1"
 
 # Shared deps
 anyhow = "1"
