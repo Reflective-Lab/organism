@@ -55,4 +55,4 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 
 ## Ecosystem
 
-- [[Ecosystem]] — the three-layer stack: Converge, Organism, Products
+- [[Ecosystem]] — the five-layer stack: Helm, Axiom, Organism, Converge, Providers

@@ -3,19 +3,31 @@ tags: [philosophy]
 ---
 # Relationship to Converge
 
-Organism is a **client** of Converge. Converge does not know Organism exists.
+Organism is a **client** of Converge and the intelligence layer beneath Axiom. Converge does not know Organism exists.
 
 ```
-┌──────────────────────────────────────┐
-│  Organism (Layer 2)                  │
-│  reason · plan · debate · simulate   │
-└──────────────────┬───────────────────┘
-                   │ submits observations/proposals
-┌──────────────────▼───────────────────┐
-│  Converge (Layer 1)                  │
-│  axioms · authority · commit         │
-└──────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Axiom                                  │
+│  truth definitions · projections        │
+└──────────────────┬───────────────────────┘
+                   │ starts `Engine.run()`
+┌──────────────────▼───────────────────────┐
+│  Organism                                │
+│  reason · plan · debate · simulate       │
+└──────────────────┬───────────────────────┘
+                   │ submits `ProposedFact` / `AgentEffect`
+┌──────────────────▼───────────────────────┐
+│  Converge                                │
+│  axioms · authority · promotion          │
+└──────────────────┬───────────────────────┘
+                   │ calls capability adapters
+┌──────────────────▼───────────────────────┐
+│  Providers                               │
+│  ChatBackend · DdLlm · DdSearch          │
+└──────────────────────────────────────────┘
 ```
+
+Helm sits above Axiom as the operator-facing control surface. Organism normally stays architectural rather than product-branded.
 
 ## What Converge Owns (not Organism)
 
@@ -27,6 +39,7 @@ Organism is a **client** of Converge. Converge does not know Organism exists.
 
 ## What Organism Owns
 
+- Translating Axiom-defined intent into a live reasoning plan
 - Intent interpretation and decomposition
 - Multi-model collaborative planning (huddle loop)
 - Adversarial governance (assumption breakers, skeptics)

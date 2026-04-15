@@ -4,7 +4,7 @@
 
 Converge emits `ExperienceEvent`s during every convergence run — fact promotions, outcomes, budget exhaustion. These are the audit trail that organism layers should consume for analytics, debugging, and governance.
 
-## How converge wires it (as of v3.0.2)
+## How converge wires it
 
 The converge application binary creates an `InMemoryExperienceStore` and a `StoreObserver` bridge, then attaches it to the engine:
 
@@ -25,6 +25,19 @@ let result = engine.run(context)?;
 // Query captured events
 let events = store.query_events(&converge_core::EventQuery::default())?;
 ```
+
+Those queried `ExperienceEventEnvelope`s are the canonical input to Organism learning. The adapter now lives in `organism-learning`:
+
+```rust
+use organism_pack::{build_episode_from_run, extract_signals_from_run};
+
+let episode = build_episode_from_run(intent_id, plan_id, subject, &result.context, &events);
+let signals = extract_signals_from_run(&result.context, &events);
+```
+
+`LearningEpisode` now separates the two layers explicitly:
+- `actual_outcome` is the governed business outcome that survived promotion
+- `run_status` is the terminal engine status from `OutcomeRecorded`
 
 ## How organism should wire a database-backed store
 
@@ -56,30 +69,7 @@ let config = SurrealDbConfig::new(
 ).with_root_auth("root", "root");  // or use env vars
 
 let store = Arc::new(SurrealDbExperienceStore::connect(config)?);
-// StoreObserver currently only wraps InMemoryExperienceStore.
-// To use SurrealDB, organism should implement ExperienceEventObserver
-// that calls store.append_event() directly:
-
-use converge_core::{ExperienceEvent, ExperienceEventEnvelope, ExperienceEventObserver, ExperienceStore};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-struct SurrealObserver {
-    store: Arc<SurrealDbExperienceStore>,
-    next_id: AtomicU64,
-}
-
-impl ExperienceEventObserver for SurrealObserver {
-    fn on_event(&self, event: &ExperienceEvent) {
-        let id = format!("evt-{}", self.next_id.fetch_add(1, Ordering::Relaxed));
-        let envelope = ExperienceEventEnvelope::new(id, event.clone());
-        let _ = self.store.append_event(envelope);
-    }
-}
-
-let observer = Arc::new(SurrealObserver {
-    store: store.clone(),
-    next_id: AtomicU64::new(0),
-});
+let observer = Arc::new(StoreObserver::new(store.clone()));
 engine.set_event_observer(observer);
 ```
 
@@ -89,7 +79,7 @@ engine.set_event_observer(observer);
 converge-experience = { workspace = true, features = ["lancedb"] }
 ```
 
-Same pattern — implement `ExperienceEventObserver` wrapping `LanceDbExperienceStore`. LanceDB adds `VectorEvent` with embeddings for semantic search over the event history.
+Same pattern — use `StoreObserver<LanceDbExperienceStore>`. LanceDB adds `VectorEvent` with embeddings for semantic search over the event history.
 
 ## Events emitted today
 
@@ -128,3 +118,4 @@ let run = store.query_events(&EventQuery {
 - **Audit log** — all FactPromoted events with provenance chain
 - **Anomaly detection** — LanceDB vector search over event embeddings
 - **Billing/metering** — count events per tenant per time window
+- **Learning loop** — query a run's envelopes, then feed them into `build_episode_from_run()` and `extract_signals_from_run()`

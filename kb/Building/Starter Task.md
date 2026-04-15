@@ -51,8 +51,8 @@ impl CommitBoundary for EmbeddedConverge {
 - No separate crate for Converge integration — runtime owns it
 - Do not depend on `converge-core` or other internal Converge crates
 
-## Where to Mine
+## Reference Points
 
-`_legacy/organism-core/src/commit.rs` has the old commit boundary logic. The patterns are useful; the API surface is not (it used v2.0 Converge internals).
+Use `crates/runtime/src/lib.rs` for the current `CommitBoundary` contract and `examples/expense-approval` for the intended end-to-end wiring pattern.
 
 See also: [[Architecture/Converge Contract]], [[Philosophy/Relationship to Converge]]

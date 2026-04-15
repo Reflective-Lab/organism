@@ -105,5 +105,8 @@ pub use organism_simulation::{
 pub use organism_learning::{
     AdversarialContext, ErrorDimension, LearningEpisode, LearningSignal, Lesson, PredictionError,
     PriorCalibration, SignalKind,
-    adapter::{build_episode, calibrate_priors, extract_signals, has_infra_failure},
+    adapter::{
+        build_episode, build_episode_from_run, calibrate_priors, extract_signals,
+        extract_signals_from_run, has_infra_failure,
+    },
 };

@@ -11,8 +11,9 @@
 //! # Adapter
 //!
 //! The [`adapter`] module bridges converge experience events to organism
-//! learning types. After an engine run, call [`adapter::build_episode`] to
-//! create a `LearningEpisode` and [`adapter::calibrate_priors`] to update
+//! learning types. After an engine run, call
+//! [`adapter::build_episode_from_run`] with the final context plus queried
+//! `ExperienceEventEnvelope`s, then [`adapter::calibrate_priors`] to update
 //! planning priors.
 
 pub mod adapter;
@@ -23,8 +24,9 @@ use uuid::Uuid;
 // ── Learning Episode ───────────────────────────────────────────────
 
 /// Full record of a planning-to-outcome episode. Links intent, plan,
-/// predicted outcomes, actual outcomes, prediction errors, adversarial
-/// signals, and extracted lessons. Every field traces to converge Facts.
+/// predicted outcomes, governed business outcomes, engine run status,
+/// prediction errors, adversarial signals, and extracted lessons.
+/// Every field traces to converge Facts or run envelopes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningEpisode {
     pub id: Uuid,
@@ -32,6 +34,7 @@ pub struct LearningEpisode {
     pub plan_id: Uuid,
     pub predicted_outcome: String,
     pub actual_outcome: Option<String>,
+    pub run_status: Option<String>,
     pub prediction_error: Option<PredictionError>,
     pub adversarial_signals: Vec<AdversarialContext>,
     pub lessons: Vec<Lesson>,

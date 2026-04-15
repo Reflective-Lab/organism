@@ -13,7 +13,7 @@
 //! ## Knowledge lifecycle (from converge-domain)
 //! - [`packs::knowledge`] — Signal → Hypothesis → Experiment → Decision → Canonical
 //!
-//! ## Organizational workflows (from _legacy/organism-domain)
+//! ## Organizational workflows
 //! - [`packs::customers`] — Revenue operations: Lead → Close → Handoff
 //! - [`packs::people`] — People lifecycle: Hire → Onboard → Pay → Offboard
 //! - [`packs::legal`] — Contracts, equity, IP governance

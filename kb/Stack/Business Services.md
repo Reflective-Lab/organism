@@ -7,12 +7,12 @@ Organism uses external business data services for planning intelligence. These a
 
 ## Available Services
 
-| Service | Purpose | Legacy Location |
+| Service | Purpose | Current Home |
 |---|---|---|
-| OCR | Document understanding, invoice parsing | `_legacy/organism-domain/` (Tesseract, Mistral, DeepSeek, LightOn) |
-| LinkedIn | Professional network research, company intel | `_legacy/organism-domain/src/packs/linkedin_research.rs` |
-| Patent Search | IP landscape, competitive intelligence | `_legacy/organism-domain/src/use_cases/patent_research.rs` |
-| Brave Search | Web search with citations | `_legacy/organism-application/` |
+| OCR | Document understanding, invoice parsing | `crates/intelligence/src/ocr/` |
+| LinkedIn | Professional network research, company intel | `crates/intelligence/src/linkedin.rs` and `crates/domain/src/packs/linkedin_research.rs` |
+| Patent Search | IP landscape, competitive intelligence | `crates/intelligence/src/patent.rs` and `crates/domain/src/blueprints/patent_research.rs` |
+| Brave Search | Web search with citations | Converge provider surfaces; injected into Organism planning as a dependency |
 
 ## Architecture
 
@@ -28,6 +28,6 @@ trait PatentSearchService: Send + Sync {
 
 ## Migration Status
 
-These services exist in `_legacy/` as working implementations. They need to be extracted into the new crate structure as the relevant planning/adversarial crates take shape.
+These services now live under the current Organism crate structure. Organism owns the business-facing capability contracts and domain wiring; generic web search stays in Converge and is injected where needed.
 
 See also: [[Building/Getting Started]], [[Architecture/Crate Map]]

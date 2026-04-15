@@ -74,4 +74,4 @@ See `~/dev/work/converge/kb/Architecture/API Surfaces.md` for the full public co
 
 ## Legacy
 
-`_legacy/` contains the pre-restructure crates (`organism-domain`, `organism-application`, `organism-core`). Mine code from there as the new crates take shape; do not modify `_legacy/` in place.
+The pre-restructure crates have been retired. Use the current `crates/` and `examples/` trees as the only supported implementation surface.

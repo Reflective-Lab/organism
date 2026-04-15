@@ -524,6 +524,7 @@ impl Suggestor for LoanDecisionAgent {
             plan_id: uuid::Uuid::nil(),
             predicted_outcome: format!("{decision} (confidence: {overall:.2})"),
             actual_outcome: None,
+            run_status: None,
             prediction_error: Some(PredictionError {
                 magnitude: 0.0,
                 dimensions: vec![ErrorDimension {

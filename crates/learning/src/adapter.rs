@@ -4,18 +4,22 @@
 //! After a converge engine run completes, the adapter:
 //!
 //! 1. Reads the final context (facts across all keys)
-//! 2. Builds a `LearningEpisode` capturing what was predicted vs observed
-//! 3. Extracts `Lesson`s from contradictions and coverage gaps
-//! 4. Produces `PriorCalibration` updates for future planning runs
+//! 2. Builds a `LearningEpisode` capturing predicted vs governed business
+//!    outcomes, plus the engine run status
+//! 3. Reads the captured `ExperienceEventEnvelope`s for terminal outcomes
+//!    and budget/audit signals
+//! 4. Extracts `Lesson`s from contradictions and coverage gaps
+//! 5. Produces `PriorCalibration` updates for future planning runs
 //!
 //! Learning signals NEVER feed into authority — only into planning priors.
 
+use converge_kernel::{ExperienceEvent, ExperienceEventEnvelope};
 use converge_pack::{Context, ContextKey, Fact};
 use uuid::Uuid;
 
 use crate::{
-    AdversarialContext, ErrorDimension, LearningEpisode, LearningSignal, Lesson,
-    PredictionError, PriorCalibration, SignalKind,
+    AdversarialContext, ErrorDimension, LearningEpisode, LearningSignal, Lesson, PredictionError,
+    PriorCalibration, SignalKind,
 };
 
 /// Build a learning episode from a completed converge engine context.
@@ -28,6 +32,18 @@ pub fn build_episode(
     plan_id: Uuid,
     subject: &str,
     ctx: &dyn Context,
+) -> LearningEpisode {
+    build_episode_from_run(intent_id, plan_id, subject, ctx, &[])
+}
+
+/// Build a learning episode from a completed run using both context and
+/// queried experience events from the Converge `ExperienceStore`.
+pub fn build_episode_from_run(
+    intent_id: Uuid,
+    plan_id: Uuid,
+    subject: &str,
+    ctx: &dyn Context,
+    events: &[ExperienceEventEnvelope],
 ) -> LearningEpisode {
     let hypotheses = ctx.get(ContextKey::Hypotheses);
     let evaluations = ctx.get(ContextKey::Evaluations);
@@ -42,11 +58,14 @@ pub fn build_episode(
         .filter(|f| f.content.contains("contradiction"))
         .count();
 
-    // Predicted outcome: the synthesis proposal if present
-    let predicted_outcome = proposals
-        .first()
-        .map(|p| p.content.clone())
+    // Predicted outcome: the synthesis proposal if present.
+    // Actual outcome: the final governed business result that survived promotion.
+    // Run status: the terminal engine outcome captured in experience envelopes.
+    let actual_outcome = latest_governed_outcome(&proposals);
+    let predicted_outcome = actual_outcome
+        .clone()
         .unwrap_or_else(|| format!("No synthesis produced for {subject}"));
+    let run_status = latest_run_status(events);
 
     // Compute coverage error — how many expected categories were missing
     let expected_categories = [
@@ -107,7 +126,8 @@ pub fn build_episode(
             ),
             context: subject.to_string(),
             confidence: 0.9,
-            planning_adjustment: "Add targeted strategies for missing categories in initial seed".into(),
+            planning_adjustment: "Add targeted strategies for missing categories in initial seed"
+                .into(),
         });
     }
 
@@ -118,7 +138,8 @@ pub fn build_episode(
             ),
             context: subject.to_string(),
             confidence: 0.8,
-            planning_adjustment: "Increase depth searches on contradicted topics in follow-up runs".into(),
+            planning_adjustment: "Increase depth searches on contradicted topics in follow-up runs"
+                .into(),
         });
     }
 
@@ -133,6 +154,38 @@ pub fn build_episode(
             context: subject.to_string(),
             confidence: 0.7,
             planning_adjustment: "Consider broader initial strategy seed for this domain".into(),
+        });
+    }
+
+    if let Some(outcome) = latest_outcome_event(events) {
+        if !outcome.passed {
+            lessons.push(Lesson {
+                insight: format!(
+                    "Run ended without a passing outcome{}",
+                    outcome
+                        .stop_reason
+                        .as_deref()
+                        .map_or(String::new(), |reason| format!(" ({reason})"))
+                ),
+                context: subject.to_string(),
+                confidence: 0.75,
+                planning_adjustment:
+                    "Tighten the initial plan or widen search budget before re-running".into(),
+            });
+        }
+    }
+
+    let budget_blocks = budget_exceeded_count(events);
+    if budget_blocks > 0 {
+        lessons.push(Lesson {
+            insight: format!(
+                "{budget_blocks} budget guard(s) fired during the run — the search loop hit engine limits"
+            ),
+            context: subject.to_string(),
+            confidence: 0.85,
+            planning_adjustment:
+                "Seed fewer low-value branches or raise the explicit engine budget for this domain"
+                    .into(),
         });
     }
 
@@ -158,7 +211,8 @@ pub fn build_episode(
         intent_id,
         plan_id,
         predicted_outcome,
-        actual_outcome: None, // filled by human feedback later
+        actual_outcome,
+        run_status,
         prediction_error: Some(prediction_error),
         adversarial_signals,
         lessons,
@@ -168,13 +222,32 @@ pub fn build_episode(
 /// Extract learning signals from a completed run — lightweight feedback
 /// that can be captured without waiting for human outcome reporting.
 pub fn extract_signals(ctx: &dyn Context) -> Vec<LearningSignal> {
+    extract_signals_from_run(ctx, &[])
+}
+
+/// Extract learning signals from a completed run using both context and
+/// captured experience events.
+pub fn extract_signals_from_run(
+    ctx: &dyn Context,
+    events: &[ExperienceEventEnvelope],
+) -> Vec<LearningSignal> {
     let hypotheses = ctx.get(ContextKey::Hypotheses);
     let evaluations = ctx.get(ContextKey::Evaluations);
     let proposals = ctx.get(ContextKey::Proposals);
 
     let mut signals = Vec::new();
 
-    if !proposals.is_empty() {
+    if let Some(outcome) = latest_outcome_event(events) {
+        signals.push(LearningSignal {
+            kind: if outcome.passed {
+                SignalKind::OutcomeMatchedExpectation
+            } else {
+                SignalKind::OutcomeMissedExpectation
+            },
+            weight: if outcome.passed { 1.0 } else { 0.9 },
+            note: outcome_signal_note(outcome),
+        });
+    } else if !proposals.is_empty() {
         signals.push(LearningSignal {
             kind: SignalKind::OutcomeMatchedExpectation,
             weight: 1.0,
@@ -205,7 +278,21 @@ pub fn extract_signals(ctx: &dyn Context) -> Vec<LearningSignal> {
         signals.push(LearningSignal {
             kind: SignalKind::OutcomeBeatExpectation,
             weight: 0.5,
-            note: format!("Rich evidence base: {} hypotheses extracted", hypotheses.len()),
+            note: format!(
+                "Rich evidence base: {} hypotheses extracted",
+                hypotheses.len()
+            ),
+        });
+    }
+
+    if budget_exceeded_count(events) > 0 {
+        signals.push(LearningSignal {
+            kind: SignalKind::AdversarialBlocker,
+            weight: 1.0,
+            note: format!(
+                "{} budget guard(s) fired during the run",
+                budget_exceeded_count(events)
+            ),
         });
     }
 
@@ -221,9 +308,7 @@ pub fn extract_signals(ctx: &dyn Context) -> Vec<LearningSignal> {
 pub fn has_infra_failure(ctx: &dyn Context) -> bool {
     ctx.get(ContextKey::Constraints)
         .iter()
-        .any(|f| {
-            f.content.contains("\"is_infra_failure\":true")
-        })
+        .any(|f| f.content.contains("\"is_infra_failure\":true"))
 }
 
 /// Produce prior calibrations from a learning episode.
@@ -252,8 +337,8 @@ pub fn calibrate_priors(
 
             // Simple Bayesian-ish update: blend prior with observation
             let observation_weight = 1.0 / (evidence as f64 + 2.0);
-            let posterior = prior_conf * (1.0 - observation_weight)
-                + dim.actual * observation_weight;
+            let posterior =
+                prior_conf * (1.0 - observation_weight) + dim.actual * observation_weight;
 
             priors.push(PriorCalibration {
                 assumption_type: dim.name.clone(),
@@ -284,9 +369,102 @@ fn extract_categories(hypotheses: &[Fact]) -> Vec<String> {
         .collect()
 }
 
+#[derive(Debug, Clone, Copy)]
+struct OutcomeEventView<'a> {
+    passed: bool,
+    stop_reason: &'a Option<String>,
+    backend: &'a Option<String>,
+}
+
+fn latest_outcome_event(events: &[ExperienceEventEnvelope]) -> Option<OutcomeEventView<'_>> {
+    events.iter().rev().find_map(|event| {
+        if let ExperienceEvent::OutcomeRecorded {
+            passed,
+            stop_reason,
+            backend,
+            ..
+        } = &event.event
+        {
+            Some(OutcomeEventView {
+                passed: *passed,
+                stop_reason,
+                backend,
+            })
+        } else {
+            None
+        }
+    })
+}
+
+fn latest_governed_outcome(proposals: &[Fact]) -> Option<String> {
+    proposals.last().map(|proposal| proposal.content.clone())
+}
+
+fn latest_run_status(events: &[ExperienceEventEnvelope]) -> Option<String> {
+    latest_outcome_event(events).map(|outcome| {
+        let status = if outcome.passed { "passed" } else { "failed" };
+        let backend = outcome.backend.as_deref().unwrap_or("unknown-backend");
+        let reason = outcome
+            .stop_reason
+            .as_deref()
+            .unwrap_or("no stop reason recorded");
+        format!("Run {status} via {backend} ({reason})")
+    })
+}
+
+fn outcome_signal_note(outcome: OutcomeEventView<'_>) -> String {
+    let status = if outcome.passed {
+        "Outcome recorded as passing"
+    } else {
+        "Outcome recorded as failing"
+    };
+    match outcome.stop_reason.as_deref() {
+        Some(reason) => format!("{status}: {reason}"),
+        None => status.to_string(),
+    }
+}
+
+fn budget_exceeded_count(events: &[ExperienceEventEnvelope]) -> usize {
+    events
+        .iter()
+        .filter(|event| matches!(event.event, ExperienceEvent::BudgetExceeded { .. }))
+        .count()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_kernel::{Context, Engine, ExperienceEvent, ExperienceEventEnvelope};
+    use converge_pack::ContextKey;
+
+    fn make_outcome_event(passed: bool, stop_reason: &str) -> ExperienceEventEnvelope {
+        ExperienceEventEnvelope::new(
+            "evt-outcome",
+            ExperienceEvent::OutcomeRecorded {
+                chain_id: "dd:test".into(),
+                step: converge_kernel::DecisionStep::Planning,
+                passed,
+                stop_reason: Some(stop_reason.into()),
+                latency_ms: None,
+                tokens: None,
+                cost_microdollars: None,
+                backend: Some("converge-engine".into()),
+            },
+        )
+    }
+
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
+        let mut ctx = Context::new();
+        for (key, id, content) in entries {
+            ctx.add_input(*key, *id, *content)
+                .expect("should stage test input");
+        }
+        tokio::runtime::Runtime::new()
+            .expect("should create runtime")
+            .block_on(Engine::new().run(ctx))
+            .expect("engine run should promote staged input")
+            .context
+    }
 
     #[test]
     fn calibrate_priors_updates_from_episode() {
@@ -296,6 +474,7 @@ mod tests {
             plan_id: Uuid::new_v4(),
             predicted_outcome: "test".into(),
             actual_outcome: None,
+            run_status: None,
             prediction_error: Some(PredictionError {
                 magnitude: 0.3,
                 dimensions: vec![ErrorDimension {
@@ -336,6 +515,7 @@ mod tests {
             plan_id: Uuid::new_v4(),
             predicted_outcome: "test".into(),
             actual_outcome: None,
+            run_status: None,
             prediction_error: Some(PredictionError {
                 magnitude: 0.3,
                 dimensions: vec![dim],
@@ -353,5 +533,74 @@ mod tests {
         // Should converge toward 0.8 (the actual)
         assert!(priors[0].posterior_confidence > 0.65);
         assert_eq!(priors[0].evidence_count, 5);
+    }
+
+    #[test]
+    fn build_episode_from_run_tracks_run_status_without_business_outcome() {
+        let ctx = converge_kernel::Context::new();
+        let episode = build_episode_from_run(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "Acme",
+            &ctx,
+            &[make_outcome_event(false, "budget_exhausted")],
+        );
+
+        assert_eq!(episode.actual_outcome, None);
+        assert_eq!(
+            episode.run_status.as_deref(),
+            Some("Run failed via converge-engine (budget_exhausted)")
+        );
+        assert!(episode.lessons.iter().any(|lesson| {
+            lesson
+                .insight
+                .contains("Run ended without a passing outcome")
+        }));
+    }
+
+    #[test]
+    fn build_episode_from_run_uses_governed_outcome_for_actual_outcome() {
+        let ctx = promoted_context(&[(
+            ContextKey::Proposals,
+            "proposal-1",
+            r#"{"summary":"Acme is attractive","recommendation":"Proceed"}"#,
+        )]);
+        let episode = build_episode_from_run(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "Acme",
+            &ctx,
+            &[make_outcome_event(true, "converged")],
+        );
+
+        assert_eq!(
+            episode.actual_outcome.as_deref(),
+            Some(r#"{"summary":"Acme is attractive","recommendation":"Proceed"}"#)
+        );
+        assert_eq!(
+            episode.predicted_outcome,
+            episode.actual_outcome.clone().unwrap()
+        );
+        assert_eq!(
+            episode.run_status.as_deref(),
+            Some("Run passed via converge-engine (converged)")
+        );
+    }
+
+    #[test]
+    fn extract_signals_from_run_prefers_recorded_outcome() {
+        let ctx = converge_kernel::Context::new();
+        let signals = extract_signals_from_run(&ctx, &[make_outcome_event(true, "converged")]);
+
+        assert!(
+            signals
+                .iter()
+                .any(|signal| matches!(signal.kind, SignalKind::OutcomeMatchedExpectation))
+        );
+        assert!(
+            signals
+                .iter()
+                .any(|signal| signal.note.contains("converged"))
+        );
     }
 }

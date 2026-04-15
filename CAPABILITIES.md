@@ -181,7 +181,7 @@ If your app needs something organism doesn't have:
 
 1. Check this file — it might exist under a feature flag you haven't enabled
 2. Check `../converge/CAPABILITIES.md` — it might be infrastructure Converge already provides
-3. Check `_legacy/` — it might have patterns to revitalize
+3. Check `examples/` and the relevant crate docs — it might already exist under a different surface
 4. File a request: `gh issue create --repo Reflective-Lab/organism --label capability-request`
 
 Include: what your app needs, what contract it expects (trait? types? function?), and urgency.

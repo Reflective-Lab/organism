@@ -112,7 +112,7 @@ Anytime:    /help
 
 ## Legacy
 
-`_legacy/` contains the pre-restructure monolith. Domain packs and planning types have been revitalized into current crates. Do not modify `_legacy/` in place.
+The pre-restructure monolith has been retired. Current crates and examples are the only supported source of truth.
 
 ## Strategy
 

@@ -5,19 +5,27 @@ tags: [moc]
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    LAYER 3: PRODUCTS                         │
-│   Wolfgang (wolfgang.bot)    SaaS Killer (crm.prio.ai)      │
+│ Helm (control surface)                                      │
+│ Desktop and web UX — what operators see                     │
 ├──────────────────────────────────────────────────────────────┤
-│               LAYER 2: ORGANISM (you are here)               │
-│   Intent · Planning · Adversarial · Simulation · Learning    │
+│ Axiom (truth layer)                                         │
+│ Truth definitions, projections, validation, domain state    │
 ├──────────────────────────────────────────────────────────────┤
-│               LAYER 1: CONVERGE (converge.zone)              │
-│   Axioms · Authority · Commit · Promotion · Audit            │
+│ Organism (intelligence, you are here)                       │
+│ Intent · Huddle · Debate · Suggestors · Gap-chasing         │
+├──────────────────────────────────────────────────────────────┤
+│ Converge (governance)                                       │
+│ Axioms · Authority · Commit · Promotion · Audit             │
+├──────────────────────────────────────────────────────────────┤
+│ Providers (capability)                                      │
+│ OpenRouter · Anthropic · OpenAI · Gemini · Brave · Tavily  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Converge** owns authority, truth, governance, convergence
-- **Organism** owns reasoning, planning, debate, simulation, learning
-- **Products** own UX, domain-specific workflows, business logic
+- **Helm** owns operator-facing control surfaces
+- **Axiom** owns truth definitions, projections, validation, and product state
+- **Organism** owns reasoning, planning, huddle, debate, research, and gap-chasing
+- **Converge** owns authority, policy, promotion, convergence, and audit
+- **Providers** own external model, search, and tool capabilities behind adapter boundaries
 
 See also: [[Philosophy/Relationship to Converge]], [[Philosophy/Why Organism]]

@@ -32,13 +32,19 @@ pub enum DdError {
     /// Account/billing problem — stop the entire run.
     CreditsExhausted { provider: String, detail: String },
     /// Throttled — could retry after backoff, but suggestor won't.
-    RateLimited { provider: String, retry_after_ms: Option<u64> },
+    RateLimited {
+        provider: String,
+        retry_after_ms: Option<u64>,
+    },
     /// Provider is down or unreachable.
     ProviderUnavailable { provider: String, detail: String },
     /// Provider returned something we couldn't use.
     BadResponse { provider: String, detail: String },
     /// The input was too large for the provider.
-    PromptTooLarge { provider: String, tokens: Option<usize> },
+    PromptTooLarge {
+        provider: String,
+        tokens: Option<usize>,
+    },
     /// JSON parsing failed on provider output.
     ParseFailed { provider: String, detail: String },
 }
@@ -46,18 +52,24 @@ pub enum DdError {
 impl fmt::Display for DdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CreditsExhausted { provider, detail } =>
-                write!(f, "[{provider}] credits exhausted: {detail}"),
-            Self::RateLimited { provider, .. } =>
-                write!(f, "[{provider}] rate limited"),
-            Self::ProviderUnavailable { provider, detail } =>
-                write!(f, "[{provider}] unavailable: {detail}"),
-            Self::BadResponse { provider, detail } =>
-                write!(f, "[{provider}] bad response: {detail}"),
-            Self::PromptTooLarge { provider, tokens } =>
-                write!(f, "[{provider}] prompt too large ({})", tokens.map_or("unknown".into(), |t| format!("{t} tokens"))),
-            Self::ParseFailed { provider, detail } =>
-                write!(f, "[{provider}] parse failed: {detail}"),
+            Self::CreditsExhausted { provider, detail } => {
+                write!(f, "[{provider}] credits exhausted: {detail}")
+            }
+            Self::RateLimited { provider, .. } => write!(f, "[{provider}] rate limited"),
+            Self::ProviderUnavailable { provider, detail } => {
+                write!(f, "[{provider}] unavailable: {detail}")
+            }
+            Self::BadResponse { provider, detail } => {
+                write!(f, "[{provider}] bad response: {detail}")
+            }
+            Self::PromptTooLarge { provider, tokens } => write!(
+                f,
+                "[{provider}] prompt too large ({})",
+                tokens.map_or("unknown".into(), |t| format!("{t} tokens"))
+            ),
+            Self::ParseFailed { provider, detail } => {
+                write!(f, "[{provider}] parse failed: {detail}")
+            }
         }
     }
 }
@@ -103,8 +115,7 @@ fn error_to_constraint(error: &DdError, suggestor: &str) -> ProposedFact {
         "message": error.to_string(),
     })
     .to_string();
-    ProposedFact::new(ContextKey::Constraints, &id, content, suggestor)
-        .with_confidence(1.0)
+    ProposedFact::new(ContextKey::Constraints, &id, content, suggestor).with_confidence(1.0)
 }
 
 // ── Backend traits ───────────────────────────────────────────────
@@ -163,7 +174,15 @@ impl DdLlm for FailoverDdLlm {
                 Ok(result) => return Ok(result),
                 Err(e) => {
                     let should_failover = e.is_infra_failure();
-                    eprintln!("[failover] {} — {}", e, if should_failover { "trying next" } else { "not retryable" });
+                    eprintln!(
+                        "[failover] {} — {}",
+                        e,
+                        if should_failover {
+                            "trying next"
+                        } else {
+                            "not retryable"
+                        }
+                    );
                     if !should_failover {
                         return Err(e);
                     }
@@ -198,7 +217,15 @@ impl DdSearch for FailoverDdSearch {
                 Ok(result) => return Ok(result),
                 Err(e) => {
                     let should_failover = e.is_infra_failure();
-                    eprintln!("[failover] {} — {}", e, if should_failover { "trying next" } else { "not retryable" });
+                    eprintln!(
+                        "[failover] {} — {}",
+                        e,
+                        if should_failover {
+                            "trying next"
+                        } else {
+                            "not retryable"
+                        }
+                    );
                     if !should_failover {
                         return Err(e);
                     }
@@ -296,14 +323,21 @@ impl Suggestor for BreadthResearchSuggestor {
                         })
                         .to_string();
                         proposals.push(
-                            ProposedFact::new(ContextKey::Signals, &id, content, "dd-breadth-research")
-                                .with_confidence(1.0),
+                            ProposedFact::new(
+                                ContextKey::Signals,
+                                &id,
+                                content,
+                                "dd-breadth-research",
+                            )
+                            .with_confidence(1.0),
                         );
                     }
                 }
                 Err(e) => {
                     proposals.push(error_to_constraint(&e, "dd-breadth-research"));
-                    if e.is_fatal() { break; }
+                    if e.is_fatal() {
+                        break;
+                    }
                 }
             }
 
@@ -403,14 +437,21 @@ impl Suggestor for DepthResearchSuggestor {
                         })
                         .to_string();
                         proposals.push(
-                            ProposedFact::new(ContextKey::Signals, &id, content, "dd-depth-research")
-                                .with_confidence(1.0),
+                            ProposedFact::new(
+                                ContextKey::Signals,
+                                &id,
+                                content,
+                                "dd-depth-research",
+                            )
+                            .with_confidence(1.0),
                         );
                     }
                 }
                 Err(e) => {
                     proposals.push(error_to_constraint(&e, "dd-depth-research"));
-                    if e.is_fatal() { break; }
+                    if e.is_fatal() {
+                        break;
+                    }
                 }
             }
 
@@ -439,11 +480,7 @@ pub struct FactExtractorSuggestor {
 }
 
 impl FactExtractorSuggestor {
-    pub fn new(
-        subject: impl Into<String>,
-        budget: Arc<SharedBudget>,
-        llm: Arc<dyn DdLlm>,
-    ) -> Self {
+    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -484,8 +521,7 @@ impl Suggestor for FactExtractorSuggestor {
         let mut proposals = Vec::new();
         match self.llm.complete(&prompt).await {
             Ok(raw) => {
-                let cleaned = strip_fences(&raw);
-                match serde_json::from_str::<Vec<serde_json::Value>>(cleaned) {
+                match parse_json_array_response(&raw, "facts") {
                     Ok(facts) => {
                         for (i, fact) in facts.iter().enumerate() {
                             let id = format!("hypothesis-{}-{i}", Uuid::new_v4());
@@ -500,10 +536,13 @@ impl Suggestor for FactExtractorSuggestor {
                             );
                         }
                     }
-                    Err(e) => {
+                    Err(detail) => {
                         let parse_err = DdError::ParseFailed {
                             provider: "llm".into(),
-                            detail: format!("{e} (first 200 chars: {})", &cleaned[..cleaned.len().min(200)]),
+                            detail: format!(
+                                "{detail} (first 200 chars: {})",
+                                &raw[..raw.len().min(200)]
+                            ),
                         };
                         proposals.push(error_to_constraint(&parse_err, "dd-fact-extractor"));
                     }
@@ -533,11 +572,7 @@ pub struct GapDetectorSuggestor {
 }
 
 impl GapDetectorSuggestor {
-    pub fn new(
-        subject: impl Into<String>,
-        budget: Arc<SharedBudget>,
-        llm: Arc<dyn DdLlm>,
-    ) -> Self {
+    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -594,26 +629,38 @@ impl Suggestor for GapDetectorSuggestor {
             *g
         };
 
-        let prompt = prompts::gap_detection(&self.subject, &hypotheses, generation, self.max_generations);
+        let prompt =
+            prompts::gap_detection(&self.subject, &hypotheses, generation, self.max_generations);
         let mut proposals = Vec::new();
 
         match self.llm.complete(&prompt).await {
             Ok(raw) => {
-                let cleaned = strip_fences(&raw);
-                if let Ok(strategies) = serde_json::from_str::<Vec<serde_json::Value>>(cleaned) {
-                    for (i, s) in strategies.iter().enumerate() {
-                        let mode = s["mode"].as_str().unwrap_or("breadth");
-                        let query = s["query"].as_str().unwrap_or("");
-                        let reason = s["reason"].as_str().unwrap_or("");
-                        let content = format!("[{mode}] {query} -- {reason}");
-                        let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
+                match parse_json_array_response(&raw, "strategies") {
+                    Ok(strategies) => {
+                        for (i, s) in strategies.iter().enumerate() {
+                            let mode = s["mode"].as_str().unwrap_or("breadth");
+                            let query = s["query"].as_str().unwrap_or("");
+                            let reason = s["reason"].as_str().unwrap_or("");
+                            let content = format!("[{mode}] {query} -- {reason}");
+                            let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
 
-                        proposals.push(ProposedFact::new(
-                            ContextKey::Strategies,
-                            &id,
-                            content,
-                            "dd-gap-detector",
-                        ));
+                            proposals.push(ProposedFact::new(
+                                ContextKey::Strategies,
+                                &id,
+                                content,
+                                "dd-gap-detector",
+                            ));
+                        }
+                    }
+                    Err(detail) => {
+                        let parse_err = DdError::ParseFailed {
+                            provider: "llm".into(),
+                            detail: format!(
+                                "{detail} (first 200 chars: {})",
+                                &raw[..raw.len().min(200)]
+                            ),
+                        };
+                        proposals.push(error_to_constraint(&parse_err, "dd-gap-detector"));
                     }
                 }
             }
@@ -715,8 +762,13 @@ impl Suggestor for ContradictionFinderSuggestor {
                 .to_string();
 
                 proposals.push(
-                    ProposedFact::new(ContextKey::Evaluations, &id, content, "dd-contradiction-finder")
-                        .with_confidence(0.9),
+                    ProposedFact::new(
+                        ContextKey::Evaluations,
+                        &id,
+                        content,
+                        "dd-contradiction-finder",
+                    )
+                    .with_confidence(0.9),
                 );
             }
         }
@@ -739,11 +791,7 @@ pub struct SynthesisSuggestor {
 }
 
 impl SynthesisSuggestor {
-    pub fn new(
-        subject: impl Into<String>,
-        budget: Arc<SharedBudget>,
-        llm: Arc<dyn DdLlm>,
-    ) -> Self {
+    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -767,7 +815,9 @@ impl Suggestor for SynthesisSuggestor {
     }
 
     fn dependencies(&self) -> &[ContextKey] {
-        &[ContextKey::Hypotheses]
+        // Synthesis is stability-driven, not dirty-key driven.
+        // It must stay schedulable even on cycles where hypotheses stop changing.
+        &[]
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -836,19 +886,24 @@ pub mod prompts {
 {sources_text}
 
 Extract key facts as JSON array. ONLY valid JSON, no fences:
-[
-  {{
-    "claim": "specific factual claim",
-    "category": "product|customers|technology|competition|market|financials|team|risk|governance",
-    "source_indices": [0, 3],
-    "confidence": 0.9
-  }}
-]
+{{
+  "facts": [
+    {{
+      "claim": "specific factual claim",
+      "category": "product|customers|technology|competition|market|financials|team|risk|governance",
+      "source_indices": [0, 3],
+      "confidence": 0.9
+    }}
+  ]
+}}
 
 Rules:
+- Return an object with a top-level "facts" array
+- Return at most 20 facts, prioritized by investment relevance
 - Every fact MUST cite source_indices
 - 0.9+ for primary sources, 0.7 for secondary, 0.5 for inferred
-- Flag contradictions between sources as separate facts with category "risk""#
+- Flag contradictions between sources as separate facts with category "risk"
+- If no reliable facts can be extracted, return {{"facts":[]}}"#
         )
     }
 
@@ -877,14 +932,16 @@ What critical gaps remain? Focus on:
 - Missing tech stack details
 - Unknown customer concentration
 
-Return JSON array of search strategies:
-[
-  {{"query": "search terms", "mode": "breadth|depth", "reason": "why this matters"}}
-]
+Return JSON object:
+{{
+  "strategies": [
+    {{"query": "search terms", "mode": "breadth|depth", "reason": "why this matters"}}
+  ]
+}}
 
 This is research pass {generation} of {max_generations}. Only propose searches for gaps that are CRITICAL for investment decision-making.
 Pass 1: broad gaps (max 4). Pass 2+: only truly unresolved items (max 2).
-ONLY valid JSON, no markdown fences."#
+ONLY valid JSON, no markdown fences. If no critical gaps remain, return {{"strategies":[]}}."#
         )
     }
 
@@ -928,6 +985,79 @@ fn strip_fences(raw: &str) -> &str {
     s.strip_suffix("```").unwrap_or(s).trim()
 }
 
+fn parse_json_array_response(
+    raw: &str,
+    field_name: &str,
+) -> Result<Vec<serde_json::Value>, String> {
+    let cleaned = strip_fences(raw);
+    try_parse_json_array(cleaned, field_name).or_else(|first_error| {
+        extract_first_json_value(cleaned)
+            .filter(|candidate| *candidate != cleaned)
+            .ok_or(first_error.clone())
+            .and_then(|candidate| {
+                try_parse_json_array(candidate, field_name)
+                    .map_err(|second_error| format!("{first_error}; recovered JSON failed: {second_error}"))
+            })
+    })
+}
+
+fn try_parse_json_array(raw: &str, field_name: &str) -> Result<Vec<serde_json::Value>, String> {
+    match serde_json::from_str::<serde_json::Value>(raw) {
+        Ok(serde_json::Value::Array(values)) => Ok(values),
+        Ok(serde_json::Value::Object(map)) => map
+            .get(field_name)
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .ok_or_else(|| format!("expected object field `{field_name}` containing an array")),
+        Ok(_) => Err(format!(
+            "expected top-level JSON array or object with `{field_name}`"
+        )),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn extract_first_json_value(raw: &str) -> Option<&str> {
+    let (start, _) = raw
+        .char_indices()
+        .find(|(_, ch)| matches!(ch, '{' | '['))?;
+    let mut stack = Vec::new();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (offset, ch) in raw[start..].char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            match ch {
+                '\\' => escaped = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            '{' => stack.push('}'),
+            '[' => stack.push(']'),
+            '}' | ']' => {
+                if stack.pop() != Some(ch) {
+                    return None;
+                }
+                if stack.is_empty() {
+                    let end = start + offset + ch.len_utf8();
+                    return Some(&raw[start..end]);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
 fn is_relevant(title: &str, content: &str, url: &str, subject: &str) -> bool {
     let s = subject.to_lowercase();
     let t = title.to_lowercase();
@@ -937,4 +1067,137 @@ fn is_relevant(title: &str, content: &str, url: &str, subject: &str) -> bool {
         || b.contains(&s)
         || u.contains(&s.replace(' ', ""))
         || u.contains(&s.replace(' ', "-"))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use converge_pack::{Context, ContextKey, Fact, ProposedFact, Suggestor};
+
+    use super::{
+        DdError, DdLlm, SharedBudget, SynthesisSuggestor, extract_first_json_value,
+        parse_json_array_response,
+    };
+
+    struct StubLlm;
+
+    #[async_trait::async_trait]
+    impl DdLlm for StubLlm {
+        async fn complete(&self, prompt: &str) -> Result<String, DdError> {
+            let _ = prompt;
+            Ok("{}".to_string())
+        }
+    }
+
+    struct StubContext {
+        hypothesis_count: usize,
+        has_proposals: bool,
+    }
+
+    impl Context for StubContext {
+        fn has(&self, key: ContextKey) -> bool {
+            match key {
+                ContextKey::Hypotheses => self.hypothesis_count > 0,
+                ContextKey::Proposals => self.has_proposals,
+                _ => false,
+            }
+        }
+
+        fn get(&self, _key: ContextKey) -> &[Fact] {
+            &[]
+        }
+
+        fn get_proposals(&self, _key: ContextKey) -> &[ProposedFact] {
+            &[]
+        }
+
+        fn count(&self, key: ContextKey) -> usize {
+            match key {
+                ContextKey::Hypotheses => self.hypothesis_count,
+                _ => 0,
+            }
+        }
+    }
+
+    #[test]
+    fn synthesis_suggestor_is_always_schedulable() {
+        let budget = Arc::new(SharedBudget::new().with_limit("llm", 1));
+        let suggestor = SynthesisSuggestor::new("Acme", budget, Arc::new(StubLlm));
+
+        assert!(suggestor.dependencies().is_empty());
+    }
+
+    #[test]
+    fn synthesis_accepts_after_hypotheses_stabilize() {
+        let budget = Arc::new(SharedBudget::new().with_limit("llm", 1));
+        let suggestor = SynthesisSuggestor::new("Acme", budget, Arc::new(StubLlm))
+            .with_required_stable_cycles(2);
+
+        let first_fact_wave = StubContext {
+            hypothesis_count: 5,
+            has_proposals: false,
+        };
+        let first_stable_cycle = StubContext {
+            hypothesis_count: 5,
+            has_proposals: false,
+        };
+        let second_stable_cycle = StubContext {
+            hypothesis_count: 5,
+            has_proposals: false,
+        };
+
+        assert!(!suggestor.accepts(&first_fact_wave));
+        assert!(!suggestor.accepts(&first_stable_cycle));
+        assert!(suggestor.accepts(&second_stable_cycle));
+    }
+
+    #[test]
+    fn parse_json_array_response_accepts_wrapped_object() {
+        let parsed = parse_json_array_response(
+            r#"{"facts":[{"claim":"Acme sells software","confidence":0.9}]}"#,
+            "facts",
+        )
+        .expect("wrapped array should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0]["claim"], "Acme sells software");
+    }
+
+    #[test]
+    fn parse_json_array_response_accepts_legacy_array_shape() {
+        let parsed = parse_json_array_response(
+            r#"[{"query":"Acme competitors","mode":"breadth","reason":"market"}]"#,
+            "strategies",
+        )
+        .expect("legacy array should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0]["query"], "Acme competitors");
+    }
+
+    #[test]
+    fn parse_json_array_response_recovers_json_from_prose() {
+        let parsed = parse_json_array_response(
+            "Here is the JSON you requested:\n```json\n{\"facts\":[{\"claim\":\"Acme grows\",\"confidence\":0.7}]}\n```\nThanks.",
+            "facts",
+        )
+        .expect("embedded JSON should parse");
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0]["claim"], "Acme grows");
+    }
+
+    #[test]
+    fn extract_first_json_value_handles_nested_arrays_and_objects() {
+        let extracted = extract_first_json_value(
+            "prefix {\"facts\":[{\"claim\":\"A\",\"source_indices\":[0,1]}]} suffix",
+        )
+        .expect("should find first JSON value");
+
+        assert_eq!(
+            extracted,
+            r#"{"facts":[{"claim":"A","source_indices":[0,1]}]}"#
+        );
+    }
 }

@@ -194,7 +194,9 @@ impl SharedBudget {
         self.limits
             .iter()
             .find(|l| l.name == name)
-            .map_or(usize::MAX, |l| l.max.saturating_sub(*l.used.lock().unwrap()))
+            .map_or(usize::MAX, |l| {
+                l.max.saturating_sub(*l.used.lock().unwrap())
+            })
     }
 
     /// Total used for the named resource.

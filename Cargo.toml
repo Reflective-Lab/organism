@@ -40,6 +40,7 @@ organism-notes = { path = "crates/notes", version = "0.1.0" }
 
 # Converge contract
 converge-pack = { path = "../converge/crates/pack" }
+converge-kernel = { path = "../converge/crates/kernel" }
 converge-provider-api = { path = "../converge/crates/provider-api" }
 
 # Shared deps

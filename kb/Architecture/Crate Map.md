@@ -60,6 +60,6 @@ Blueprints (lead-to-cash, hire-to-retire, etc.) compose organism-domain packs wi
 
 ## Legacy
 
-`_legacy/` contains the pre-restructure monolith. The domain packs and planning types have been revitalized into the current crates. Do not modify `_legacy/` in place.
+The pre-restructure monolith has been retired. Current crates and examples are canonical.
 
 See also: [[Architecture/Converge Contract]], [[Architecture/Pipeline Flow]]
