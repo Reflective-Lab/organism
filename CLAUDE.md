@@ -12,6 +12,12 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 - **Changelog:** Update `CHANGELOG.md` when shipping notable changes.
 - **Strategic context:** `~/dev/work/EPIC.md`
 
+## Claude-Specific Notes
+
+- **Available skills:** `/experiment` — hypothesis-driven development with evidence logging.
+- Prefer `Edit` over `Write` for modifying existing files. Use `Grep`/`Glob` over `Bash` for search.
+- Run `just lint` before considering work done.
+
 ## Architectural rules
 
 - **Organism is a client of Converge.** Converge does not know Organism exists. Use Converge types (`converge-pack`, `converge-kernel`, `converge-model`) directly — the Rust type system enforces the axioms.

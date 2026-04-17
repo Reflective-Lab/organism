@@ -413,6 +413,167 @@ where
     }
 }
 
+// ── Hypothesis Tracker Suggestor ─────────────────────────────────
+
+/// Observes hypothesis and evaluation facts across convergence cycles,
+/// recording the lifecycle of each hypothesis (formed → confirmed/falsified).
+///
+/// Does not emit facts — returns `AgentEffect::empty()`. The resolved
+/// hypotheses are read by the call site post-run via [`Self::resolved`]
+/// and emitted to the ExperienceStore as `HypothesisResolved` events.
+pub struct HypothesisTrackerSuggestor {
+    domain: String,
+    confidence_threshold: f64,
+    hypotheses: Arc<Mutex<Vec<crate::TrackedHypothesis>>>,
+    last_hypothesis_count: Mutex<usize>,
+    last_evaluation_count: Mutex<usize>,
+    current_cycle: Mutex<u32>,
+}
+
+impl HypothesisTrackerSuggestor {
+    pub fn new(domain: impl Into<String>) -> Self {
+        Self {
+            domain: domain.into(),
+            confidence_threshold: 0.7,
+            hypotheses: Arc::new(Mutex::new(Vec::new())),
+            last_hypothesis_count: Mutex::new(0),
+            last_evaluation_count: Mutex::new(0),
+            current_cycle: Mutex::new(0),
+        }
+    }
+
+    #[must_use]
+    pub fn with_confidence_threshold(mut self, threshold: f64) -> Self {
+        self.confidence_threshold = threshold;
+        self
+    }
+
+    pub fn resolved(&self) -> Vec<crate::TrackedHypothesis> {
+        self.hypotheses
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|h| !matches!(h.outcome, crate::HypothesisOutcome::Open))
+            .cloned()
+            .collect()
+    }
+
+    pub fn roster(&self) -> Arc<Mutex<Vec<crate::TrackedHypothesis>>> {
+        Arc::clone(&self.hypotheses)
+    }
+}
+
+#[async_trait::async_trait]
+impl Suggestor for HypothesisTrackerSuggestor {
+    fn name(&self) -> &str {
+        "organism-hypothesis-tracker"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Hypotheses]
+    }
+
+    fn accepts(&self, ctx: &dyn Context) -> bool {
+        let h_count = ctx.count(ContextKey::Hypotheses);
+        let e_count = ctx.count(ContextKey::Evaluations);
+        let last_h = *self.last_hypothesis_count.lock().unwrap();
+        let last_e = *self.last_evaluation_count.lock().unwrap();
+
+        h_count > last_h || e_count > last_e || ctx.has(ContextKey::Proposals)
+    }
+
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+        let hypothesis_facts = ctx.get(ContextKey::Hypotheses);
+        let evaluation_facts = ctx.get(ContextKey::Evaluations);
+        let has_proposals = ctx.has(ContextKey::Proposals);
+
+        *self.last_hypothesis_count.lock().unwrap() = hypothesis_facts.len();
+        *self.last_evaluation_count.lock().unwrap() = evaluation_facts.len();
+
+        let cycle = {
+            let mut c = self.current_cycle.lock().unwrap();
+            *c += 1;
+            *c
+        };
+
+        // Collect contradiction fact IDs from evaluations for falsification matching.
+        // Convention: evaluation facts referencing a hypothesis use the hypothesis
+        // fact ID as a substring in their content (same pattern as DD's
+        // ContradictionFinderSuggestor).
+        let contradiction_targets: Vec<(String, String)> = evaluation_facts
+            .iter()
+            .map(|f| (f.id.clone(), f.content.clone()))
+            .collect();
+
+        let mut roster = self.hypotheses.lock().unwrap();
+
+        // Register new hypotheses
+        let known_ids: std::collections::HashSet<String> =
+            roster.iter().map(|h| h.fact_id.clone()).collect();
+
+        for fact in hypothesis_facts {
+            if known_ids.contains(&fact.id) {
+                continue;
+            }
+
+            let confidence: f64 = fact
+                .content
+                .parse()
+                .ok()
+                .or_else(|| {
+                    serde_json::from_str::<serde_json::Value>(&fact.content)
+                        .ok()
+                        .and_then(|v| v.get("confidence")?.as_f64())
+                })
+                .unwrap_or(0.5);
+
+            roster.push(crate::TrackedHypothesis {
+                fact_id: fact.id.clone(),
+                domain: self.domain.clone(),
+                claim: fact.content.clone(),
+                confidence,
+                formed_cycle: cycle,
+                resolved_cycle: None,
+                outcome: crate::HypothesisOutcome::Open,
+            });
+        }
+
+        // Check for falsification via contradictions
+        for h in roster.iter_mut() {
+            if !matches!(h.outcome, crate::HypothesisOutcome::Open) {
+                continue;
+            }
+
+            for (eval_id, eval_content) in &contradiction_targets {
+                if eval_content.contains(&h.fact_id) {
+                    h.outcome = crate::HypothesisOutcome::Falsified {
+                        contradiction_id: eval_id.clone(),
+                    };
+                    h.resolved_cycle = Some(cycle);
+                    break;
+                }
+            }
+        }
+
+        // On synthesis (proposals present), finalize remaining open hypotheses
+        if has_proposals {
+            for h in roster.iter_mut() {
+                if !matches!(h.outcome, crate::HypothesisOutcome::Open) {
+                    continue;
+                }
+                if h.confidence >= self.confidence_threshold {
+                    h.outcome = crate::HypothesisOutcome::Confirmed;
+                } else {
+                    h.outcome = crate::HypothesisOutcome::Unresolved;
+                }
+                h.resolved_cycle = Some(cycle);
+            }
+        }
+
+        AgentEffect::empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

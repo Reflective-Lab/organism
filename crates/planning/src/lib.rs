@@ -137,3 +137,31 @@ pub struct PlanBundle {
     pub plans: Vec<Plan>,
     pub debate_rounds: u32,
 }
+
+// ── Hypothesis Tracking ───────────────────────────────────────────
+
+/// Lifecycle state of a tracked hypothesis.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "outcome")]
+pub enum HypothesisOutcome {
+    Open,
+    Confirmed,
+    Falsified { contradiction_id: String },
+    Superseded,
+    Unresolved,
+}
+
+/// A hypothesis tracked across convergence cycles.
+///
+/// Created from a `ContextKey::Hypotheses` fact. The tracker records
+/// when it was first seen, its confidence trajectory, and its final outcome.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrackedHypothesis {
+    pub fact_id: String,
+    pub domain: String,
+    pub claim: String,
+    pub confidence: f64,
+    pub formed_cycle: u32,
+    pub resolved_cycle: Option<u32>,
+    pub outcome: HypothesisOutcome,
+}

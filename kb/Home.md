@@ -53,6 +53,11 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 - [[Workflow/Working with Codex]] — plain-language workflow equivalents
 - [[Workflow/Working with Gemini]] — native tools + shared scripts
 
+## Experiments
+
+- [[Experiments/INDEX]] — hypothesis-driven development with evidence logging
+- [[Experiments/LOG]] — mutation log of all experiments
+
 ## Ecosystem
 
 - [[Ecosystem]] — the five-layer stack: Helm, Axiom, Organism, Converge, Providers
