@@ -39,9 +39,9 @@ organism-domain = { path = "crates/domain", version = "1.0.0" }
 organism-notes = { path = "crates/notes", version = "1.0.0" }
 
 # Converge contract
-converge-pack = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.0" }
-converge-kernel = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.0" }
-converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.0" }
+converge-pack = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.1" }
+converge-kernel = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.1" }
+converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.3.1" }
 
 # Shared deps
 anyhow = "1"
