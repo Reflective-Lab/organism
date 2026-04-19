@@ -27,6 +27,6 @@ The pipeline:
 - Not a workflow engine (that's what it replaces)
 - Not a chatbot (it plans, not chats)
 - Not Converge (it has no authority — see [[Philosophy/Relationship to Converge]])
-- Not a product (products sit on top — Wolfgang, SaaS Killer)
+- Not a product (products sit on top — Wolfgang, Helms)
 
 See also: [[Philosophy/Relationship to Converge]], [[Philosophy/Key Invariants]]

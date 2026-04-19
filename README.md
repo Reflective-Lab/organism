@@ -56,10 +56,14 @@ Organism also models **how a team collaborates**, not just that it collaborates.
 - `CollaborationCharter::huddle()` — strict turn-taking, synthesis, dissent map, done gate
 - `CollaborationCharter::discussion_group()` — moderated discussion with lighter decision pressure
 - `CollaborationCharter::panel()` — curated expert panel with explicit roles and a demanding done gate
-- `CollaborationCharter::open_claw()` — loose self-organizing "figure it out" mode
+- `CollaborationCharter::self_organizing()` — loose self-organizing "figure it out" mode
 
 Those collaboration contracts sit in `organism-pack` with `TeamFormation`,
 `CollaborationRole`, `ConsensusRule`, and `TurnCadence`.
+
+`organism-runtime` adds `CollaborationRunner` for binding product-specific
+participants to those charters and answering practical questions such as who
+contributes, who votes, and who owns the final report.
 
 ### 4. Adversarial Review
 

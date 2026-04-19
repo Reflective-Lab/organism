@@ -25,7 +25,7 @@ Weekly workspace review. Runs from ~/dev/work/ level.
    - Justfile has check/lint/test/dev recipes
    - Skills match standard set (13)
    - Cloud resources in Terraform
-   - Layering (organism ≠ axioms, saas-killer → through organism)
+   - Layering (organism ≠ axioms, helms → through organism)
 4. **Observations** — read `kb/Observations.md`:
    - Propose graduation for validated observations (rule, skill, kb, discard)
    - **Ask user to confirm** each graduation

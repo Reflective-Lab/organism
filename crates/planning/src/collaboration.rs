@@ -5,7 +5,7 @@
 //! - a strict huddle with explicit turns and synthesis checkpoints
 //! - a moderated discussion group with some structure but softer commitments
 //! - a demanding panel where roles, dissent, and decision policy are explicit
-//! - a very loose OpenClaw-style swarm that is allowed to self-organize
+//! - a very loose self-organizing swarm that is allowed to self-organize
 
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +16,7 @@ pub enum CollaborationTopology {
     Huddle,
     DiscussionGroup,
     Panel,
-    OpenClaw,
+    SelfOrganizing,
 }
 
 impl CollaborationTopology {
@@ -26,7 +26,7 @@ impl CollaborationTopology {
             Self::Huddle => "huddle",
             Self::DiscussionGroup => "discussion_group",
             Self::Panel => "panel",
-            Self::OpenClaw => "open_claw",
+            Self::SelfOrganizing => "self_organizing",
         }
     }
 }
@@ -122,7 +122,10 @@ impl CollaborationRole {
 
     #[must_use]
     pub const fn can_write_report(self) -> bool {
-        matches!(self, Self::ReportWriter | Self::Synthesizer | Self::Lead)
+        matches!(
+            self,
+            Self::ReportWriter | Self::Synthesizer | Self::Lead | Self::Generalist
+        )
     }
 }
 
@@ -356,21 +359,21 @@ impl CollaborationCharter {
         }
     }
 
-    /// Very loose OpenClaw-style self-organization.
+    /// Very loose self-organizing collaboration.
     #[must_use]
-    pub fn open_claw() -> Self {
+    pub fn self_organizing() -> Self {
         Self {
-            topology: CollaborationTopology::OpenClaw,
+            topology: CollaborationTopology::SelfOrganizing,
             formation_mode: TeamFormationMode::OpenCall,
             discipline: CollaborationDiscipline::Loose,
             turn_cadence: TurnCadence::FigureItOut,
             consensus_rule: ConsensusRule::AdvisoryOnly,
             minimum_members: 1,
             require_explicit_turns: false,
-            require_round_synthesis: false,
+            require_round_synthesis: true,
             require_dissent_map: false,
-            require_done_gate: false,
-            require_report_owner: false,
+            require_done_gate: true,
+            require_report_owner: true,
             expected_roles: vec![CollaborationRole::Generalist],
         }
     }
@@ -459,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn open_claw_accepts_loose_team() {
+    fn self_organizing_accepts_loose_team() {
         let team = TeamFormation::new(
             TeamFormationMode::OpenCall,
             vec![CollaborationMember::new(
@@ -468,7 +471,11 @@ mod tests {
                 CollaborationRole::Generalist,
             )],
         );
-        assert!(CollaborationCharter::open_claw().validate(&team).is_ok());
+        assert!(
+            CollaborationCharter::self_organizing()
+                .validate(&team)
+                .is_ok()
+        );
     }
 
     #[test]

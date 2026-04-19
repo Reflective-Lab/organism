@@ -22,7 +22,7 @@ Organism separates the **planning payload** from the **collaboration contract**.
 - `CollaborationCharter::huddle()` is the strict default: explicit turns, synthesis, dissent map, and done gate.
 - `CollaborationCharter::discussion_group()` is moderated and lighter-weight.
 - `CollaborationCharter::panel()` is a curated expert panel with explicit roles and decision policy.
-- `CollaborationCharter::open_claw()` is the loose self-organizing mode for "figure it out" collaboration.
+- `CollaborationCharter::self_organizing()` is the loose self-organizing mode for "figure it out" collaboration.
 
 Those charters work with:
 
@@ -30,6 +30,9 @@ Those charters work with:
 - `CollaborationRole` — lead, domain, critic, synthesizer, judge, moderator, report writer, and others
 - `ConsensusRule` — majority, supermajority, unanimous, lead-decides, advisory-only
 - `TurnCadence` — round-robin, lead-then-round-robin, moderator-then-round-robin, synthesis-only, or figure-it-out
+
+For runtime binding, `organism-runtime::CollaborationRunner` maps a charter and
+team definition onto product-specific participant metadata.
 
 ## Debate
 

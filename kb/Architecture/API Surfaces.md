@@ -60,6 +60,8 @@ What downstream code should use it for:
 - `CommitBoundary`
 - `Registry`
 - `StructuralResolver`
+- `CollaborationRunner`
+- `CollaborationParticipant`
 - `DeclarativeBinding`
 - `IntentBinding`
 - `check_readiness`
