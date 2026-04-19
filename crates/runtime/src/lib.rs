@@ -13,13 +13,17 @@
 pub mod readiness;
 pub mod registry;
 
+pub use organism_pack::{
+    CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,
+    ResolutionLevel, ResolutionTrace,
+};
 pub use readiness::{
     BudgetProbe, CredentialProbe, GapSeverity, PackProbe, ReadinessConfirmation, ReadinessGap,
     ReadinessItem, ReadinessProbe, ReadinessReport, ResourceKind, check as check_readiness,
 };
 pub use registry::{RegisteredCapability, RegisteredPack, Registry, StructuralResolver};
 
-use organism_intent::IntentPacket;
+use organism_pack::IntentPacket;
 
 /// Trait for submitting plans to Converge's commit boundary.
 ///

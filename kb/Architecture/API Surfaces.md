@@ -39,7 +39,12 @@ What downstream code should use it for:
 - `Challenge`
 - `SimulationResult`
 - `LearningEpisode`
-- intent resolution types re-exported from `organism-intent::resolution`
+- `CollaborationCharter`
+- `TeamFormation`
+- `CollaborationRole`
+- `ConsensusRule`
+- `TurnCadence`
+- shared intent and resolution vocabulary re-exported from the internal phase crates
 
 Status:
 - canonical Organism planning contract
@@ -55,6 +60,8 @@ What downstream code should use it for:
 - `CommitBoundary`
 - `Registry`
 - `StructuralResolver`
+- `DeclarativeBinding`
+- `IntentBinding`
 - `check_readiness`
 - `CredentialProbe`
 - `PackProbe`
@@ -112,7 +119,8 @@ should not depend on them directly:
 - `organism-simulation`
 - `organism-learning`
 
-They are the internal building blocks re-exported by `organism-pack`.
+They are the internal building blocks re-exported by `organism-pack` and, for
+resolution/readiness concerns, selectively surfaced by `organism-runtime`.
 Direct dependencies are reasonable when extending Organism itself, adding new
 examples inside this repo, or working on the planning loop implementation.
 
@@ -123,11 +131,13 @@ examples inside this repo, or working on the planning loop implementation.
 | App using Organism planning | `organism-pack`, `organism-runtime` |
 | App using built-in packs | `organism-pack`, `organism-runtime`, `organism-domain` |
 | App using world-facing capabilities | `organism-intelligence` and/or `organism-notes` |
+| Axiom / Helm / operator-facing apps using Organism | `organism-pack`, `organism-runtime`, then optional `organism-domain` / `organism-intelligence` / `organism-notes` |
 | Organism contributors extending a phase | specific phase crate(s) plus `organism-pack` as needed |
 
 Current reference downstream:
 - Monterro consumes Organism as `organism-pack` + `organism-runtime`
 - Monterro consumes Converge as `converge-pack` + `converge-kernel`
+- Apps above Organism should follow the same shape rather than importing Organism phase crates directly
 
 ## Converge Alignment
 

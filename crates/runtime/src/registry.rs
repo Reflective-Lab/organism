@@ -7,8 +7,9 @@
 
 use organism_domain::pack::{AgentMeta, ContextKey, InvariantClass, InvariantMeta, PackProfile};
 use organism_domain::packs;
-use organism_intent::resolution::{
-    IntentBinding, IntentResolver, PackRequirement, ResolutionLevel,
+use organism_pack::{
+    CapabilityRequirement, IntentBinding, IntentPacket, IntentResolver, PackRequirement,
+    ResolutionLevel, Reversibility,
 };
 
 // ── Registered Pack ────────────────────────────────────────────────
@@ -372,11 +373,7 @@ impl IntentResolver for StructuralResolver<'_> {
         ResolutionLevel::Structural
     }
 
-    fn resolve(
-        &self,
-        intent: &organism_intent::IntentPacket,
-        current: &IntentBinding,
-    ) -> IntentBinding {
+    fn resolve(&self, intent: &IntentPacket, current: &IntentBinding) -> IntentBinding {
         let mut binding = current.clone();
         let already_bound: std::collections::HashSet<String> =
             binding.packs.iter().map(|p| p.pack_name.clone()).collect();
@@ -441,7 +438,7 @@ impl IntentResolver for StructuralResolver<'_> {
         }
 
         // ── Dimension 6: Reversibility matching ────────────────────
-        if intent.reversibility == organism_intent::Reversibility::Irreversible {
+        if intent.reversibility == Reversibility::Irreversible {
             for pack in self.registry.packs_handling_irreversible() {
                 if !already_bound.contains(&pack.name) {
                     matched.push((
@@ -601,14 +598,12 @@ impl IntentResolver for StructuralResolver<'_> {
         }
 
         for (cap, reason) in needed_capabilities {
-            binding
-                .capabilities
-                .push(organism_intent::resolution::CapabilityRequirement {
-                    capability: cap,
-                    reason,
-                    confidence: 0.85,
-                    source: ResolutionLevel::Structural,
-                });
+            binding.capabilities.push(CapabilityRequirement {
+                capability: cap,
+                reason,
+                confidence: 0.85,
+                source: ResolutionLevel::Structural,
+            });
         }
 
         if !binding
@@ -755,8 +750,7 @@ fn extract_keywords(outcome: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use organism_intent::resolution::DeclarativeBinding;
-    use organism_intent::{ForbiddenAction, IntentPacket, Reversibility};
+    use organism_pack::{DeclarativeBinding, ForbiddenAction, IntentPacket, Reversibility};
 
     fn full_registry() -> Registry {
         let mut r = Registry::with_standard_packs();

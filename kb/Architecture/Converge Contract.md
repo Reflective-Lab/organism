@@ -5,9 +5,15 @@ tags: [architecture]
 
 How Organism uses Converge. See [[Philosophy/Relationship to Converge]] for why.
 
+Shared stack guidance: `~/dev/work/converge/kb/Architecture/Golden Path Matrix.md`.
+
 ## Direct Type Usage
 
 Organism uses Converge types directly. The Rust type system enforces the axioms — a Suggestor cannot forge a Fact, ProposedFact is not Fact, and promotion goes through the gate. No wrapper layers needed.
+
+The same rule applies one layer up: apps above Organism should use
+`organism-pack` and `organism-runtime` as their first imports rather than
+assembling Organism from phase crates.
 
 | Converge Crate | What Organism Uses It For |
 |---|---|

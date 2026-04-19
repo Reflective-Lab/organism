@@ -274,7 +274,11 @@ pub fn write_dd_to_vault(
                 let cat = v["category"].as_str().unwrap_or("unknown");
                 let desc = v["description"].as_str().unwrap_or(&eval.content);
                 let needs_review = v["needs_human_review"].as_bool().unwrap_or(false);
-                let review_tag = if needs_review { " **NEEDS REVIEW**" } else { "" };
+                let review_tag = if needs_review {
+                    " **NEEDS REVIEW**"
+                } else {
+                    ""
+                };
                 Some(format!(
                     "### Contradiction {num}\n\n\
                      **Category:** {cat}\n\
@@ -294,19 +298,13 @@ pub fn write_dd_to_vault(
                 entity_tag = slug,
             );
             std::fs::write(base.join("Contradictions.md"), &contra_page)?;
-            written_files.push(format!(
-                "{}/{slug}/Contradictions.md",
-                config.entity_dir
-            ));
+            written_files.push(format!("{}/{slug}/Contradictions.md", config.entity_dir));
         }
     }
 
     // ── Hub pages ────────────────────────────────────────────────────
 
-    let patterns = config
-        .hook_patterns
-        .clone()
-        .unwrap_or_default();
+    let patterns = config.hook_patterns.clone().unwrap_or_default();
     let hooks = extract_hooks_from_facts(subject, &consolidated, &patterns);
 
     let hub_mappings: Vec<(&str, &[String])> = vec![
@@ -429,10 +427,7 @@ pub fn write_or_append_hub(
 // ── Root Pages ───────────────────────────────────────────────────
 
 /// Rebuild all root MOC pages by scanning the vault filesystem.
-pub fn update_root_pages(
-    vault_root: &Path,
-    config: &KbConfig,
-) -> anyhow::Result<Vec<String>> {
+pub fn update_root_pages(vault_root: &Path, config: &KbConfig) -> anyhow::Result<Vec<String>> {
     let mut written = Vec::new();
 
     for root_def in &config.root_pages {
@@ -453,8 +448,8 @@ pub fn update_root_pages(
                         continue;
                     }
                     let dir_name = entry.file_name().to_string_lossy().to_string();
-                    let display = find_overview_page(&entry.path())
-                        .unwrap_or_else(|| titlecase(&dir_name));
+                    let display =
+                        find_overview_page(&entry.path()).unwrap_or_else(|| titlecase(&dir_name));
                     let parent = scan_dir.as_str();
                     let link = format!("{parent}/{dir_name}/{display}");
                     children.push((link, display));

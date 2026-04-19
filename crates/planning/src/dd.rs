@@ -535,43 +535,39 @@ impl Suggestor for FactExtractorSuggestor {
 
         let mut proposals = Vec::new();
         match self.llm.complete(&prompt).await {
-            Ok(raw) => {
-                match parse_json_array_response(&raw, "facts") {
-                    Ok(facts) => {
-                        for (i, fact) in facts.iter().enumerate() {
-                            let Some(normalized_fact) = normalize_dd_fact(fact) else {
-                                continue;
-                            };
-                            let signature = dd_fact_signature(&normalized_fact);
-                            if !seen_fact_keys.insert(signature) {
-                                continue;
-                            }
-                            let id = format!("hypothesis-{}-{i}", Uuid::new_v4());
-                            proposals.push(
-                                ProposedFact::new(
-                                    ContextKey::Hypotheses,
-                                    &id,
-                                    normalized_fact.to_string(),
-                                    "dd-fact-extractor",
-                                )
-                                .with_confidence(
-                                    normalized_fact["confidence"].as_f64().unwrap_or(0.5),
-                                ),
-                            );
-                        }
-                    }
-                    Err(detail) => {
-                        let parse_err = DdError::ParseFailed {
-                            provider: "llm".into(),
-                            detail: format!(
-                                "{detail} (first 200 chars: {})",
-                                &raw[..raw.len().min(200)]
-                            ),
+            Ok(raw) => match parse_json_array_response(&raw, "facts") {
+                Ok(facts) => {
+                    for (i, fact) in facts.iter().enumerate() {
+                        let Some(normalized_fact) = normalize_dd_fact(fact) else {
+                            continue;
                         };
-                        proposals.push(error_to_constraint(&parse_err, "dd-fact-extractor"));
+                        let signature = dd_fact_signature(&normalized_fact);
+                        if !seen_fact_keys.insert(signature) {
+                            continue;
+                        }
+                        let id = format!("hypothesis-{}-{i}", Uuid::new_v4());
+                        proposals.push(
+                            ProposedFact::new(
+                                ContextKey::Hypotheses,
+                                &id,
+                                normalized_fact.to_string(),
+                                "dd-fact-extractor",
+                            )
+                            .with_confidence(normalized_fact["confidence"].as_f64().unwrap_or(0.5)),
+                        );
                     }
                 }
-            }
+                Err(detail) => {
+                    let parse_err = DdError::ParseFailed {
+                        provider: "llm".into(),
+                        detail: format!(
+                            "{detail} (first 200 chars: {})",
+                            &raw[..raw.len().min(200)]
+                        ),
+                    };
+                    proposals.push(error_to_constraint(&parse_err, "dd-fact-extractor"));
+                }
+            },
             Err(e) => {
                 proposals.push(error_to_constraint(&e, "dd-fact-extractor"));
             }
@@ -663,39 +659,39 @@ impl Suggestor for GapDetectorSuggestor {
             .collect();
 
         match self.llm.complete(&prompt).await {
-            Ok(raw) => {
-                match parse_json_array_response(&raw, "strategies") {
-                    Ok(strategies) => {
-                        for (i, s) in strategies.iter().enumerate() {
-                            let mode = s["mode"].as_str().unwrap_or("breadth");
-                            let query = s["query"].as_str().unwrap_or("");
-                            let reason = s["reason"].as_str().unwrap_or("");
-                            let content = format!("[{mode}] {query} -- {reason}");
-                            if query.trim().is_empty() || !seen_strategy_contents.insert(content.clone()) {
-                                continue;
-                            }
-                            let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
-
-                            proposals.push(ProposedFact::new(
-                                ContextKey::Strategies,
-                                &id,
-                                content,
-                                "dd-gap-detector",
-                            ));
+            Ok(raw) => match parse_json_array_response(&raw, "strategies") {
+                Ok(strategies) => {
+                    for (i, s) in strategies.iter().enumerate() {
+                        let mode = s["mode"].as_str().unwrap_or("breadth");
+                        let query = s["query"].as_str().unwrap_or("");
+                        let reason = s["reason"].as_str().unwrap_or("");
+                        let content = format!("[{mode}] {query} -- {reason}");
+                        if query.trim().is_empty()
+                            || !seen_strategy_contents.insert(content.clone())
+                        {
+                            continue;
                         }
-                    }
-                    Err(detail) => {
-                        let parse_err = DdError::ParseFailed {
-                            provider: "llm".into(),
-                            detail: format!(
-                                "{detail} (first 200 chars: {})",
-                                &raw[..raw.len().min(200)]
-                            ),
-                        };
-                        proposals.push(error_to_constraint(&parse_err, "dd-gap-detector"));
+                        let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
+
+                        proposals.push(ProposedFact::new(
+                            ContextKey::Strategies,
+                            &id,
+                            content,
+                            "dd-gap-detector",
+                        ));
                     }
                 }
-            }
+                Err(detail) => {
+                    let parse_err = DdError::ParseFailed {
+                        provider: "llm".into(),
+                        detail: format!(
+                            "{detail} (first 200 chars: {})",
+                            &raw[..raw.len().min(200)]
+                        ),
+                    };
+                    proposals.push(error_to_constraint(&parse_err, "dd-gap-detector"));
+                }
+            },
             Err(e) => {
                 proposals.push(error_to_constraint(&e, "dd-gap-detector"));
             }
@@ -1108,7 +1104,10 @@ impl Default for HookPatterns {
                 ("saas".into(), "SaaS".into()),
                 (" grc".into(), "Governance, Risk & Compliance (GRC)".into()),
                 (",grc".into(), "Governance, Risk & Compliance (GRC)".into()),
-                ("governance, risk".into(), "Governance, Risk & Compliance (GRC)".into()),
+                (
+                    "governance, risk".into(),
+                    "Governance, Risk & Compliance (GRC)".into(),
+                ),
                 (" esg".into(), "ESG Reporting".into()),
                 ("sustainability".into(), "ESG Reporting".into()),
                 ("compliance".into(), "Compliance Management".into()),
@@ -1124,11 +1123,20 @@ impl Default for HookPatterns {
                 ("penetration testing".into(), "Penetration Testing".into()),
                 ("attack surface".into(), "Attack Surface Management".into()),
                 ("workforce management".into(), "Workforce Management".into()),
-                ("scheduling".into(), "Scheduling & Resource Management".into()),
+                (
+                    "scheduling".into(),
+                    "Scheduling & Resource Management".into(),
+                ),
                 ("timetabling".into(), "Timetabling".into()),
-                ("higher education".into(), "Higher Education Software".into()),
+                (
+                    "higher education".into(),
+                    "Higher Education Software".into(),
+                ),
                 ("edtech".into(), "EdTech".into()),
-                ("business intelligence".into(), "Business Intelligence".into()),
+                (
+                    "business intelligence".into(),
+                    "Business Intelligence".into(),
+                ),
                 ("analytics".into(), "Analytics".into()),
                 ("fintech".into(), "FinTech".into()),
                 ("payment".into(), "Payment Solutions".into()),
@@ -1238,11 +1246,7 @@ pub fn extract_hooks_from_facts(
     }
 }
 
-fn extract_named_entities(
-    claim: &str,
-    exclude_lower: &str,
-    triggers: &[String],
-) -> Vec<String> {
+fn extract_named_entities(claim: &str, exclude_lower: &str, triggers: &[String]) -> Vec<String> {
     let mut entities = Vec::new();
     let claim_lower = claim.to_lowercase();
 
@@ -1254,10 +1258,7 @@ fn extract_named_entities(
                 .next()
                 .unwrap_or("")
                 .trim();
-            if !entity.is_empty()
-                && entity.len() < 60
-                && entity.to_lowercase() != exclude_lower
-            {
+            if !entity.is_empty() && entity.len() < 60 && entity.to_lowercase() != exclude_lower {
                 entities.push(entity.to_string());
             }
         }
@@ -1266,7 +1267,11 @@ fn extract_named_entities(
     entities
 }
 
-fn next_batch_bounds(total_items: usize, processed_items: usize, max_batch: usize) -> (usize, usize) {
+fn next_batch_bounds(
+    total_items: usize,
+    processed_items: usize,
+    max_batch: usize,
+) -> (usize, usize) {
     let start = processed_items.min(total_items);
     let end = (start + max_batch).min(total_items);
     (start, end)
@@ -1331,7 +1336,9 @@ where
     }
 
     kept.sort_by(compare_candidates);
-    kept.into_iter().map(|candidate| candidate.summary).collect()
+    kept.into_iter()
+        .map(|candidate| candidate.summary)
+        .collect()
 }
 
 fn summary_from_normalized_fact(fact: &serde_json::Value) -> Option<DdFactSummary> {
@@ -1467,7 +1474,11 @@ fn claim_is_approximate(claim: &str) -> bool {
     .any(|needle| normalized.contains(needle))
 }
 
-fn fact_priority_score(summary: &DdFactSummary, approximate: bool, numeric_token_count: usize) -> f64 {
+fn fact_priority_score(
+    summary: &DdFactSummary,
+    approximate: bool,
+    numeric_token_count: usize,
+) -> f64 {
     let confidence_score = summary.confidence * 100.0;
     let support_bonus = summary.support_count as f64 * 6.0;
     let evidence_bonus = summary.evidence_count as f64 * 2.0;
@@ -1513,15 +1524,15 @@ fn category_fact_cap(category: &str) -> usize {
     }
 }
 
-fn should_skip_candidate(candidate: &ConsolidationCandidate, existing: &ConsolidationCandidate) -> bool {
+fn should_skip_candidate(
+    candidate: &ConsolidationCandidate,
+    existing: &ConsolidationCandidate,
+) -> bool {
     if candidate.summary.category != existing.summary.category {
         return false;
     }
 
-    let similarity = token_similarity(
-        &candidate.distinctive_tokens,
-        &existing.distinctive_tokens,
-    );
+    let similarity = token_similarity(&candidate.distinctive_tokens, &existing.distinctive_tokens);
     let topic_similarity = token_similarity(&candidate.topic_tokens, &existing.topic_tokens);
     if similarity >= 0.86 {
         return true;
@@ -1555,9 +1566,31 @@ fn token_similarity(left: &HashSet<String>, right: &HashSet<String>) -> f64 {
 
 fn dd_stopwords() -> &'static [&'static str] {
     &[
-        "and", "for", "the", "with", "into", "that", "from", "their", "this", "those", "these",
-        "across", "through", "using", "used", "helps", "help", "offer", "offers", "provides",
-        "provide", "company", "companies", "solution", "solutions",
+        "and",
+        "for",
+        "the",
+        "with",
+        "into",
+        "that",
+        "from",
+        "their",
+        "this",
+        "those",
+        "these",
+        "across",
+        "through",
+        "using",
+        "used",
+        "helps",
+        "help",
+        "offer",
+        "offers",
+        "provides",
+        "provide",
+        "company",
+        "companies",
+        "solution",
+        "solutions",
     ]
 }
 
@@ -1706,7 +1739,13 @@ fn dd_fact_signature(fact: &serde_json::Value) -> String {
 fn canonicalize_claim(claim: &str) -> String {
     claim
         .chars()
-        .map(|ch| if ch.is_ascii_alphanumeric() { ch.to_ascii_lowercase() } else { ' ' })
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                ' '
+            }
+        })
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -1757,8 +1796,9 @@ fn parse_json_array_response(
             .filter(|candidate| *candidate != cleaned)
             .ok_or(first_error.clone())
             .and_then(|candidate| {
-                try_parse_json_array(candidate, field_name)
-                    .map_err(|second_error| format!("{first_error}; recovered JSON failed: {second_error}"))
+                try_parse_json_array(candidate, field_name).map_err(|second_error| {
+                    format!("{first_error}; recovered JSON failed: {second_error}")
+                })
             })
     })
 }
@@ -1779,9 +1819,7 @@ fn try_parse_json_array(raw: &str, field_name: &str) -> Result<Vec<serde_json::V
 }
 
 fn extract_first_json_value(raw: &str) -> Option<&str> {
-    let (start, _) = raw
-        .char_indices()
-        .find(|(_, ch)| matches!(ch, '{' | '['))?;
+    let (start, _) = raw.char_indices().find(|(_, ch)| matches!(ch, '{' | '['))?;
     let mut stack = Vec::new();
     let mut in_string = false;
     let mut escaped = false;

@@ -8,11 +8,7 @@ repository.workspace = true
 description = "Curated embedded runtime for Organism — registry, readiness, and pipeline wiring"
 
 [dependencies]
-organism-intent.workspace = true
-organism-planning.workspace = true
-organism-adversarial.workspace = true
-organism-simulation.workspace = true
-organism-learning.workspace = true
+organism-pack.workspace = true
 organism-domain.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true

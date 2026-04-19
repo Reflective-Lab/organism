@@ -3,7 +3,7 @@ tags: [philosophy]
 ---
 # Relationship to Converge
 
-Organism is a **client** of Converge and the intelligence layer beneath Axiom. Converge does not know Organism exists.
+Organism is a **client** of Converge and the intelligence layer beneath Axiom and Helm. Converge does not know Organism exists.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -71,5 +71,9 @@ Organism mirrors that split on its own side:
 - `organism-intelligence`, `organism-notes`, and `organism-domain` are opt-in libraries
 
 Prefer those surfaces over direct dependencies on phase subcrates in app code.
+
+Above Organism, Axiom and Helm should still consume Organism through those curated
+surfaces rather than importing `organism-intent`, `organism-planning`,
+`organism-adversarial`, `organism-simulation`, or `organism-learning` directly.
 
 See also: [[Philosophy/Key Invariants]], [[Architecture/Converge Contract]], [[Architecture/Remember-Organism-When]]

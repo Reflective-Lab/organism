@@ -51,6 +51,16 @@ Complex intents break into an `IntentNode` tree. Authority can only **narrow** d
 
 Multiple reasoners run in parallel — LLM, constraint solver, ML prediction, causal analysis, cost estimation, domain model. Each produces candidate plans. Failures are dropped, survivors proceed to debate.
 
+Organism also models **how a team collaborates**, not just that it collaborates.
+
+- `CollaborationCharter::huddle()` — strict turn-taking, synthesis, dissent map, done gate
+- `CollaborationCharter::discussion_group()` — moderated discussion with lighter decision pressure
+- `CollaborationCharter::panel()` — curated expert panel with explicit roles and a demanding done gate
+- `CollaborationCharter::open_claw()` — loose self-organizing "figure it out" mode
+
+Those collaboration contracts sit in `organism-pack` with `TeamFormation`,
+`CollaborationRole`, `ConsensusRule`, and `TurnCadence`.
+
 ### 4. Adversarial Review
 
 Institutionalized disagreement. Five kinds of skepticism challenge every plan:
@@ -211,6 +221,12 @@ Organism uses Converge types directly — no wrapper layers. The Rust type syste
 | [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
+
+Golden path for apps above Organism:
+
+- `organism-pack` for intent, planning, challenge, simulation, and learning semantics
+- `organism-runtime` for registry, binding, resolver, readiness, and commit-boundary wiring
+- add `organism-domain`, `organism-intelligence`, and `organism-notes` only when the app actually needs them
 
 ## Develop
 

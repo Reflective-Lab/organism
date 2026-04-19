@@ -7,10 +7,10 @@
 //! light up a specific dimension. Shows exactly how organism decides
 //! which packs, capabilities, and invariants an intent needs.
 
-use organism_pack::*;
+use organism_pack::{ForbiddenAction, IntentPacket, Reversibility};
 use organism_runtime::{
-    BudgetProbe, CredentialProbe, GapSeverity, PackProbe, ReadinessReport, Registry,
-    StructuralResolver, check_readiness,
+    BudgetProbe, CredentialProbe, DeclarativeBinding, GapSeverity, IntentBinding, IntentResolver,
+    PackProbe, ReadinessReport, Registry, StructuralResolver, check_readiness,
 };
 
 fn main() {

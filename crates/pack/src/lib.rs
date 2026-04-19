@@ -74,19 +74,21 @@ pub use organism_intent::{
 // How the system reasons about the intent.
 
 pub use organism_planning::{
-    CostEstimate, Impact, Likelihood, Plan, PlanAnnotation, PlanBundle, PlanContribution, PlanStep,
-    Reasoner, ReasoningSystem, Risk, RiskImpact,
-    suggestor::{HuddleSeedSuggestor, NamedPlan, SharedBudget},
+    CollaborationCharter, CollaborationDiscipline, CollaborationMember, CollaborationRole,
+    CollaborationTopology, CollaborationValidationError, ConsensusRule, CostEstimate, Impact,
+    Likelihood, Plan, PlanAnnotation, PlanBundle, PlanContribution, PlanStep, Reasoner,
+    ReasoningSystem, Risk, RiskImpact, TeamFormation, TeamFormationMode, TurnCadence,
     dd::{
-        BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdHooks,
-        DdFactSummary, DdLlm, DdSearch, DepthResearchSuggestor, FactExtractorSuggestor,
-        FailoverDdLlm, FailoverDdSearch, GapDetectorSuggestor, HookPatterns, SearchHit,
-        SynthesisSuggestor, consolidate_dd_hypotheses, extract_hooks_from_facts,
+        BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdFactSummary, DdHooks,
+        DdLlm, DdSearch, DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdLlm,
+        FailoverDdSearch, GapDetectorSuggestor, HookPatterns, SearchHit, SynthesisSuggestor,
+        consolidate_dd_hypotheses, extract_hooks_from_facts,
     },
     kb::{
-        HubCategory, KbConfig, RootPageDef, slugify, sanitize_filename,
-        update_root_pages, write_dd_to_vault, write_or_append_hub,
+        HubCategory, KbConfig, RootPageDef, sanitize_filename, slugify, update_root_pages,
+        write_dd_to_vault, write_or_append_hub,
     },
+    suggestor::{HuddleSeedSuggestor, NamedPlan, SharedBudget},
 };
 
 // ── Adversarial ────────────────────────────────────────────────────

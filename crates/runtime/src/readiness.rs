@@ -23,7 +23,7 @@
 //! }
 //! ```
 
-use organism_intent::resolution::IntentBinding;
+use organism_pack::IntentBinding;
 use serde::{Deserialize, Serialize};
 
 // ── Readiness Report ───────────────────────────────────────────────
@@ -346,7 +346,7 @@ impl ReadinessProbe for BudgetProbe {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use organism_intent::resolution::DeclarativeBinding;
+    use organism_pack::DeclarativeBinding;
 
     #[test]
     fn reports_ready_when_no_gaps() {
