@@ -16,6 +16,13 @@ members = [
     "examples/loan-application",
     "examples/resolution-showcase",
     "examples/debate-loop",
+    "examples/collab-huddle",
+    "examples/collab-panel",
+    "examples/collab-self-organizing",
+    "examples/collab-discussion",
+    "examples/charter-from-intent",
+    "examples/topology-transition",
+    "examples/shape-competition",
 ]
 
 [workspace.package]

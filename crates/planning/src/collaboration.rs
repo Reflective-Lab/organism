@@ -274,6 +274,7 @@ impl TeamFormation {
 }
 
 /// Explicit rules for how a team collaborates.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CollaborationCharter {
@@ -390,6 +391,36 @@ impl CollaborationCharter {
         self
     }
 
+    #[must_use]
+    pub fn with_discipline(mut self, discipline: CollaborationDiscipline) -> Self {
+        self.discipline = discipline;
+        self
+    }
+
+    #[must_use]
+    pub fn with_topology(mut self, topology: CollaborationTopology) -> Self {
+        self.topology = topology;
+        self
+    }
+
+    #[must_use]
+    pub fn with_minimum_members(mut self, n: usize) -> Self {
+        self.minimum_members = n;
+        self
+    }
+
+    #[must_use]
+    pub fn with_formation_mode(mut self, mode: TeamFormationMode) -> Self {
+        self.formation_mode = mode;
+        self
+    }
+
+    #[must_use]
+    pub fn with_expected_roles(mut self, roles: Vec<CollaborationRole>) -> Self {
+        self.expected_roles = roles;
+        self
+    }
+
     pub fn validate(&self, team: &TeamFormation) -> Result<(), CollaborationValidationError> {
         if team.members.len() < self.minimum_members {
             return Err(CollaborationValidationError::TooFewMembers {
@@ -491,5 +522,359 @@ mod tests {
                 role: CollaborationRole::Critic,
             })
         );
+    }
+
+    // ── Negative tests ────────────────────────────────────────────
+
+    #[test]
+    fn huddle_rejects_empty_team() {
+        let team = TeamFormation::new(TeamFormationMode::CapabilityMatched, vec![]);
+        assert_eq!(
+            CollaborationCharter::huddle().validate(&team),
+            Err(CollaborationValidationError::TooFewMembers {
+                required: 3,
+                actual: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn huddle_rejects_undersized_team() {
+        let team = TeamFormation::new(
+            TeamFormationMode::CapabilityMatched,
+            vec![
+                CollaborationMember::new("lead", "Lead", CollaborationRole::Lead),
+                CollaborationMember::new("domain", "Domain", CollaborationRole::Domain),
+            ],
+        );
+        assert_eq!(
+            CollaborationCharter::huddle().validate(&team),
+            Err(CollaborationValidationError::TooFewMembers {
+                required: 3,
+                actual: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn enforced_charter_rejects_formation_mode_mismatch() {
+        let team = TeamFormation::new(
+            TeamFormationMode::OpenCall,
+            vec![
+                CollaborationMember::new("lead", "Lead", CollaborationRole::Lead),
+                CollaborationMember::new("domain", "Domain", CollaborationRole::Domain),
+                CollaborationMember::new("critic", "Critic", CollaborationRole::Critic),
+            ],
+        );
+        assert_eq!(
+            CollaborationCharter::panel().validate(&team),
+            Err(CollaborationValidationError::FormationModeMismatch {
+                expected: TeamFormationMode::Curated,
+                actual: TeamFormationMode::OpenCall,
+            })
+        );
+    }
+
+    #[test]
+    fn moderated_charter_ignores_formation_mode_mismatch() {
+        let team = TeamFormation::new(
+            TeamFormationMode::SelfSelected,
+            vec![
+                CollaborationMember::new("mod", "Mod", CollaborationRole::Moderator),
+                CollaborationMember::new("domain", "Domain", CollaborationRole::Domain),
+                CollaborationMember::new("gen", "Gen", CollaborationRole::Generalist),
+            ],
+        );
+        assert!(
+            CollaborationCharter::discussion_group()
+                .validate(&team)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn done_gate_requires_at_least_one_voter() {
+        let team = TeamFormation::new(
+            TeamFormationMode::OpenCall,
+            vec![
+                CollaborationMember::new("writer", "Writer", CollaborationRole::ReportWriter),
+            ],
+        );
+        let charter = CollaborationCharter::self_organizing()
+            .with_consensus_rule(ConsensusRule::Majority);
+
+        let result = charter.validate(&team);
+        assert_eq!(
+            result,
+            Err(CollaborationValidationError::MissingRole {
+                role: CollaborationRole::Generalist,
+            })
+        );
+    }
+
+    #[test]
+    fn team_of_only_observers_has_no_voters() {
+        let mut charter = CollaborationCharter::self_organizing();
+        charter.expected_roles = vec![];
+        charter.require_report_owner = false;
+
+        let team = TeamFormation::new(
+            TeamFormationMode::OpenCall,
+            vec![
+                CollaborationMember::new("obs1", "Observer1", CollaborationRole::Observer),
+                CollaborationMember::new("obs2", "Observer2", CollaborationRole::Observer),
+            ],
+        );
+        assert_eq!(
+            charter.validate(&team),
+            Err(CollaborationValidationError::NoVoters)
+        );
+    }
+
+    #[test]
+    fn missing_report_owner_rejected() {
+        let mut charter = CollaborationCharter::self_organizing();
+        charter.expected_roles = vec![];
+        charter.require_done_gate = false;
+
+        let team = TeamFormation::new(
+            TeamFormationMode::OpenCall,
+            vec![
+                CollaborationMember::new("critic", "Critic", CollaborationRole::Critic),
+            ],
+        );
+        assert_eq!(
+            charter.validate(&team),
+            Err(CollaborationValidationError::MissingReportOwner)
+        );
+    }
+
+    // ── ConsensusRule edge cases ──────────────────────────────────
+
+    #[test]
+    fn majority_needs_strict_majority() {
+        assert!(!ConsensusRule::Majority.passes(2, 4));
+        assert!(ConsensusRule::Majority.passes(3, 4));
+        assert!(!ConsensusRule::Majority.passes(0, 1));
+        assert!(ConsensusRule::Majority.passes(1, 1));
+    }
+
+    #[test]
+    fn supermajority_threshold() {
+        assert!(!ConsensusRule::Supermajority.passes(1, 3));
+        assert!(ConsensusRule::Supermajority.passes(2, 3));
+        assert!(ConsensusRule::Supermajority.passes(4, 6));
+        assert!(!ConsensusRule::Supermajority.passes(3, 6));
+    }
+
+    #[test]
+    fn unanimous_requires_all() {
+        assert!(ConsensusRule::Unanimous.passes(5, 5));
+        assert!(!ConsensusRule::Unanimous.passes(4, 5));
+        assert!(!ConsensusRule::Unanimous.passes(0, 1));
+    }
+
+    #[test]
+    fn lead_decides_needs_one_yes() {
+        assert!(ConsensusRule::LeadDecides.passes(1, 100));
+        assert!(!ConsensusRule::LeadDecides.passes(0, 100));
+    }
+
+    #[test]
+    fn advisory_always_passes() {
+        assert!(ConsensusRule::AdvisoryOnly.passes(0, 0));
+        assert!(ConsensusRule::AdvisoryOnly.passes(0, 100));
+    }
+
+    #[test]
+    fn consensus_with_zero_voters() {
+        assert!(!ConsensusRule::Majority.passes(0, 0));
+        assert!(ConsensusRule::Unanimous.passes(0, 0));
+        assert!(!ConsensusRule::LeadDecides.passes(0, 0));
+    }
+
+    // ── Role capability matrix ────────────────────────────────────
+
+    #[test]
+    fn observer_cannot_contribute_vote_or_write() {
+        assert!(!CollaborationRole::Observer.contributes_in_rounds());
+        assert!(!CollaborationRole::Observer.votes_on_done_gate());
+        assert!(!CollaborationRole::Observer.can_write_report());
+    }
+
+    #[test]
+    fn report_writer_can_write_but_not_vote() {
+        assert!(!CollaborationRole::ReportWriter.contributes_in_rounds());
+        assert!(!CollaborationRole::ReportWriter.votes_on_done_gate());
+        assert!(CollaborationRole::ReportWriter.can_write_report());
+    }
+
+    #[test]
+    fn judge_can_vote_but_not_contribute_or_write() {
+        assert!(!CollaborationRole::Judge.contributes_in_rounds());
+        assert!(CollaborationRole::Judge.votes_on_done_gate());
+        assert!(!CollaborationRole::Judge.can_write_report());
+    }
+
+    #[test]
+    fn moderator_has_no_capabilities() {
+        assert!(!CollaborationRole::Moderator.contributes_in_rounds());
+        assert!(!CollaborationRole::Moderator.votes_on_done_gate());
+        assert!(!CollaborationRole::Moderator.can_write_report());
+    }
+
+    #[test]
+    fn generalist_can_do_everything() {
+        assert!(CollaborationRole::Generalist.contributes_in_rounds());
+        assert!(CollaborationRole::Generalist.votes_on_done_gate());
+        assert!(CollaborationRole::Generalist.can_write_report());
+    }
+
+    // ── TeamFormation helpers ─────────────────────────────────────
+
+    #[test]
+    fn contributors_excludes_non_contributing_roles() {
+        let team = sample_panel_team();
+        let contributors = team.contributors();
+        assert!(contributors.iter().all(|m| m.role.contributes_in_rounds()));
+        assert!(
+            !contributors
+                .iter()
+                .any(|m| m.role == CollaborationRole::Judge
+                    || m.role == CollaborationRole::ReportWriter)
+        );
+    }
+
+    #[test]
+    fn voters_excludes_non_voting_roles() {
+        let team = sample_panel_team();
+        let voters = team.voters();
+        assert!(voters.iter().all(|m| m.role.votes_on_done_gate()));
+    }
+
+    #[test]
+    fn report_owner_picks_first_capable() {
+        let team = TeamFormation::curated(vec![
+            CollaborationMember::new("observer", "Observer", CollaborationRole::Observer),
+            CollaborationMember::new("critic", "Critic", CollaborationRole::Critic),
+            CollaborationMember::new("writer", "Writer", CollaborationRole::ReportWriter),
+        ]);
+        assert_eq!(team.report_owner().unwrap().id, "writer");
+    }
+
+    #[test]
+    fn report_owner_none_when_no_capable() {
+        let team = TeamFormation::curated(vec![
+            CollaborationMember::new("observer", "Observer", CollaborationRole::Observer),
+            CollaborationMember::new("critic", "Critic", CollaborationRole::Critic),
+        ]);
+        assert!(team.report_owner().is_none());
+    }
+
+    #[test]
+    fn member_with_persona() {
+        let member = CollaborationMember::new("critic", "Red Team", CollaborationRole::Critic)
+            .with_persona("Aggressive skeptic who challenges every assumption");
+        assert_eq!(
+            member.persona.as_deref(),
+            Some("Aggressive skeptic who challenges every assumption")
+        );
+    }
+
+    // ── Charter preset invariants ─────────────────────────────────
+
+    #[test]
+    fn all_presets_require_round_synthesis() {
+        assert!(CollaborationCharter::huddle().require_round_synthesis);
+        assert!(CollaborationCharter::discussion_group().require_round_synthesis);
+        assert!(CollaborationCharter::panel().require_round_synthesis);
+        assert!(CollaborationCharter::self_organizing().require_round_synthesis);
+    }
+
+    #[test]
+    fn self_organizing_is_the_only_single_member_preset() {
+        assert_eq!(CollaborationCharter::self_organizing().minimum_members, 1);
+        assert!(CollaborationCharter::huddle().minimum_members >= 3);
+        assert!(CollaborationCharter::discussion_group().minimum_members >= 3);
+        assert!(CollaborationCharter::panel().minimum_members >= 3);
+    }
+
+    // ── Proptest ──────────────────────────────────────────────────
+
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn arb_consensus_rule() -> impl Strategy<Value = ConsensusRule> {
+            prop_oneof![
+                Just(ConsensusRule::Majority),
+                Just(ConsensusRule::Supermajority),
+                Just(ConsensusRule::Unanimous),
+                Just(ConsensusRule::LeadDecides),
+                Just(ConsensusRule::AdvisoryOnly),
+            ]
+        }
+
+        proptest! {
+            #[test]
+            fn consensus_yes_votes_never_exceed_total(
+                rule in arb_consensus_rule(),
+                total in 0_usize..100,
+                yes in 0_usize..100,
+            ) {
+                if yes <= total {
+                    let _ = rule.passes(yes, total);
+                }
+            }
+
+            #[test]
+            fn unanimous_passes_iff_all_vote_yes(
+                total in 0_usize..50,
+                yes in 0_usize..50,
+            ) {
+                prop_assume!(yes <= total);
+                let result = ConsensusRule::Unanimous.passes(yes, total);
+                prop_assert_eq!(result, yes == total);
+            }
+
+            #[test]
+            fn advisory_always_passes_regardless_of_votes(
+                total in 0_usize..100,
+                yes in 0_usize..100,
+            ) {
+                prop_assert!(ConsensusRule::AdvisoryOnly.passes(yes, total));
+            }
+
+            #[test]
+            fn majority_monotonic_in_yes_votes(
+                total in 1_usize..50,
+                yes1_frac in 0.0..=1.0_f64,
+                yes2_frac in 0.0..=1.0_f64,
+            ) {
+                let (lo, hi) = if yes1_frac <= yes2_frac {
+                    (yes1_frac, yes2_frac)
+                } else {
+                    (yes2_frac, yes1_frac)
+                };
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
+                let yes1 = (lo * total as f64) as usize;
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
+                let yes2 = (hi * total as f64) as usize;
+                if ConsensusRule::Majority.passes(yes1, total) {
+                    prop_assert!(ConsensusRule::Majority.passes(yes2, total));
+                }
+            }
+
+            #[test]
+            fn supermajority_is_stricter_than_majority(
+                total in 1_usize..50,
+                yes in 0_usize..50,
+            ) {
+                prop_assume!(yes <= total);
+                if ConsensusRule::Supermajority.passes(yes, total) {
+                    prop_assert!(ConsensusRule::Majority.passes(yes, total));
+                }
+            }
+        }
     }
 }

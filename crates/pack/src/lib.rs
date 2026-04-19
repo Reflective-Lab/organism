@@ -78,6 +78,15 @@ pub use organism_planning::{
     CollaborationTopology, CollaborationValidationError, ConsensusRule, CostEstimate, Impact,
     Likelihood, Plan, PlanAnnotation, PlanBundle, PlanContribution, PlanStep, Reasoner,
     ReasoningSystem, Risk, RiskImpact, TeamFormation, TeamFormationMode, TurnCadence,
+    charter_derivation::{DerivedCharter, DerivationRationale, IntentComplexity, derive_charter, derive_charter_with_priors},
+    topology_transition::{
+        CharterAdjustments, ConvergenceSignals, TransitionDecision, TransitionRule,
+        TransitionTrigger, apply_adjustments, default_transition_rules, evaluate_transitions,
+    },
+    shape_hypothesis::{
+        ShapeCalibration, ShapeCandidate, ShapeCompetition, ShapeMetric, ShapeObservation,
+        calibrate_shape, classify_problem, generate_candidates, score_observation, select_winner,
+    },
     dd::{
         BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdFactSummary, DdHooks,
         DdLlm, DdSearch, DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdLlm,

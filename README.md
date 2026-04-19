@@ -53,10 +53,22 @@ Multiple reasoners run in parallel — LLM, constraint solver, ML prediction, ca
 
 Organism also models **how a team collaborates**, not just that it collaborates.
 
+#### Static presets
+
 - `CollaborationCharter::huddle()` — strict turn-taking, synthesis, dissent map, done gate
 - `CollaborationCharter::discussion_group()` — moderated discussion with lighter decision pressure
 - `CollaborationCharter::panel()` — curated expert panel with explicit roles and a demanding done gate
 - `CollaborationCharter::self_organizing()` — loose self-organizing "figure it out" mode
+
+#### Dynamic collaboration
+
+Collaboration shapes are not fixed — they are **derived, adaptive, and self-discovering**:
+
+1. **Charter derivation** — `derive_charter(intent, now)` reads 6 complexity signals (reversibility, authority breadth, constraint pressure, forbidden density, time pressure, escalation) and produces a charter with transparent rationale. Irreversible acquisition → Panel/Enforced/Unanimous. Low-stakes exploration → SelfOrganizing/Loose/Advisory.
+
+2. **Topology transitions** — mid-run shape changes driven by convergence signals. Rules fire when evidence clusters (Swarm→Huddle), contradictions spike (Huddle→Panel), stability is reached (Panel→Synthesis), or budget runs low (Any→Tighter). The `CollaborationRunner` re-forms the team when a transition fires.
+
+3. **Shape-as-hypothesis** — the most radical: the collaboration shape itself competes as a hypothesis. Multiple candidate shapes are scored by evidence quality, convergence speed, or contradiction minimization. The learning layer calibrates priors so future derivations are informed by past outcomes. Over time the system discovers collaboration patterns that no human would design.
 
 Those collaboration contracts sit in `organism-pack` with `TeamFormation`,
 `CollaborationRole`, `ConsensusRule`, and `TurnCadence`.
@@ -225,6 +237,13 @@ Organism uses Converge types directly — no wrapper layers. The Rust type syste
 | [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
+| [`collab-huddle`](examples/collab-huddle) | Strict huddle with done-gate voting and validation failures |
+| [`collab-panel`](examples/collab-panel) | Curated panel with role matrix and formation enforcement |
+| [`collab-self-organizing`](examples/collab-self-organizing) | Solo start → swarm growth, advisory consensus |
+| [`collab-discussion`](examples/collab-discussion) | Moderated discussion, full topology/cadence/consensus comparison |
+| [`charter-from-intent`](examples/charter-from-intent) | Dynamic charter derivation from intent properties |
+| [`topology-transition`](examples/topology-transition) | Mid-run shape changes over a simulated convergence loop |
+| [`shape-competition`](examples/shape-competition) | Competing shapes, scoring, winner selection, prior calibration |
 
 Golden path for apps above Organism:
 

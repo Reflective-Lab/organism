@@ -77,7 +77,7 @@ impl HuddleSeedSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for HuddleSeedSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "organism-huddle-seed"
     }
 
@@ -297,7 +297,7 @@ where
         *self.last_hypothesis_count.lock().unwrap() = hypotheses.len();
         *self.generation_count.lock().unwrap() += 1;
 
-        let new_strategies = (self.analyze)(&hypotheses);
+        let new_strategies = (self.analyze)(hypotheses);
 
         let proposals: Vec<ProposedFact> = new_strategies
             .into_iter()
@@ -399,7 +399,7 @@ where
         }
 
         let facts = ctx.get(self.watch_key);
-        let results = (self.synthesize)(&facts);
+        let results = (self.synthesize)(facts);
 
         let proposals: Vec<ProposedFact> = results
             .into_iter()
@@ -465,7 +465,7 @@ impl HypothesisTrackerSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for HypothesisTrackerSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "organism-hypothesis-tracker"
     }
 

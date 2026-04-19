@@ -14,7 +14,9 @@ pub mod collaboration;
 pub mod readiness;
 pub mod registry;
 
-pub use collaboration::{CollaborationParticipant, CollaborationRunner, CollaborationRunnerError};
+pub use collaboration::{
+    CollaborationParticipant, CollaborationRunner, CollaborationRunnerError, TransitionRecord,
+};
 pub use organism_pack::{
     CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,
     ResolutionLevel, ResolutionTrace,

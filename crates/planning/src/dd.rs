@@ -286,7 +286,7 @@ impl BreadthResearchSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for BreadthResearchSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-breadth-research"
     }
 
@@ -400,7 +400,7 @@ impl DepthResearchSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for DepthResearchSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-depth-research"
     }
 
@@ -493,7 +493,7 @@ impl FactExtractorSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for FactExtractorSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-fact-extractor"
     }
 
@@ -617,7 +617,7 @@ impl GapDetectorSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for GapDetectorSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-gap-detector"
     }
 
@@ -650,7 +650,7 @@ impl Suggestor for GapDetectorSuggestor {
         };
 
         let prompt =
-            prompts::gap_detection(&self.subject, &hypotheses, generation, self.max_generations);
+            prompts::gap_detection(&self.subject, hypotheses, generation, self.max_generations);
         let mut proposals = Vec::new();
         let mut seen_strategy_contents: HashSet<String> = ctx
             .get(ContextKey::Strategies)
@@ -719,7 +719,7 @@ impl ContradictionFinderSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for ContradictionFinderSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-contradiction-finder"
     }
 
@@ -838,7 +838,7 @@ impl SynthesisSuggestor {
 
 #[async_trait::async_trait]
 impl Suggestor for SynthesisSuggestor {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dd-synthesis"
     }
 
@@ -1254,7 +1254,7 @@ fn extract_named_entities(claim: &str, exclude_lower: &str, triggers: &[String])
         if let Some(pos) = claim_lower.find(trigger.as_str()) {
             let after = &claim[pos + trigger.len()..];
             let entity = after
-                .split(|c: char| c == ',' || c == '.' || c == ';' || c == '(' || c == ')')
+                .split([',', '.', ';', '(', ')'])
                 .next()
                 .unwrap_or("")
                 .trim();
@@ -1367,6 +1367,7 @@ fn summary_from_normalized_fact(fact: &serde_json::Value) -> Option<DdFactSummar
     })
 }
 
+#[allow(clippy::float_cmp)]
 fn merge_exact_summary(existing: &mut DdFactSummary, candidate: DdFactSummary) {
     existing.support_count += candidate.support_count;
     existing.evidence_count += candidate.evidence_count;
@@ -1474,6 +1475,7 @@ fn claim_is_approximate(claim: &str) -> bool {
     .any(|needle| normalized.contains(needle))
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn fact_priority_score(
     summary: &DdFactSummary,
     approximate: bool,
@@ -1519,7 +1521,6 @@ fn category_fact_cap(category: &str) -> usize {
         "technology" => 5,
         "financials" => 4,
         "customers" | "competition" => 3,
-        "product" | "market" | "team" | "governance" | "risk" => 2,
         _ => 2,
     }
 }
@@ -1550,6 +1551,7 @@ fn should_skip_candidate(
         && (!existing.approximate || candidate.numeric_tokens == existing.numeric_tokens)
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn token_similarity(left: &HashSet<String>, right: &HashSet<String>) -> f64 {
     if left.is_empty() || right.is_empty() {
         return 0.0;
@@ -2102,5 +2104,324 @@ mod tests {
         ]);
 
         assert_eq!(summaries.len(), 2);
+    }
+
+    // ── Negative tests ────────────────────────────────────────────
+
+    #[test]
+    fn normalize_dd_fact_rejects_empty_claim() {
+        assert!(normalize_dd_fact(&serde_json::json!({
+            "claim": "",
+            "category": "product",
+        }))
+        .is_none());
+    }
+
+    #[test]
+    fn normalize_dd_fact_rejects_whitespace_only_claim() {
+        assert!(normalize_dd_fact(&serde_json::json!({
+            "claim": "   ",
+            "category": "product",
+        }))
+        .is_none());
+    }
+
+    #[test]
+    fn normalize_dd_fact_rejects_missing_claim() {
+        assert!(normalize_dd_fact(&serde_json::json!({
+            "category": "product",
+        }))
+        .is_none());
+    }
+
+    #[test]
+    fn normalize_dd_fact_clamps_confidence() {
+        let normalized = normalize_dd_fact(&serde_json::json!({
+            "claim": "test",
+            "category": "product",
+            "confidence": 5.0,
+        }))
+        .unwrap();
+        assert_eq!(normalized["confidence"], 1.0);
+
+        let normalized = normalize_dd_fact(&serde_json::json!({
+            "claim": "test",
+            "category": "product",
+            "confidence": -1.0,
+        }))
+        .unwrap();
+        assert_eq!(normalized["confidence"], 0.0);
+    }
+
+    #[test]
+    fn normalize_dd_fact_defaults_missing_confidence() {
+        let normalized = normalize_dd_fact(&serde_json::json!({
+            "claim": "test claim",
+            "category": "product",
+        }))
+        .unwrap();
+        assert_eq!(normalized["confidence"], 0.5);
+    }
+
+    #[test]
+    fn normalize_dd_fact_filters_non_integer_source_indices() {
+        let normalized = normalize_dd_fact(&serde_json::json!({
+            "claim": "test",
+            "category": "product",
+            "source_indices": [0, "bad", 2, null, 3],
+        }))
+        .unwrap();
+        let indices = normalized["source_indices"].as_array().unwrap();
+        assert_eq!(indices.len(), 3);
+    }
+
+    #[test]
+    fn parse_json_array_response_rejects_plain_text() {
+        assert!(parse_json_array_response("just some text", "facts").is_err());
+    }
+
+    #[test]
+    fn parse_json_array_response_rejects_object_with_wrong_field() {
+        assert!(
+            parse_json_array_response(r#"{"results":[{"claim":"X"}]}"#, "facts").is_err()
+        );
+    }
+
+    #[test]
+    fn parse_json_array_response_rejects_scalar() {
+        assert!(parse_json_array_response("42", "facts").is_err());
+        assert!(parse_json_array_response("true", "facts").is_err());
+        assert!(parse_json_array_response(r#""string""#, "facts").is_err());
+    }
+
+    #[test]
+    fn extract_first_json_value_returns_none_for_no_json() {
+        assert!(extract_first_json_value("no json here").is_none());
+    }
+
+    #[test]
+    fn extract_first_json_value_returns_none_for_mismatched_braces() {
+        assert!(extract_first_json_value("{unclosed").is_none());
+        assert!(extract_first_json_value("[}").is_none());
+    }
+
+    #[test]
+    fn extract_first_json_value_handles_escaped_quotes_in_strings() {
+        let result = extract_first_json_value(r#"prefix {"key":"val\"ue"} suffix"#);
+        assert!(result.is_some());
+        let parsed: serde_json::Value = serde_json::from_str(result.unwrap()).unwrap();
+        assert_eq!(parsed["key"], r#"val"ue"#);
+    }
+
+    #[test]
+    fn consolidate_dd_fact_values_handles_empty_input() {
+        assert!(consolidate_dd_fact_values(vec![]).is_empty());
+    }
+
+    #[test]
+    fn consolidate_dd_fact_values_handles_all_invalid_facts() {
+        let summaries = consolidate_dd_fact_values(vec![
+            serde_json::json!({"claim": "", "category": "product"}),
+            serde_json::json!({"no_claim": true}),
+            serde_json::json!(null),
+        ]);
+        assert!(summaries.is_empty());
+    }
+
+    #[test]
+    fn next_batch_bounds_zero_total() {
+        assert_eq!(next_batch_bounds(0, 0, 15), (0, 0));
+    }
+
+    #[test]
+    fn next_batch_bounds_processed_exceeds_total() {
+        assert_eq!(next_batch_bounds(5, 100, 15), (5, 5));
+    }
+
+    #[test]
+    fn canonicalize_claim_handles_empty_string() {
+        assert_eq!(canonicalize_claim(""), "");
+    }
+
+    #[test]
+    fn canonicalize_claim_handles_only_punctuation() {
+        assert_eq!(canonicalize_claim("!!!...???"), "");
+    }
+
+    #[test]
+    fn synthesis_does_not_accept_when_proposals_exist() {
+        let budget = Arc::new(SharedBudget::new().with_limit("llm", 1));
+        let suggestor = SynthesisSuggestor::new("Acme", budget, Arc::new(StubLlm));
+
+        let ctx_with_proposals = StubContext {
+            hypothesis_count: 10,
+            has_proposals: true,
+        };
+        assert!(!suggestor.accepts(&ctx_with_proposals));
+    }
+
+    #[test]
+    fn synthesis_does_not_accept_without_hypotheses() {
+        let budget = Arc::new(SharedBudget::new().with_limit("llm", 1));
+        let suggestor = SynthesisSuggestor::new("Acme", budget, Arc::new(StubLlm));
+
+        let empty_ctx = StubContext {
+            hypothesis_count: 0,
+            has_proposals: false,
+        };
+        assert!(!suggestor.accepts(&empty_ctx));
+    }
+
+    #[test]
+    fn dd_error_infra_vs_non_infra() {
+        assert!(DdError::CreditsExhausted {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_infra_failure());
+        assert!(DdError::RateLimited {
+            provider: "x".into(),
+            retry_after_ms: None
+        }
+        .is_infra_failure());
+        assert!(DdError::ProviderUnavailable {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_infra_failure());
+
+        assert!(!DdError::BadResponse {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_infra_failure());
+        assert!(!DdError::ParseFailed {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_infra_failure());
+        assert!(!DdError::PromptTooLarge {
+            provider: "x".into(),
+            tokens: None
+        }
+        .is_infra_failure());
+    }
+
+    #[test]
+    fn dd_error_only_credits_exhausted_is_fatal() {
+        assert!(DdError::CreditsExhausted {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_fatal());
+        assert!(!DdError::RateLimited {
+            provider: "x".into(),
+            retry_after_ms: None
+        }
+        .is_fatal());
+        assert!(!DdError::ProviderUnavailable {
+            provider: "x".into(),
+            detail: "y".into()
+        }
+        .is_fatal());
+    }
+
+    // ── Proptests ─────────────────────────────────────────────────
+
+    #[allow(clippy::cast_precision_loss)]
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn canonicalize_is_idempotent(claim in ".*") {
+                let first = canonicalize_claim(&claim);
+                let second = canonicalize_claim(&first);
+                prop_assert_eq!(first, second);
+            }
+
+            #[test]
+            fn canonicalize_is_case_insensitive(claim in "[a-zA-Z0-9 ]{1,100}") {
+                prop_assert_eq!(
+                    canonicalize_claim(&claim),
+                    canonicalize_claim(&claim.to_uppercase())
+                );
+            }
+
+            #[test]
+            fn normalize_dd_fact_never_panics(
+                claim in ".*",
+                category in ".*",
+                confidence in proptest::num::f64::ANY,
+            ) {
+                let _ = normalize_dd_fact(&serde_json::json!({
+                    "claim": claim,
+                    "category": category,
+                    "confidence": confidence,
+                }));
+            }
+
+            #[test]
+            fn normalize_preserves_non_empty_claims(
+                claim in "[a-zA-Z]{1,50}",
+                category in prop_oneof![
+                    Just("product"), Just("technology"), Just("financials"),
+                    Just("customers"), Just("competition"), Just("market"),
+                ],
+            ) {
+                let normalized = normalize_dd_fact(&serde_json::json!({
+                    "claim": claim,
+                    "category": category,
+                    "confidence": 0.8,
+                }));
+                prop_assert!(normalized.is_some());
+                let n = normalized.unwrap();
+                prop_assert!(!n["claim"].as_str().unwrap().is_empty());
+            }
+
+            #[test]
+            fn consolidate_never_panics(
+                n in 0_usize..20,
+            ) {
+                let categories = ["product", "technology", "financials"];
+                let facts: Vec<serde_json::Value> = (0..n).map(|i| {
+                    serde_json::json!({
+                        "claim": format!("Fact number {i} about the company"),
+                        "category": categories[i % 3],
+                        "source_indices": [i],
+                        "confidence": 0.5 + (i as f64 * 0.02),
+                    })
+                }).collect();
+                let result = consolidate_dd_fact_values(facts);
+                prop_assert!(result.len() <= n);
+            }
+
+            #[test]
+            fn next_batch_bounds_always_valid(
+                total in 0_usize..1000,
+                processed in 0_usize..1000,
+                max_batch in 1_usize..100,
+            ) {
+                let (start, end) = next_batch_bounds(total, processed, max_batch);
+                prop_assert!(start <= total);
+                prop_assert!(end <= total);
+                prop_assert!(start <= end);
+                prop_assert!(end - start <= max_batch);
+            }
+
+            #[test]
+            fn extract_first_json_value_never_panics(input in ".*") {
+                let _ = extract_first_json_value(&input);
+            }
+
+            #[test]
+            fn parse_json_array_response_never_panics(
+                input in ".*",
+                field in "[a-z]{1,10}",
+            ) {
+                let _ = parse_json_array_response(&input, &field);
+            }
+        }
     }
 }

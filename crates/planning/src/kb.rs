@@ -5,6 +5,7 @@
 //! hub categories, and root page definitions.
 
 use std::collections::HashSet;
+use std::fmt::Write;
 use std::path::Path;
 
 use chrono::Utc;
@@ -46,6 +47,7 @@ pub struct RootPageDef {
 /// Write convergent DD results to an Obsidian vault.
 ///
 /// Returns the list of written file paths (relative to `vault_root`).
+#[allow(clippy::too_many_lines)]
 pub fn write_dd_to_vault(
     vault_root: &Path,
     subject: &str,
@@ -130,7 +132,8 @@ pub fn write_dd_to_vault(
             String::new()
         };
 
-        facts_body.push_str(&format!(
+        let _ = write!(
+            facts_body,
             "### Fact {num}\n\n\
              **Category:** `{cat}`\n\
              **Confidence:** {conf_label} ({conf:.0}%){support}\n\
@@ -139,7 +142,7 @@ pub fn write_dd_to_vault(
             cat = fact.category,
             conf = fact.confidence * 100.0,
             claim = fact.claim,
-        ));
+        );
     }
 
     let facts_page = format!(
@@ -175,26 +178,30 @@ pub fn write_dd_to_vault(
         let content = synthesis
             .as_ref()
             .and_then(|s| s[json_key].as_str())
-            .map(String::from)
-            .unwrap_or_else(|| {
-                let matching: Vec<String> = consolidated
-                    .iter()
-                    .filter(|f| {
-                        f.category == *category
-                            || (*category == "competition" && f.category == "competitors")
-                    })
-                    .map(|f| format!("- {}", f.claim))
-                    .collect();
-                if matching.is_empty() {
-                    format!("*No {name} data collected during this run.*")
-                } else {
-                    format!(
-                        "*Synthesis did not complete. Facts in this category:*\n\n{}",
-                        matching.join("\n")
-                    )
-                }
-            });
+            .map_or_else(
+                || {
+                    let matching: Vec<String> = consolidated
+                        .iter()
+                        .filter(|f| {
+                            f.category == *category
+                                || (*category == "competition" && f.category == "competitors")
+                        })
+                        .map(|f| format!("- {}", f.claim))
+                        .collect();
+                    if matching.is_empty() {
+                        format!("*No {name} data collected during this run.*")
+                    } else {
+                        format!(
+                            "*Synthesis did not complete. Facts in this category:*\n\n{}",
+                            matching.join("\n")
+                        )
+                    }
+                },
+                String::from,
+            );
 
+        let cat_tag = category;
+        let entity_tag = &slug;
         let page = format!(
             "---\ntags: [analysis, {cat_tag}, {entity_tag}]\n\
              provenance: inferred\ncorrelation_id: {corr}\n\
@@ -203,8 +210,6 @@ pub fn write_dd_to_vault(
              > Synthesised from convergent DD facts.\n\
              > Provenance: **inferred**. Verify claims against [[Facts]] source links.\n\n\
              {content}\n",
-            cat_tag = category,
-            entity_tag = slug,
         );
         std::fs::write(analysis_dir.join(format!("{name}.md")), &page)?;
         written_files.push(format!("{}/{slug}/Analysis/{name}.md", config.entity_dir));
@@ -215,14 +220,17 @@ pub fn write_dd_to_vault(
     let risks_body = synthesis
         .as_ref()
         .and_then(|s| s["risk_factors"].as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(|s| format!("- {s}")))
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .unwrap_or_else(|| "*No risk factors synthesised.*".to_string());
+        .map_or_else(
+            || "*No risk factors synthesised.*".to_string(),
+            |arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(|s| format!("- {s}")))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            },
+        );
 
+    let entity_tag = &slug;
     let risks_page = format!(
         "---\ntags: [risks, {entity_tag}]\nprovenance: inferred\n\
          correlation_id: {corr}\ngenerated_at: {now}\n---\n\
@@ -230,7 +238,6 @@ pub fn write_dd_to_vault(
          > Synthesised from convergent DD.\n\
          > Provenance: **inferred**. Verify against source data.\n\n\
          {risks_body}\n",
-        entity_tag = slug,
     );
     std::fs::write(base.join("Risks.md"), &risks_page)?;
     written_files.push(format!("{}/{slug}/Risks.md", config.entity_dir));
@@ -240,13 +247,15 @@ pub fn write_dd_to_vault(
     let opps_body = synthesis
         .as_ref()
         .and_then(|s| s["growth_opportunities"].as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(|s| format!("- {s}")))
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .unwrap_or_else(|| "*No growth opportunities synthesised.*".to_string());
+        .map_or_else(
+            || "*No growth opportunities synthesised.*".to_string(),
+            |arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(|s| format!("- {s}")))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            },
+        );
 
     let opps_page = format!(
         "---\ntags: [opportunities, {entity_tag}]\nprovenance: inferred\n\
@@ -255,7 +264,6 @@ pub fn write_dd_to_vault(
          > Synthesised from convergent DD.\n\
          > Provenance: **inferred**. Verify against source data.\n\n\
          {opps_body}\n",
-        entity_tag = slug,
     );
     std::fs::write(base.join("Opportunities.md"), &opps_page)?;
     written_files.push(format!("{}/{slug}/Opportunities.md", config.entity_dir));
@@ -289,13 +297,13 @@ pub fn write_dd_to_vault(
             .collect();
 
         if !contra_body.is_empty() {
+            let entity_tag = &slug;
             let contra_page = format!(
                 "---\ntags: [contradictions, {entity_tag}]\n\
                  correlation_id: {corr}\ngenerated_at: {now}\n---\n\
                  # {subject} — Contradictions\n\n\
                  > Sources that disagree on the same claim. Resolve before decisions.\n\n\
                  {contra_body}",
-                entity_tag = slug,
             );
             std::fs::write(base.join("Contradictions.md"), &contra_page)?;
             written_files.push(format!("{}/{slug}/Contradictions.md", config.entity_dir));
@@ -458,7 +466,7 @@ pub fn update_root_pages(vault_root: &Path, config: &KbConfig) -> anyhow::Result
                 for entry in std::fs::read_dir(&dir)? {
                     let entry = entry?;
                     let path = entry.path();
-                    if path.extension().map_or(true, |e| e != "md") {
+                    if path.extension().is_none_or(|e| e != "md") {
                         continue;
                     }
                     let stem = path
@@ -489,10 +497,10 @@ pub fn update_root_pages(vault_root: &Path, config: &KbConfig) -> anyhow::Result
         let mut body = String::new();
         for (section_title, children) in &sections {
             if !section_title.is_empty() {
-                body.push_str(&format!("### {section_title}\n\n"));
+                let _ = write!(body, "### {section_title}\n\n");
             }
             for (link, display) in children {
-                body.push_str(&format!("- [[{link}|{display}]]\n"));
+                let _ = writeln!(body, "- [[{link}|{display}]]");
             }
             body.push('\n');
         }
@@ -525,7 +533,7 @@ fn find_overview_page(subject_dir: &Path) -> Option<String> {
     for entry in std::fs::read_dir(subject_dir).ok()? {
         let entry = entry.ok()?;
         let path = entry.path();
-        if path.extension().map_or(true, |e| e != "md") || path.is_dir() {
+        if path.extension().is_none_or(|e| e != "md") || path.is_dir() {
             continue;
         }
         let stem = path.file_stem()?.to_string_lossy().to_string();

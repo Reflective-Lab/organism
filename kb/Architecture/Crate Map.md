@@ -28,7 +28,9 @@ Default downstream rule:
 
 ```
 intent           (no internal deps)     Intent packets, admission, decomposition
-planning         → intent               Huddle, debate loop, plan annotations
+planning         → intent               Huddle, debate loop, plan annotations,
+                                        charter derivation, topology transitions,
+                                        shape-as-hypothesis
 adversarial      (no internal deps)     Challenges, skepticism taxonomy, adversarial signals
 simulation       (no internal deps)     Dimension results, simulation runner trait
 learning         (no internal deps)     Episodes, prediction error, prior calibration

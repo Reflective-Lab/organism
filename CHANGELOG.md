@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-19
+
+### Added
+- **Dynamic charter derivation** — `derive_charter(intent, now)` reads 6 complexity signals from an `IntentPacket` and produces a `CollaborationCharter` with per-field rationale; `derive_charter_with_priors()` integrates historical shape calibration
+- **Topology transitions** — data-driven mid-run shape changes with 5 trigger types (`EvidenceClustering`, `ContradictionSpike`, `StabilityReached`, `BudgetPressure`, `ConsensusDeadlock`) and 4 canonical transition rules (Swarm→Huddle, Huddle→Panel, Panel→Synthesis, Any→Tighter)
+- **Shape-as-hypothesis** — collaboration shapes compete as hypotheses; `generate_candidates()` produces 2–3 shapes, `score_observation()` evaluates 4 metrics, `calibrate_shape()` converges priors over episodes
+- `CollaborationCharter` builder methods: `with_discipline`, `with_topology`, `with_minimum_members`, `with_formation_mode`, `with_expected_roles`
+- `CollaborationRunner::transition()` for runtime team re-formation with transition log
+- `TransitionRecord` for tracking topology change history
+- 7 new collaboration examples: huddle, panel, discussion, self-organizing, charter-from-intent, topology-transition, shape-competition
+- `proptest` workspace dependency and property-based tests across planning, learning, and runtime
+- Comprehensive negative tests and edge case coverage
+
+### Changed
+- Converge deps bumped to v3.4.0 (new `metadata` field on `ExperienceEvent::OutcomeRecorded`)
+- Fixed all clippy pedantic warnings across the workspace
+- Fixed non-deterministic `HashMap` iteration in `CollaborationRunner` tests
+
 ## [0.1.0] - 2026-04-14
 
 ### Added

@@ -34,6 +34,26 @@ IntentPacket
         │
         ↓
     learning.rs: LearningSignal → calibrate priors
+        │
+        ↓
+    shape calibration → derive_charter_with_priors (loop closes)
+```
+
+## Dynamic Collaboration Layer
+
+Charter derivation sits between intent admission and the huddle:
+
+```
+IntentPacket
+  │
+  ├─ derive_charter(intent, now) → DerivedCharter
+  │     (6 complexity signals → charter + rationale)
+  │
+  ├─ [during run] evaluate_transitions(signals) → TopologyTransition
+  │     (Swarm→Huddle, Huddle→Panel, Panel→Synthesis, budget tighten)
+  │
+  └─ [post-run] calibrate_shape(observation) → ShapeCalibration
+        (priors fed back into derive_charter_with_priors)
 ```
 
 ## Where Each Crate Owns

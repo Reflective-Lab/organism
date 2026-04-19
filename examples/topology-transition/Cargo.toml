@@ -1,0 +1,10 @@
+[package]
+name = "example-topology-transition"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+organism-pack = { path = "../../crates/pack" }
+organism-intent = { path = "../../crates/intent" }
+chrono = "0.4"

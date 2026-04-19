@@ -38,6 +38,7 @@ pub fn build_episode(
 
 /// Build a learning episode from a completed run using both context and
 /// queried experience events from the Converge `ExperienceStore`.
+#[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
 pub fn build_episode_from_run(
     intent_id: Uuid,
     plan_id: Uuid,
@@ -52,7 +53,7 @@ pub fn build_episode_from_run(
     let strategies = ctx.get(ContextKey::Strategies);
 
     // Extract category coverage from hypotheses
-    let categories = extract_categories(&hypotheses);
+    let categories = extract_categories(hypotheses);
     let contradiction_count = evaluations
         .iter()
         .filter(|f| f.content.contains("contradiction"))
@@ -61,7 +62,7 @@ pub fn build_episode_from_run(
     // Predicted outcome: the synthesis proposal if present.
     // Actual outcome: the final governed business result that survived promotion.
     // Run status: the terminal engine outcome captured in experience envelopes.
-    let actual_outcome = latest_governed_outcome(&proposals);
+    let actual_outcome = latest_governed_outcome(proposals);
     let predicted_outcome = actual_outcome
         .clone()
         .unwrap_or_else(|| format!("No synthesis produced for {subject}"));
@@ -157,22 +158,22 @@ pub fn build_episode_from_run(
         });
     }
 
-    if let Some(outcome) = latest_outcome_event(events) {
-        if !outcome.passed {
-            lessons.push(Lesson {
-                insight: format!(
-                    "Run ended without a passing outcome{}",
-                    outcome
-                        .stop_reason
-                        .as_deref()
-                        .map_or(String::new(), |reason| format!(" ({reason})"))
-                ),
-                context: subject.to_string(),
-                confidence: 0.75,
-                planning_adjustment:
-                    "Tighten the initial plan or widen search budget before re-running".into(),
-            });
-        }
+    if let Some(outcome) = latest_outcome_event(events)
+        && !outcome.passed
+    {
+        lessons.push(Lesson {
+            insight: format!(
+                "Run ended without a passing outcome{}",
+                outcome
+                    .stop_reason
+                    .as_deref()
+                    .map_or(String::new(), |reason| format!(" ({reason})"))
+            ),
+            context: subject.to_string(),
+            confidence: 0.75,
+            planning_adjustment:
+                "Tighten the initial plan or widen search budget before re-running".into(),
+        });
     }
 
     let budget_blocks = budget_exceeded_count(events);
@@ -336,7 +337,7 @@ pub fn calibrate_priors(
             };
 
             // Simple Bayesian-ish update: blend prior with observation
-            let observation_weight = 1.0 / (evidence as f64 + 2.0);
+            let observation_weight = 1.0 / (f64::from(evidence) + 2.0);
             let posterior =
                 prior_conf * (1.0 - observation_weight) + dim.actual * observation_weight;
 
@@ -434,6 +435,7 @@ fn budget_exceeded_count(events: &[ExperienceEventEnvelope]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use converge_kernel::{Context, Engine, ExperienceEvent, ExperienceEventEnvelope};
     use converge_pack::ContextKey;
 
@@ -449,6 +451,7 @@ mod tests {
                 tokens: None,
                 cost_microdollars: None,
                 backend: Some("converge-engine".into()),
+                metadata: HashMap::default(),
             },
         )
     }
@@ -602,5 +605,299 @@ mod tests {
                 .iter()
                 .any(|signal| signal.note.contains("converged"))
         );
+    }
+
+    // ── Negative & edge case tests ────────────────────────────────
+
+    #[test]
+    fn build_episode_empty_context_no_events() {
+        let ctx = converge_kernel::Context::new();
+        let episode =
+            build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "EmptyCo", &ctx, &[]);
+
+        assert!(episode.actual_outcome.is_none());
+        assert!(episode.run_status.is_none());
+        assert!(episode.predicted_outcome.contains("No synthesis produced"));
+        assert!(episode.prediction_error.is_some());
+        let error = episode.prediction_error.unwrap();
+        assert!((error.magnitude - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn extract_signals_empty_context_no_events_emits_missed() {
+        let ctx = converge_kernel::Context::new();
+        let signals = extract_signals_from_run(&ctx, &[]);
+
+        assert!(
+            signals
+                .iter()
+                .any(|s| matches!(s.kind, SignalKind::OutcomeMissedExpectation))
+        );
+    }
+
+    #[test]
+    fn extract_signals_failing_outcome_emits_missed() {
+        let ctx = converge_kernel::Context::new();
+        let signals =
+            extract_signals_from_run(&ctx, &[make_outcome_event(false, "budget_exhausted")]);
+
+        assert!(
+            signals
+                .iter()
+                .any(|s| matches!(s.kind, SignalKind::OutcomeMissedExpectation))
+        );
+        assert!(signals.iter().any(|s| s.note.contains("budget_exhausted")));
+    }
+
+    #[test]
+    fn budget_exceeded_events_produce_blocker_signal() {
+        let ctx = converge_kernel::Context::new();
+        let budget_event = ExperienceEventEnvelope::new(
+            "evt-budget",
+            ExperienceEvent::BudgetExceeded {
+                chain_id: "dd:test".into(),
+                resource: "tokens".into(),
+                limit: "10000".into(),
+                observed: Some("15000".into()),
+            },
+        );
+        let signals = extract_signals_from_run(&ctx, &[budget_event]);
+
+        assert!(
+            signals
+                .iter()
+                .any(|s| matches!(s.kind, SignalKind::AdversarialBlocker))
+        );
+    }
+
+    #[test]
+    fn build_episode_budget_exceeded_produces_lesson() {
+        let ctx = converge_kernel::Context::new();
+        let budget_event = ExperienceEventEnvelope::new(
+            "evt-budget",
+            ExperienceEvent::BudgetExceeded {
+                chain_id: "dd:test".into(),
+                resource: "tokens".into(),
+                limit: "10000".into(),
+                observed: None,
+            },
+        );
+        let episode =
+            build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "BudgetCo", &ctx, &[
+                budget_event,
+            ]);
+
+        assert!(
+            episode
+                .lessons
+                .iter()
+                .any(|l| l.insight.contains("budget guard"))
+        );
+    }
+
+    #[test]
+    fn calibrate_priors_no_prediction_error_returns_empty() {
+        let episode = LearningEpisode {
+            id: Uuid::new_v4(),
+            intent_id: Uuid::new_v4(),
+            plan_id: Uuid::new_v4(),
+            predicted_outcome: "test".into(),
+            actual_outcome: None,
+            run_status: None,
+            prediction_error: None,
+            adversarial_signals: vec![],
+            lessons: vec![],
+        };
+
+        assert!(calibrate_priors(&episode, &[]).is_empty());
+    }
+
+    #[test]
+    fn calibrate_priors_accumulates_from_existing() {
+        let existing = vec![PriorCalibration {
+            assumption_type: "coverage".into(),
+            context: "test".into(),
+            prior_confidence: 0.5,
+            posterior_confidence: 0.6,
+            evidence_count: 3,
+        }];
+
+        let episode = LearningEpisode {
+            id: Uuid::new_v4(),
+            intent_id: Uuid::new_v4(),
+            plan_id: Uuid::new_v4(),
+            predicted_outcome: "test".into(),
+            actual_outcome: None,
+            run_status: None,
+            prediction_error: Some(PredictionError {
+                magnitude: 0.2,
+                dimensions: vec![ErrorDimension {
+                    name: "coverage".into(),
+                    predicted: 1.0,
+                    actual: 0.8,
+                }],
+            }),
+            adversarial_signals: vec![],
+            lessons: vec![],
+        };
+
+        let priors = calibrate_priors(&episode, &existing);
+        assert_eq!(priors.len(), 1);
+        assert_eq!(priors[0].evidence_count, 4);
+        assert!((priors[0].prior_confidence - 0.6).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn has_infra_failure_detects_infra_constraint() {
+        let ctx = promoted_context(&[(
+            ContextKey::Constraints,
+            "infra-fail",
+            r#"{"type":"error","is_infra_failure":true,"message":"credits exhausted"}"#,
+        )]);
+        assert!(has_infra_failure(&ctx));
+    }
+
+    #[test]
+    fn has_infra_failure_false_for_non_infra_constraint() {
+        let ctx = promoted_context(&[(
+            ContextKey::Constraints,
+            "parse-fail",
+            r#"{"type":"error","is_infra_failure":false,"message":"parse error"}"#,
+        )]);
+        assert!(!has_infra_failure(&ctx));
+    }
+
+    #[test]
+    fn has_infra_failure_false_for_empty_context() {
+        let ctx = converge_kernel::Context::new();
+        assert!(!has_infra_failure(&ctx));
+    }
+
+    // ── Proptests ─────────────────────────────────────────────────
+
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn arb_error_dimension() -> impl Strategy<Value = ErrorDimension> {
+            (
+                "[a-z_]{3,15}",
+                proptest::num::f64::NORMAL,
+                0.0..=1.0_f64,
+            )
+                .prop_map(|(name, predicted, actual)| ErrorDimension {
+                    name,
+                    predicted,
+                    actual,
+                })
+        }
+
+        proptest! {
+            #[test]
+            fn calibrate_priors_posterior_stays_bounded(
+                actual in 0.0..=1.0_f64,
+                prior_conf in 0.0..=1.0_f64,
+                evidence in 0_u32..100,
+            ) {
+                let episode = LearningEpisode {
+                    id: Uuid::new_v4(),
+                    intent_id: Uuid::new_v4(),
+                    plan_id: Uuid::new_v4(),
+                    predicted_outcome: "test".into(),
+                    actual_outcome: None,
+                    run_status: None,
+                    prediction_error: Some(PredictionError {
+                        magnitude: (1.0 - actual).abs(),
+                        dimensions: vec![ErrorDimension {
+                            name: "dim".into(),
+                            predicted: 1.0,
+                            actual,
+                        }],
+                    }),
+                    adversarial_signals: vec![],
+                    lessons: vec![],
+                };
+
+                let existing = vec![PriorCalibration {
+                    assumption_type: "dim".into(),
+                    context: "test".into(),
+                    prior_confidence: prior_conf,
+                    posterior_confidence: prior_conf,
+                    evidence_count: evidence,
+                }];
+
+                let priors = calibrate_priors(&episode, &existing);
+                prop_assert_eq!(priors.len(), 1);
+                let posterior = priors[0].posterior_confidence;
+                prop_assert!(posterior >= 0.0, "posterior {} < 0", posterior);
+                prop_assert!(posterior <= 1.0, "posterior {} > 1", posterior);
+            }
+
+            #[test]
+            fn calibrate_priors_evidence_always_increments(
+                dims in proptest::collection::vec(arb_error_dimension(), 1..5),
+            ) {
+                let episode = LearningEpisode {
+                    id: Uuid::new_v4(),
+                    intent_id: Uuid::new_v4(),
+                    plan_id: Uuid::new_v4(),
+                    predicted_outcome: "test".into(),
+                    actual_outcome: None,
+                    run_status: None,
+                    prediction_error: Some(PredictionError {
+                        magnitude: 0.5,
+                        dimensions: dims,
+                    }),
+                    adversarial_signals: vec![],
+                    lessons: vec![],
+                };
+
+                let priors = calibrate_priors(&episode, &[]);
+                for prior in &priors {
+                    prop_assert_eq!(prior.evidence_count, 1);
+                }
+            }
+
+            #[test]
+            fn calibrate_converges_toward_observation(
+                actual in 0.0..=1.0_f64,
+                rounds in 1_usize..20,
+            ) {
+                let episode = LearningEpisode {
+                    id: Uuid::new_v4(),
+                    intent_id: Uuid::new_v4(),
+                    plan_id: Uuid::new_v4(),
+                    predicted_outcome: "test".into(),
+                    actual_outcome: None,
+                    run_status: None,
+                    prediction_error: Some(PredictionError {
+                        magnitude: 0.5,
+                        dimensions: vec![ErrorDimension {
+                            name: "dim".into(),
+                            predicted: 0.5,
+                            actual,
+                        }],
+                    }),
+                    adversarial_signals: vec![],
+                    lessons: vec![],
+                };
+
+                let mut priors = vec![];
+                for _ in 0..rounds {
+                    priors = calibrate_priors(&episode, &priors);
+                }
+
+                let posterior = priors[0].posterior_confidence;
+                let distance = (posterior - actual).abs();
+                let initial_distance = (0.5 - actual).abs();
+                if rounds >= 3 && initial_distance > 0.05 {
+                    prop_assert!(
+                        distance < initial_distance,
+                        "posterior {} should be closer to actual {} than initial 0.5 (dist={}, initial_dist={})",
+                        posterior, actual, distance, initial_distance
+                    );
+                }
+            }
+        }
     }
 }
