@@ -48,8 +48,14 @@ fn main() {
     println!("  Discipline:     {:?}", charter.discipline);
     println!("  Turn cadence:   {:?}", charter.turn_cadence);
     println!("  Consensus:      {:?}", charter.consensus_rule);
-    println!("  Done gate:      {} (advisory — no binding vote)", charter.require_done_gate);
-    println!("  Dissent map:    {} (softer than a huddle)", charter.require_dissent_map);
+    println!(
+        "  Done gate:      {} (advisory — no binding vote)",
+        charter.require_done_gate
+    );
+    println!(
+        "  Dissent map:    {} (softer than a huddle)",
+        charter.require_dissent_map
+    );
     println!();
 
     // Moderated discipline accepts any formation mode.
@@ -74,10 +80,26 @@ fn main() {
     println!();
 
     let participants = vec![
-        Participant { id: "facilitator".into(), name: "Facilitator".into(), role: CollaborationRole::Moderator },
-        Participant { id: "product".into(), name: "Product Lead".into(), role: CollaborationRole::Domain },
-        Participant { id: "eng".into(), name: "Engineering Lead".into(), role: CollaborationRole::Generalist },
-        Participant { id: "design".into(), name: "Design Lead".into(), role: CollaborationRole::Generalist },
+        Participant {
+            id: "facilitator".into(),
+            name: "Facilitator".into(),
+            role: CollaborationRole::Moderator,
+        },
+        Participant {
+            id: "product".into(),
+            name: "Product Lead".into(),
+            role: CollaborationRole::Domain,
+        },
+        Participant {
+            id: "eng".into(),
+            name: "Engineering Lead".into(),
+            role: CollaborationRole::Generalist,
+        },
+        Participant {
+            id: "design".into(),
+            name: "Design Lead".into(),
+            role: CollaborationRole::Generalist,
+        },
     ];
 
     let runner = CollaborationRunner::new(team, charter, participants)
@@ -96,7 +118,10 @@ fn main() {
     // The moderator is special: speaks first but doesn't contribute or vote.
     println!("--- Moderator Role ---");
     let mod_role = CollaborationRole::Moderator;
-    println!("  Contributes in rounds: {}", mod_role.contributes_in_rounds());
+    println!(
+        "  Contributes in rounds: {}",
+        mod_role.contributes_in_rounds()
+    );
     println!("  Votes on done gate:    {}", mod_role.votes_on_done_gate());
     println!("  Can write report:      {}", mod_role.can_write_report());
     println!("  (Moderator guides but doesn't dominate)");
@@ -128,7 +153,10 @@ fn main() {
             "  {:12} {:14} {:10} {:22} {:14} {:>4} {:>6} {:>5} {:>5}",
             label,
             format!("{:?}", c.discipline),
-            format!("{:?}", c.formation_mode).chars().take(10).collect::<String>(),
+            format!("{:?}", c.formation_mode)
+                .chars()
+                .take(10)
+                .collect::<String>(),
             format!("{:?}", c.turn_cadence),
             format!("{:?}", c.consensus_rule),
             c.minimum_members,
@@ -141,9 +169,18 @@ fn main() {
 
     // Show the discipline spectrum.
     println!("=== Discipline Spectrum ===\n");
-    println!("  {:?} — charter is law, violations rejected", CollaborationDiscipline::Enforced);
-    println!("  {:?} — soft guidance, formation mismatches tolerated", CollaborationDiscipline::Moderated);
-    println!("  {:?} — minimal structure, maximum autonomy", CollaborationDiscipline::Loose);
+    println!(
+        "  {:?} — charter is law, violations rejected",
+        CollaborationDiscipline::Enforced
+    );
+    println!(
+        "  {:?} — soft guidance, formation mismatches tolerated",
+        CollaborationDiscipline::Moderated
+    );
+    println!(
+        "  {:?} — minimal structure, maximum autonomy",
+        CollaborationDiscipline::Loose
+    );
     println!();
 
     // Show all turn cadences.
@@ -155,13 +192,17 @@ fn main() {
         TurnCadence::SynthesisOnly,
         TurnCadence::FigureItOut,
     ] {
-        println!("  {:?} — {}", cadence, match cadence {
-            TurnCadence::RoundRobin => "equal turns, strict rotation",
-            TurnCadence::LeadThenRoundRobin => "lead frames, then rotation",
-            TurnCadence::ModeratorThenRoundRobin => "moderator frames, then rotation",
-            TurnCadence::SynthesisOnly => "no individual turns, only synthesis rounds",
-            TurnCadence::FigureItOut => "agents self-coordinate",
-        });
+        println!(
+            "  {:?} — {}",
+            cadence,
+            match cadence {
+                TurnCadence::RoundRobin => "equal turns, strict rotation",
+                TurnCadence::LeadThenRoundRobin => "lead frames, then rotation",
+                TurnCadence::ModeratorThenRoundRobin => "moderator frames, then rotation",
+                TurnCadence::SynthesisOnly => "no individual turns, only synthesis rounds",
+                TurnCadence::FigureItOut => "agents self-coordinate",
+            }
+        );
     }
     println!();
 

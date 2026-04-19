@@ -312,12 +312,9 @@ mod tests {
             display_name: "Generalist".into(),
             role: CollaborationRole::Critic,
         }];
-        let err = CollaborationRunner::new(
-            team,
-            CollaborationCharter::self_organizing(),
-            participants,
-        )
-        .expect_err("runner should reject role mismatch");
+        let err =
+            CollaborationRunner::new(team, CollaborationCharter::self_organizing(), participants)
+                .expect_err("runner should reject role mismatch");
 
         assert!(matches!(
             err,
@@ -332,9 +329,12 @@ mod tests {
     #[test]
     fn runner_propagates_charter_validation_errors() {
         let team = TeamFormation::curated(vec![]);
-        let err =
-            CollaborationRunner::<TestParticipant>::new(team, CollaborationCharter::panel(), vec![])
-                .expect_err("runner should propagate validation error");
+        let err = CollaborationRunner::<TestParticipant>::new(
+            team,
+            CollaborationCharter::panel(),
+            vec![],
+        )
+        .expect_err("runner should propagate validation error");
 
         assert!(matches!(err, CollaborationRunnerError::InvalidTeam(_)));
     }
@@ -354,12 +354,9 @@ mod tests {
             display_name: "Gen".into(),
             role: CollaborationRole::Generalist,
         }];
-        let runner = CollaborationRunner::new(
-            team,
-            CollaborationCharter::self_organizing(),
-            participants,
-        )
-        .unwrap();
+        let runner =
+            CollaborationRunner::new(team, CollaborationCharter::self_organizing(), participants)
+                .unwrap();
 
         assert!(runner.member("gen").is_some());
         assert!(runner.member("nonexistent").is_none());

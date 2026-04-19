@@ -15,8 +15,7 @@
 //! - Formation mode enforcement (strict matching)
 
 use organism_pack::{
-    CollaborationCharter, CollaborationMember, CollaborationRole, TeamFormation,
-    TeamFormationMode,
+    CollaborationCharter, CollaborationMember, CollaborationRole, TeamFormation, TeamFormationMode,
 };
 use organism_runtime::{CollaborationParticipant, CollaborationRunner};
 
@@ -67,19 +66,52 @@ fn main() {
     ]);
 
     let panelists = vec![
-        Panelist { id: "chair".into(), name: "Committee Chair".into(), role: CollaborationRole::Lead, expertise: "M&A strategy".into() },
-        Panelist { id: "sector-expert".into(), name: "Sector Expert".into(), role: CollaborationRole::Domain, expertise: "Enterprise SaaS".into() },
-        Panelist { id: "devil".into(), name: "Devil's Advocate".into(), role: CollaborationRole::Critic, expertise: "Risk analysis".into() },
-        Panelist { id: "judge-1".into(), name: "Senior Partner".into(), role: CollaborationRole::Judge, expertise: "Portfolio management".into() },
-        Panelist { id: "judge-2".into(), name: "Risk Officer".into(), role: CollaborationRole::Judge, expertise: "Operational risk".into() },
-        Panelist { id: "analyst".into(), name: "Report Analyst".into(), role: CollaborationRole::ReportWriter, expertise: "Investment memos".into() },
+        Panelist {
+            id: "chair".into(),
+            name: "Committee Chair".into(),
+            role: CollaborationRole::Lead,
+            expertise: "M&A strategy".into(),
+        },
+        Panelist {
+            id: "sector-expert".into(),
+            name: "Sector Expert".into(),
+            role: CollaborationRole::Domain,
+            expertise: "Enterprise SaaS".into(),
+        },
+        Panelist {
+            id: "devil".into(),
+            name: "Devil's Advocate".into(),
+            role: CollaborationRole::Critic,
+            expertise: "Risk analysis".into(),
+        },
+        Panelist {
+            id: "judge-1".into(),
+            name: "Senior Partner".into(),
+            role: CollaborationRole::Judge,
+            expertise: "Portfolio management".into(),
+        },
+        Panelist {
+            id: "judge-2".into(),
+            name: "Risk Officer".into(),
+            role: CollaborationRole::Judge,
+            expertise: "Operational risk".into(),
+        },
+        Panelist {
+            id: "analyst".into(),
+            name: "Report Analyst".into(),
+            role: CollaborationRole::ReportWriter,
+            expertise: "Investment memos".into(),
+        },
     ];
 
     let runner = CollaborationRunner::new(team, charter, panelists).expect("panel should be valid");
 
     // Show the role-based capability split.
     println!("Role capabilities:");
-    println!("  Contributors (speak in rounds): {}", runner.contributors().len());
+    println!(
+        "  Contributors (speak in rounds): {}",
+        runner.contributors().len()
+    );
     for c in runner.contributors() {
         println!("    {} — {:?} ({})", c.name, c.role, c.expertise);
     }
@@ -87,7 +119,10 @@ fn main() {
     for v in runner.voters() {
         println!("    {} — {:?}", v.name, v.role);
     }
-    println!("  Report owner: {}", runner.report_owner().map_or("none", |p| p.display_name()));
+    println!(
+        "  Report owner: {}",
+        runner.report_owner().map_or("none", |p| p.display_name())
+    );
     println!();
 
     // Key insight: Judges vote but don't contribute content.

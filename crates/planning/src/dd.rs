@@ -2110,28 +2110,34 @@ mod tests {
 
     #[test]
     fn normalize_dd_fact_rejects_empty_claim() {
-        assert!(normalize_dd_fact(&serde_json::json!({
-            "claim": "",
-            "category": "product",
-        }))
-        .is_none());
+        assert!(
+            normalize_dd_fact(&serde_json::json!({
+                "claim": "",
+                "category": "product",
+            }))
+            .is_none()
+        );
     }
 
     #[test]
     fn normalize_dd_fact_rejects_whitespace_only_claim() {
-        assert!(normalize_dd_fact(&serde_json::json!({
-            "claim": "   ",
-            "category": "product",
-        }))
-        .is_none());
+        assert!(
+            normalize_dd_fact(&serde_json::json!({
+                "claim": "   ",
+                "category": "product",
+            }))
+            .is_none()
+        );
     }
 
     #[test]
     fn normalize_dd_fact_rejects_missing_claim() {
-        assert!(normalize_dd_fact(&serde_json::json!({
-            "category": "product",
-        }))
-        .is_none());
+        assert!(
+            normalize_dd_fact(&serde_json::json!({
+                "category": "product",
+            }))
+            .is_none()
+        );
     }
 
     #[test]
@@ -2182,9 +2188,7 @@ mod tests {
 
     #[test]
     fn parse_json_array_response_rejects_object_with_wrong_field() {
-        assert!(
-            parse_json_array_response(r#"{"results":[{"claim":"X"}]}"#, "facts").is_err()
-        );
+        assert!(parse_json_array_response(r#"{"results":[{"claim":"X"}]}"#, "facts").is_err());
     }
 
     #[test]
@@ -2274,56 +2278,74 @@ mod tests {
 
     #[test]
     fn dd_error_infra_vs_non_infra() {
-        assert!(DdError::CreditsExhausted {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_infra_failure());
-        assert!(DdError::RateLimited {
-            provider: "x".into(),
-            retry_after_ms: None
-        }
-        .is_infra_failure());
-        assert!(DdError::ProviderUnavailable {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_infra_failure());
+        assert!(
+            DdError::CreditsExhausted {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_infra_failure()
+        );
+        assert!(
+            DdError::RateLimited {
+                provider: "x".into(),
+                retry_after_ms: None
+            }
+            .is_infra_failure()
+        );
+        assert!(
+            DdError::ProviderUnavailable {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_infra_failure()
+        );
 
-        assert!(!DdError::BadResponse {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_infra_failure());
-        assert!(!DdError::ParseFailed {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_infra_failure());
-        assert!(!DdError::PromptTooLarge {
-            provider: "x".into(),
-            tokens: None
-        }
-        .is_infra_failure());
+        assert!(
+            !DdError::BadResponse {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_infra_failure()
+        );
+        assert!(
+            !DdError::ParseFailed {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_infra_failure()
+        );
+        assert!(
+            !DdError::PromptTooLarge {
+                provider: "x".into(),
+                tokens: None
+            }
+            .is_infra_failure()
+        );
     }
 
     #[test]
     fn dd_error_only_credits_exhausted_is_fatal() {
-        assert!(DdError::CreditsExhausted {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_fatal());
-        assert!(!DdError::RateLimited {
-            provider: "x".into(),
-            retry_after_ms: None
-        }
-        .is_fatal());
-        assert!(!DdError::ProviderUnavailable {
-            provider: "x".into(),
-            detail: "y".into()
-        }
-        .is_fatal());
+        assert!(
+            DdError::CreditsExhausted {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_fatal()
+        );
+        assert!(
+            !DdError::RateLimited {
+                provider: "x".into(),
+                retry_after_ms: None
+            }
+            .is_fatal()
+        );
+        assert!(
+            !DdError::ProviderUnavailable {
+                provider: "x".into(),
+                detail: "y".into()
+            }
+            .is_fatal()
+        );
     }
 
     // ── Proptests ─────────────────────────────────────────────────

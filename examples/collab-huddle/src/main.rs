@@ -64,8 +64,12 @@ fn main() {
         vec![
             CollaborationMember::new("researcher-lead", "Research Lead", CollaborationRole::Lead)
                 .with_persona("Senior analyst who keeps the team focused on evidence quality"),
-            CollaborationMember::new("market-analyst", "Market Analyst", CollaborationRole::Domain)
-                .with_persona("Deep expertise in SaaS market sizing and competitive dynamics"),
+            CollaborationMember::new(
+                "market-analyst",
+                "Market Analyst",
+                CollaborationRole::Domain,
+            )
+            .with_persona("Deep expertise in SaaS market sizing and competitive dynamics"),
             CollaborationMember::new("red-team", "Red Team", CollaborationRole::Critic)
                 .with_persona("Aggressive skeptic — challenges every assumption and data source"),
             CollaborationMember::new("synthesizer", "Synthesizer", CollaborationRole::Synthesizer)
@@ -131,7 +135,11 @@ fn main() {
         println!("  {name}: {}", if *vote { "YES" } else { "NO" });
     }
     let passed = runner.consensus_rule().passes(yes, total);
-    println!("  Result: {} ({yes}/{total}, rule: {:?})", if passed { "PASSED" } else { "BLOCKED" }, runner.consensus_rule());
+    println!(
+        "  Result: {} ({yes}/{total}, rule: {:?})",
+        if passed { "PASSED" } else { "BLOCKED" },
+        runner.consensus_rule()
+    );
     println!();
 
     // Show what happens when the charter is violated.
@@ -139,7 +147,11 @@ fn main() {
 
     let too_small = TeamFormation::new(
         TeamFormationMode::CapabilityMatched,
-        vec![CollaborationMember::new("solo", "Solo", CollaborationRole::Lead)],
+        vec![CollaborationMember::new(
+            "solo",
+            "Solo",
+            CollaborationRole::Lead,
+        )],
     );
     match CollaborationCharter::huddle().validate(&too_small) {
         Err(e) => println!("  Too few members: {e}"),
@@ -164,5 +176,8 @@ fn main() {
     println!("--- Unanimous Override ---");
     let strict = ConsensusRule::Unanimous;
     let passed_strict = strict.passes(yes, total);
-    println!("  Same votes ({yes}/{total}) with unanimous: {}", if passed_strict { "PASSED" } else { "BLOCKED" });
+    println!(
+        "  Same votes ({yes}/{total}) with unanimous: {}",
+        if passed_strict { "PASSED" } else { "BLOCKED" }
+    );
 }

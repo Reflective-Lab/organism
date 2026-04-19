@@ -8,8 +8,8 @@
 //! Each transition fires when the data warrants it, not on a schedule.
 
 use organism_pack::{
-    CollaborationCharter, ConvergenceSignals, CollaborationTopology,
-    default_transition_rules, evaluate_transitions,
+    CollaborationCharter, CollaborationTopology, ConvergenceSignals, default_transition_rules,
+    evaluate_transitions,
 };
 
 fn main() {
@@ -141,8 +141,15 @@ fn main() {
 
         if let Some(d) = decision {
             println!(" → {:?}", d.new_charter.topology);
-            println!("           TRANSITION: {} — {}", d.rule.name, d.rule.rationale);
-            transition_log.push((signals.cycle_count, d.rule.name.clone(), d.rule.rationale.clone()));
+            println!(
+                "           TRANSITION: {} — {}",
+                d.rule.name, d.rule.rationale
+            );
+            transition_log.push((
+                signals.cycle_count,
+                d.rule.name.clone(),
+                d.rule.rationale.clone(),
+            ));
             charter = d.new_charter;
         } else {
             println!(" (stable)");
