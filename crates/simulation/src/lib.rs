@@ -8,12 +8,24 @@
 //! Mirrors validation patterns from aircraft design, trading systems,
 //! and chip design.
 
+pub mod causal;
+pub mod cost;
+pub mod operational;
 pub mod outcome;
+pub mod policy;
+pub mod types;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub use causal::{CausalSimulationAgent, CausalSimulator, CausalSimulatorConfig};
+pub use cost::{CostSimulationAgent, CostSimulator, CostSimulatorConfig};
+pub use operational::{
+    OperationalSimulationAgent, OperationalSimulator, OperationalSimulatorConfig,
+};
 pub use outcome::{OutcomeSimulationAgent, OutcomeSimulator, OutcomeSimulatorConfig};
+pub use policy::{PolicySimulationAgent, PolicySimulator, PolicySimulatorConfig};
+pub use types::{RiskLikelihood, SimulationVerdict};
 
 // ── Simulation Result ──────────────────────────────────────────────
 

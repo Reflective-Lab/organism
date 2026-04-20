@@ -108,15 +108,19 @@ pub use organism_planning::{
 // Adversarial agents are Suggestors — they participate in the convergence loop.
 // These types are the vocabulary for what adversarial agents produce.
 
-pub use organism_adversarial::{AdversarialSignal, Challenge, Finding, Severity, SkepticismKind};
+pub use organism_adversarial::{
+    AdversarialSignal, AdversarialVerdict, AgentId, Challenge, Complexity, Finding, Severity,
+    SkepticismKind,
+};
 
 // ── Simulation ─────────────────────────────────────────────────────
 // Simulation agents are Suggestors — they stress-test plans inside the loop.
 // These types describe simulation results and configuration.
 
 pub use organism_simulation::{
-    DimensionResult, OutcomeSimulationAgent, OutcomeSimulator, OutcomeSimulatorConfig, Sample,
-    SimulationDimension, SimulationRecommendation, SimulationReport, SimulationResult,
+    DimensionResult, OutcomeSimulationAgent, OutcomeSimulator, OutcomeSimulatorConfig,
+    RiskLikelihood, Sample, SimulationDimension, SimulationRecommendation, SimulationReport,
+    SimulationResult, SimulationVerdict,
 };
 
 // ── Learning ───────────────────────────────────────────────────────

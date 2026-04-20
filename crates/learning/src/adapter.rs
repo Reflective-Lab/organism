@@ -297,6 +297,38 @@ pub fn extract_signals_from_run(
         });
     }
 
+    // Capture signals from adversarial agents by parsing their typed payloads.
+    let constraints = ctx.get(ContextKey::Constraints);
+    let adversarial_block_count = constraints
+        .iter()
+        .filter(|f| is_from_adversarial_agent(&f.content))
+        .count();
+
+    if adversarial_block_count > 0 {
+        signals.push(LearningSignal {
+            kind: SignalKind::AdversarialBlocker,
+            weight: 0.9,
+            note: format!("{adversarial_block_count} adversarial agent(s) blocked the plan"),
+        });
+    }
+
+    // Check for adversarial warnings in evaluations (passed with warnings)
+    let adversarial_warnings = evaluations
+        .iter()
+        .filter(|f| {
+            let v: Option<serde_json::Value> = serde_json::from_str(&f.content).ok();
+            v.and_then(|v| v.get("warnings").cloned()).is_some()
+        })
+        .count();
+
+    if adversarial_warnings > 0 {
+        signals.push(LearningSignal {
+            kind: SignalKind::AdversarialWarning,
+            weight: 0.5,
+            note: format!("{adversarial_warnings} adversarial warning(s) on approved plans"),
+        });
+    }
+
     signals
 }
 
@@ -430,6 +462,22 @@ fn budget_exceeded_count(events: &[ExperienceEventEnvelope]) -> usize {
         .iter()
         .filter(|event| matches!(event.event, ExperienceEvent::BudgetExceeded { .. }))
         .count()
+}
+
+/// Check if a constraint fact content was produced by an adversarial agent.
+/// Parses the JSON and checks the "agent" field against known adversarial agent IDs.
+fn is_from_adversarial_agent(content: &str) -> bool {
+    const ADVERSARIAL_AGENTS: &[&str] = &[
+        "assumption-breaker",
+        "constraint-checker",
+        "economic-skeptic",
+        "operational-skeptic",
+    ];
+
+    serde_json::from_str::<serde_json::Value>(content)
+        .ok()
+        .and_then(|v| v.get("agent")?.as_str().map(String::from))
+        .is_some_and(|agent| ADVERSARIAL_AGENTS.contains(&agent.as_str()))
 }
 
 #[cfg(test)]

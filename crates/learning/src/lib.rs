@@ -17,9 +17,12 @@
 //! planning priors.
 
 pub mod adapter;
+pub mod prior_agent;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+pub use prior_agent::PlanningPriorAgent;
 
 // ── Learning Episode ───────────────────────────────────────────────
 

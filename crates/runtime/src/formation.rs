@@ -145,6 +145,50 @@ impl Formation {
     }
 }
 
+/// Builder helpers for standard organism agent teams.
+impl Formation {
+    /// Add the standard simulation swarm (all 5 dimensions) with default configs.
+    pub fn with_simulation_swarm(self) -> Self {
+        use organism_simulation::{
+            CausalSimulationAgent, CostSimulationAgent, OperationalSimulationAgent,
+            OutcomeSimulationAgent, PolicySimulationAgent,
+        };
+
+        self.agent(OutcomeSimulationAgent::default_config())
+            .agent(CostSimulationAgent::default_config())
+            .agent(PolicySimulationAgent::default_config())
+            .agent(CausalSimulationAgent::default_config())
+            .agent(OperationalSimulationAgent::default_config())
+    }
+
+    /// Add the standard adversarial team with default configs.
+    pub fn with_adversarial_team(self) -> Self {
+        use organism_adversarial::{
+            AssumptionBreakerAgent, ConstraintCheckerAgent, EconomicSkepticAgent,
+            OperationalSkepticAgent,
+        };
+
+        self.agent(AssumptionBreakerAgent::new())
+            .agent(ConstraintCheckerAgent::default_config())
+            .agent(EconomicSkepticAgent::default_config())
+            .agent(OperationalSkepticAgent::default_config())
+    }
+
+    /// Add the planning prior agent for learning feedback.
+    pub fn with_learning_priors(self) -> Self {
+        use organism_learning::PlanningPriorAgent;
+
+        self.agent(PlanningPriorAgent::new())
+    }
+
+    /// Full Stage 2 pipeline: priors → adversarial → simulation.
+    pub fn with_stress_test_pipeline(self) -> Self {
+        self.with_learning_priors()
+            .with_adversarial_team()
+            .with_simulation_swarm()
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum FormationError {
     #[error("convergence failed: {0}")]

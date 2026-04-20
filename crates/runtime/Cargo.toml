@@ -10,6 +10,8 @@ description = "Curated embedded runtime for Organism — registry, readiness, an
 [dependencies]
 organism-pack.workspace = true
 organism-adversarial.workspace = true
+organism-simulation.workspace = true
+organism-learning.workspace = true
 organism-domain.workspace = true
 organism-intent.workspace = true
 converge-kernel.workspace = true

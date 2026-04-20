@@ -1,4 +1,4 @@
-//! Adversarial vocabulary.
+//! Adversarial vocabulary and agents.
 //!
 //! Types for institutionalized disagreement: challenges, findings, signals.
 //! Adversarial agents are Suggestors — they participate in the convergence
@@ -8,8 +8,17 @@
 //! challenge (via `ContextKey::Constraints`) → planning revises → repeat.
 //! Converge's fixed-point detection handles termination.
 
+pub mod agents;
+pub mod types;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+pub use agents::{
+    AssumptionBreakerAgent, ConstraintCheck, ConstraintCheckerAgent, EconomicSkepticAgent,
+    OperationalSkepticAgent, OrgConstraint,
+};
+pub use types::{AdversarialVerdict, AgentId, Complexity};
 
 // ── Challenge ──────────────────────────────────────────────────────
 

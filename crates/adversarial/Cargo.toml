@@ -9,6 +9,8 @@ description = "Adversarial review for Organism — challenges, skeptics, governa
 
 [dependencies]
 organism-planning.workspace = true
+converge-pack.workspace = true
+async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true

@@ -4,6 +4,7 @@
 //! risks) and producing probabilistic outcome estimates via Monte Carlo
 //! sampling.
 
+use crate::types::RiskLikelihood;
 use crate::{DimensionResult, Sample, SimulationDimension};
 
 /// Configuration for the outcome simulator.
@@ -63,9 +64,9 @@ impl OutcomeSimulator {
             .map(|arr| {
                 arr.iter()
                     .filter_map(|v| {
-                        v.get("likelihood")
-                            .and_then(|l| l.as_str())
-                            .map(likelihood_to_probability)
+                        v.get("likelihood").and_then(|l| l.as_str()).map(|s| {
+                            RiskLikelihood::from_str_lossy(s).map_or(0.5, |l| l.probability())
+                        })
                     })
                     .collect()
             })
@@ -173,19 +174,9 @@ impl OutcomeSimulator {
     }
 }
 
-fn likelihood_to_probability(s: &str) -> f64 {
-    match s {
-        "very_likely" | "VeryLikely" => 0.9,
-        "likely" | "Likely" => 0.7,
-        "possible" | "Possible" => 0.4,
-        "unlikely" | "Unlikely" => 0.15,
-        "rare" | "Rare" => 0.05,
-        _ => 0.5,
-    }
-}
-
 // ── Suggestor Implementation ──────────────────────────────────────
 
+use crate::types::SimulationVerdict;
 use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
 
 /// Outcome simulation as a Suggestor — participates in the convergence loop.
@@ -234,43 +225,36 @@ impl Suggestor for OutcomeSimulationAgent {
         let mut proposals = Vec::new();
 
         for fact in strategies {
-            // Parse the strategy content as JSON for simulation
             let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
                 .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
 
             let result = self.simulator.simulate(&plan_json);
 
-            if result.passed {
-                proposals.push(ProposedFact::new(
-                    ContextKey::Evaluations,
-                    format!("sim-pass-{}", fact.id),
-                    serde_json::json!({
-                        "strategy_id": fact.id,
-                        "confidence": result.confidence,
-                        "dimension": "outcome",
-                        "passed": true,
-                        "findings": result.findings,
-                    })
-                    .to_string(),
-                    "outcome-simulation",
-                ));
+            let verdict = SimulationVerdict {
+                strategy_id: fact.id.clone(),
+                dimension: SimulationDimension::Outcome,
+                passed: result.passed,
+                confidence: result.confidence,
+                findings: result.findings,
+                recommendation: if result.passed {
+                    None
+                } else {
+                    Some(crate::types::SimulationRecommendation::DoNotProceed)
+                },
+            };
+
+            let key = if result.passed {
+                ContextKey::Evaluations
             } else {
-                // Failed simulation → propose a constraint blocking this strategy
-                proposals.push(ProposedFact::new(
-                    ContextKey::Constraints,
-                    format!("sim-fail-{}", fact.id),
-                    serde_json::json!({
-                        "strategy_id": fact.id,
-                        "confidence": result.confidence,
-                        "dimension": "outcome",
-                        "passed": false,
-                        "findings": result.findings,
-                        "recommendation": "do_not_proceed",
-                    })
-                    .to_string(),
-                    "outcome-simulation",
-                ));
-            }
+                ContextKey::Constraints
+            };
+
+            proposals.push(ProposedFact::new(
+                key,
+                verdict.fact_id(),
+                verdict.to_json(),
+                "outcome-simulation",
+            ));
         }
 
         AgentEffect::with_proposals(proposals)
@@ -398,8 +382,9 @@ mod tests {
 
     #[test]
     fn likelihood_variants() {
-        assert!((likelihood_to_probability("very_likely") - 0.9).abs() < f64::EPSILON);
-        assert!((likelihood_to_probability("unlikely") - 0.15).abs() < f64::EPSILON);
-        assert!((likelihood_to_probability("unknown") - 0.5).abs() < f64::EPSILON);
+        use crate::types::RiskLikelihood;
+        assert!((RiskLikelihood::VeryLikely.probability() - 0.9).abs() < f64::EPSILON);
+        assert!((RiskLikelihood::Unlikely.probability() - 0.15).abs() < f64::EPSILON);
+        assert_eq!(RiskLikelihood::from_str_lossy("unknown"), None);
     }
 }
