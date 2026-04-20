@@ -1,6 +1,7 @@
 ---
 name: audit
 description: Full workspace health — security, compliance, drift, observations. Weekly.
+model: opus
 user-invocable: true
 allowed-tools: Bash, Read, Edit, Grep, Glob, Agent
 ---

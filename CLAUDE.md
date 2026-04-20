@@ -1,9 +1,9 @@
 # Organism — Agent Instructions
 
-Organism is the **organizational intelligence runtime** — Layer 2 in the three-layer stack. It sits between human intent and Converge's commit boundary.
+Organism is the **organizational intelligence runtime** — Layer 2 in the three-layer stack. It sits between human intent and Converge's governed convergence boundary.
 
 ```
-Human intent → Organism (reason, plan, debate, simulate) → Converge (authority, commit) → World
+Human intent → Organism (form, reason, debate, simulate) → Converge (run, promote, govern) → World
 ```
 
 ## Session Scope
@@ -21,9 +21,10 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 ## Architectural rules
 
 - **Organism is a client of Converge.** Converge does not know Organism exists. Use Converge types (`converge-pack`, `converge-kernel`, `converge-model`) directly — the Rust type system enforces the axioms.
-- **Authority is never inherited from reasoning.** It is recomputed at the commit boundary by Converge. Planning code must not assume that producing a plan grants the right to execute it.
+- **Authority is never inherited from reasoning.** It is recomputed at Converge's authority boundary. Planning code must not assume that producing a plan grants the right to execute it.
 - **Reasoning, planning, governance, execution are separate layers.** Do not collapse them for convenience.
-- **Plans must be argued before they commit.** Every candidate plan passes through adversarial review and the simulation swarm before reaching Converge.
+- **Plans become Formations, not commits.** Organism assembles teams of `Suggestor`s and Converge runs them to fixed point.
+- **Everything inside Converge is a `Suggestor`.** Planning, adversarial review, simulation, optimization, policy, analytics, and knowledge all enter through the same loop contract.
 - **No wrapper layers over Converge.** Extend through composition (e.g. `OrganismPlan { proposed_fact: ProposedFact, ... }`), not by wrapping the Converge API.
 
 ## Crate layout
@@ -35,23 +36,29 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 | `adversarial` | Assumption breakers, constraint checkers, skeptics |
 | `simulation` | Outcome / cost / policy / causal / operational simulation |
 | `learning` | Planning priors, calibration, strategy adaptation |
-| `runtime` | Agent orchestration, LLM integration, HITL, commit boundary |
+| `runtime` | Formation assembly, runtime wiring, readiness, Converge execution |
 | `intelligence` | OCR, vision, web, social, patent, linkedin, billing |
 | `notes` | Vault management, source adapters, cleanup, enrichment |
 | `domain` | 13 org packs + knowledge lifecycle + 8 blueprints |
 
-## Converge v3.0.0 contract
+## Converge v3.4.x contract
 
 Organism uses Converge types directly. Two deployment modes:
 
 | Mode | Crate | Purpose |
 |---|---|---|
-| Embedded | `converge-kernel` | In-process: Engine, Context, Suggestor |
+| Embedded | `converge-kernel` | In-process: Engine, `ContextState`, `ConvergeResult`, re-exported `Suggestor` contract |
 | Authoring | `converge-pack` | Suggestor trait, ProposedFact, Invariant |
 | Reading | `converge-model` | Governed semantic types (Fact, Proposal, PromotionRecord) |
 | Remote | `converge-client` | gRPC wire protocol (only for out-of-process) |
 
 Do NOT depend on `converge-core`, `converge-runtime`, or other internal crates.
+
+Converge changes that matter to Organism:
+- `Suggestor` is the one universal in-loop contract.
+- `converge_kernel::Context` is the trait and `ContextState` is the concrete state.
+- `Fact` construction is kernel-gated. Consumers construct `ProposedFact`, never `Fact`.
+- Sequencing is by dependencies and deterministic registration order, not by suggestor name.
 
 **Before implementing a core/basic/fundamental function, check if Converge already provides it:**
 `~/dev/work/converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
@@ -61,7 +68,7 @@ See `~/dev/work/converge/kb/Architecture/API Surfaces.md` for the full public co
 ## What Organism MUST NOT do
 
 - Own the 9 convergence axioms (Converge owns them)
-- Own the commit boundary or authorization barrier (Converge)
+- Own the authority / promotion boundary (Converge)
 - Own policy and authority primitives (Converge)
 - Own traceability and audit (Converge)
 - Own packs / business domain truths (Converge)

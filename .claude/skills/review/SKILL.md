@@ -1,6 +1,7 @@
 ---
 name: review
 description: Review a pull request — security, correctness, style, ops.
+model: opus
 user-invocable: true
 argument-hint: [pr-number]
 allowed-tools: Bash, Read, Grep, Glob

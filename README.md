@@ -18,16 +18,16 @@
 ├─────────────────────────────────────────────┤
 │  Organism      Reasoning, planning, debate  │  ← you are here
 ├─────────────────────────────────────────────┤
-│  Converge      Engine, governance, commit   │
+│  Converge      Engine, promotion, integrity │
 ├─────────────────────────────────────────────┤
 │  Providers     LLMs, tools, storage         │
 └─────────────────────────────────────────────┘
 ```
 
-Where [Converge](https://github.com/Reflective-Lab/converge) answers *"what actions are allowed to happen?"*, Organism answers *"how does an autonomous organization think, plan, and evolve?"*
+Where [Converge](https://github.com/Reflective-Lab/converge) answers *"what actions are allowed to become governed facts?"*, Organism answers *"which team should work on this, and how should it think?"*
 
 ```
-Human intent → Organism (reason, plan, debate, simulate) → Converge (authority, commit) → World
+Human intent → Organism (form, reason, debate, simulate) → Converge (run, promote, govern) → World
 ```
 
 ## The Intent Pipeline
@@ -37,7 +37,7 @@ Every intent flows through a mandatory six-stage sequence. No shortcuts, no "tru
 ```
 IntentPacket → Admission (4 dimensions) → Decomposition (intent tree)
   → Huddle (multi-model planning) → Adversarial Review (5 skepticism kinds)
-  → Simulation Swarm (5 dimensions) → Converge commit
+  → Simulation Swarm (5 dimensions) → Formation in Converge
 ```
 
 ### 1. Intent Admission
@@ -111,9 +111,17 @@ Five dimensions tested in parallel:
 
 Each dimension returns probability distributions, not point estimates. The swarm produces a recommendation: Proceed, ProceedWithCaution, or DoNotProceed.
 
-### 6. Commit to Converge
+### 6. Run a Formation in Converge
 
-The surviving plan becomes a `ProposedFact` submitted to Converge's commit boundary. Organism has **zero authority** here — Converge recomputes all authority at the promotion gate. Producing a plan never grants the right to execute it.
+The surviving team becomes a `Formation`: a labeled team of heterogeneous
+`Suggestor`s plus seeded inputs. `Formation::run()` creates a fresh
+`converge_kernel::Engine`, registers the team, seeds a `ContextState`, and
+calls `Engine.run()`.
+
+Organism has **zero authority** here. It may construct `ProposedFact` or stage
+inputs, but it does not construct `Fact`, bypass promotion, or depend on
+`converge-core`. Converge recomputes authority at the promotion gate and
+returns the governed `ConvergeResult`.
 
 ## Organizational Learning
 
@@ -193,7 +201,7 @@ Provider-shaped data acquisition from the world. Every result wrapped in `Observ
 | Crate | Role |
 |---|---|
 | [`organism-pack`](crates/pack) | Curated planning contract — one import, full pipeline semantics |
-| [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, commit boundary |
+| [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, and Formation execution |
 | [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, billing |
 | [`organism-notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
 | [`organism-domain`](crates/domain) | Organizational pack library and blueprints |
@@ -217,7 +225,7 @@ Use these only when extending Organism itself:
 # Planning contract — one import, full pipeline semantics
 organism-pack = { path = "../organism/crates/pack" }
 
-# Embedded runtime — resolution, readiness, commit boundary
+# Embedded runtime — resolution, readiness, and Formation execution
 organism-runtime = { path = "../organism/crates/runtime" }
 
 # Converge integration
@@ -231,10 +239,17 @@ Organism uses Converge types directly — no wrapper layers. The Rust type syste
 
 | Mode | Crate | Purpose |
 |---|---|---|
-| Embedded | `converge-kernel` | In-process engine, context, suggestors |
+| Embedded | `converge-kernel` | In-process engine, `ContextState`, `ConvergeResult`, re-exported `Suggestor` contract |
 | Authoring | `converge-pack` | Suggestor trait, ProposedFact, Invariant |
 | Reading | `converge-model` | Governed semantic types (Fact, Proposal, PromotionRecord) |
 | Remote | `converge-client` | gRPC wire protocol for out-of-process deployment |
+
+Important Converge changes:
+- `Suggestor` is the one universal contract. LLMs, optimizers, policy gates, analytics, knowledge, adversaries, and simulators all enter the same loop that way.
+- `converge_kernel::Context` is the trait; `ContextState` is the struct embedders create.
+- `Fact` construction is kernel-gated. Consumers construct `ProposedFact` and let the engine promote.
+- Deterministic ordering follows registration order and dependencies, not name sorting.
+- Organism owns `Formation` assembly; Converge owns the governed run.
 
 ## Examples
 

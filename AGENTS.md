@@ -4,7 +4,7 @@ This is the canonical agent entrypoint — all agents (Claude, Codex, Gemini, or
 
 ## Philosophy
 
-Organism is Layer 2. It sits between human intent and Converge's commit boundary. Read `kb/Philosophy/Why Organism.md` and `kb/Philosophy/Key Invariants.md`.
+Organism is Layer 2. It sits between human intent and Converge's governed convergence boundary. Read `kb/Philosophy/Why Organism.md` and `kb/Philosophy/Key Invariants.md`.
 
 Authority is never inherited from reasoning. Plans must pass adversarial review and simulation before reaching Converge.
 
@@ -22,7 +22,7 @@ Authority is never inherited from reasoning. Plans must pass adversarial review 
 | Layer | Technology |
 |---|---|
 | System logic | Rust (Edition 2024, rust-version 1.90) |
-| Converge contract | `converge-pack`, `converge-model`, `converge-kernel` (v3.0.3) |
+| Converge contract | `converge-pack`, `converge-kernel`, optional `converge-model` / `converge-client` (v3.4.x, rev `40dc92f`) |
 | Task runner | just |
 
 ## Build
@@ -38,12 +38,15 @@ just sync       # Team sync
 ## Rules
 
 - No `unsafe` code. Ever.
-- Authority is never inherited from reasoning — recomputed at commit boundary.
-- Plans must pass adversarial review AND simulation before commit.
+- Authority is never inherited from reasoning — recomputed at Converge's authority boundary.
+- Plans must pass adversarial review AND simulation before entering the governed Converge run.
 - Reasoning, planning, governance, execution are separate layers.
+- Organism assembles `Formation`s. Converge runs them. Do not model Converge as a dumb submission endpoint.
 - `just lint` clean before considering work done.
 - No feature flags. No backwards-compat shims.
 - Use Converge types directly (`converge-pack`, `converge-kernel`, `converge-model`). No wrapper layers.
+- `converge_kernel::Context` is the trait. `ContextState` is the concrete state. No `ContextView`, no `Context::new()`.
+- Inside Converge there is ONE in-loop contract: `Suggestor`. Do not invent side-car pipeline traits to bypass the engine.
 - Before building a core capability, check `~/dev/work/converge/CAPABILITIES.md` — Converge provides optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
 - Do not depend on `converge-core`, `converge-runtime`, or other internal Converge crates.
 - No mocking Converge in integration tests; use a real instance.

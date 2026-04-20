@@ -24,13 +24,14 @@ IntentPacket
   ├─ simulation: simulate() → SimulationReport
   │     (outcome, cost, policy, causal, operational)
   │
-  └─ runtime: submit via converge-kernel (embedded) or converge-client (remote)
+  └─ runtime: assemble `Formation` (team + seeds + budget)
         │
         ↓
-    Converge commit boundary
+    embedded: `Formation::run()` → `Engine.run()`
+    remote: equivalent deployed Converge run
         │
         ↓
-    Execution outcomes
+    ConvergeResult (promoted facts, stop reason, integrity proof)
         │
         ↓
     learning.rs: LearningSignal → calibrate priors
@@ -66,7 +67,13 @@ IntentPacket
 | Debate | `planning` | Vec<Plan> | PlanBundle |
 | Adversarial | `adversarial` | PlanBundle | Vec<Finding> |
 | Simulation | `simulation` | Plan | SimulationReport |
-| Commit | `runtime` | Plan | ProposedFact / SubmitObservationRequest |
+| Formation run | `runtime` | Selected team + seeds + budget | `FormationResult` / `ConvergeResult` |
 | Learning | `learning` | Execution outcome | LearningSignal |
+
+## Boundary Rule
+
+Planning, adversarial review, simulation, optimization, policy, analytics, and
+knowledge may all participate inside the Converge run, but once they do, they
+enter through `Suggestor`. There is no side-car in-loop pipeline contract.
 
 See also: [[Concepts/Intent Pipeline]], [[Architecture/Crate Map]]

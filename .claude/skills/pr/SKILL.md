@@ -1,6 +1,7 @@
 ---
 name: pr
 description: Push current branch and create a pull request.
+model: sonnet
 user-invocable: true
 argument-hint: [title]
 allowed-tools: Bash, Read, Grep

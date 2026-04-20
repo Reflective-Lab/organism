@@ -8,8 +8,12 @@
 //! Mirrors validation patterns from aircraft design, trading systems,
 //! and chip design.
 
+pub mod outcome;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+pub use outcome::{OutcomeSimulationAgent, OutcomeSimulator, OutcomeSimulatorConfig};
 
 // ── Simulation Result ──────────────────────────────────────────────
 
@@ -64,12 +68,8 @@ pub struct SimulationReport {
     pub results: Vec<SimulationResult>,
 }
 
-// ── Simulator Trait ────────────────────────────────────────────────
-
-pub trait SimulationRunner: Send + Sync {
-    fn dimension(&self) -> SimulationDimension;
-    fn simulate(&self, plan: &serde_json::Value) -> DimensionResult;
-}
+// Simulation agents are Suggestors — see OutcomeSimulationAgent.
+// No separate trait needed; the convergence loop IS the execution model.
 
 #[cfg(test)]
 mod tests {
@@ -267,8 +267,4 @@ mod tests {
             prop_assert!((back.overall_confidence - conf).abs() < f64::EPSILON);
         }
     }
-
-    // NOTE: The `SimulationRunner` trait cannot be unit-tested here — it
-    // requires concrete implementations. Tests for trait impls belong in
-    // the crate that provides the implementation.
 }

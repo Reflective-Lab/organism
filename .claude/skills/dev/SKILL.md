@@ -1,6 +1,7 @@
 ---
 name: dev
 description: Start local development environment.
+model: sonnet
 user-invocable: true
 argument-hint: [backend|web|desktop|all]
 allowed-tools: Bash, Read

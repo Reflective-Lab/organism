@@ -1,0 +1,30 @@
+warning: unused import: `FactPromotionRecord`
+ --> tests/compile_fail/fact_construction_blocked.rs:4:39
+  |
+4 | use converge_pack::{ContextKey, Fact, FactPromotionRecord};
+  |                                       ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unreachable expression
+  --> tests/compile_fail/fact_construction_blocked.rs:13:21
+   |
+12 |         promotion_record: todo!(),
+   |                           ------- any code following this expression is unreachable
+13 |         created_at: "2026-01-01T00:00:00Z".into(),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+error[E0451]: fields `key`, `promotion_record` and `created_at` of struct `Fact` are private
+  --> tests/compile_fail/fact_construction_blocked.rs:9:9
+   |
+ 8 |     let _fact = Fact {
+   |                 ---- in this type
+ 9 |         key: ContextKey::Seeds,
+   |         ^^^ private field
+...
+12 |         promotion_record: todo!(),
+   |         ^^^^^^^^^^^^^^^^ private field
+13 |         created_at: "2026-01-01T00:00:00Z".into(),
+   |         ^^^^^^^^^^ private field

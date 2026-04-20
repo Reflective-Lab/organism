@@ -1,6 +1,7 @@
 ---
 name: sync
 description: Pull latest, show PRs, issues, milestone progress, service health.
+model: sonnet
 user-invocable: true
 allowed-tools: Bash, Read, Grep
 ---

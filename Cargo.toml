@@ -40,7 +40,7 @@ default-members = [
 [workspace.package]
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.94"
 license = "MIT"
 repository = "https://github.com/Reflective-Lab/organism"
 
@@ -58,9 +58,9 @@ organism-domain = { path = "crates/domain", version = "1.0.0" }
 organism-notes = { path = "crates/notes", version = "1.0.0" }
 
 # Converge contract
-converge-pack = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-kernel = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
-converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", tag = "v3.4.0" }
+converge-pack = { git = "https://github.com/Reflective-Lab/converge", rev = "40dc92f" }
+converge-kernel = { git = "https://github.com/Reflective-Lab/converge", rev = "40dc92f" }
+converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", rev = "40dc92f" }
 
 # Shared deps
 anyhow = "1"

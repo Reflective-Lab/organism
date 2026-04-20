@@ -1,6 +1,7 @@
 ---
 name: wip
 description: Save work-in-progress and push — use before switching devices.
+model: haiku
 user-invocable: true
 allowed-tools: Bash
 ---

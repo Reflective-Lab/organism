@@ -9,8 +9,7 @@
 //! Uses organism-domain autonomous_org + procurement packs.
 //! Uses `organism-pack` as the curated planning contract.
 
-use converge_kernel::{AgentEffect, ContextKey, Engine, ProposedFact, Suggestor};
-use converge_pack::Context as ContextView;
+use converge_kernel::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
 use organism_pack::{
     // Intent
@@ -46,11 +45,11 @@ impl Suggestor for IntentAdmissionAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -157,11 +156,11 @@ impl Suggestor for PolicyPlanningAgent {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Strategies)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let signals = ctx.get(ContextKey::Signals);
         let expense = signals.iter().find(|s| s.id == "expense:parsed");
         let Some(expense) = expense else {
@@ -223,11 +222,11 @@ impl Suggestor for PolicySkepticAgent {
         &[ContextKey::Strategies]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let Some(plan_fact) = strategies.first() else {
             return AgentEffect::empty();
@@ -332,11 +331,11 @@ impl Suggestor for BudgetSimulationAgent {
         &[ContextKey::Strategies, ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let evaluations = ctx.get(ContextKey::Evaluations);
 
@@ -512,7 +511,7 @@ async fn main() {
         "date": "2026-04-15"
     });
 
-    let mut ctx = converge_kernel::Context::new();
+    let mut ctx = converge_kernel::ContextState::new();
     let _ = ctx.add_input(ContextKey::Seeds, "expense-1", expense.to_string());
 
     println!(

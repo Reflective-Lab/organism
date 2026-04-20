@@ -1,6 +1,7 @@
 ---
 name: ticket
 description: Create a GitHub issue — detailed enough for an agent to execute.
+model: sonnet
 user-invocable: true
 argument-hint: [description]
 allowed-tools: Bash, Read, Grep, Glob

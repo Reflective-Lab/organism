@@ -1,14 +1,15 @@
 ---
 tags: [building]
 ---
-# Starter Task — Wire Converge Integration
+# Starter Task — Wire Converge Formation Integration
 
 ## Context
 
-The organism pipeline ends with a commit submission to Converge. The `runtime` crate owns this boundary via a `CommitBoundary` trait with two implementations:
+The organism pipeline does not end with a dumb commit submission. It ends by
+assembling a `Formation` and running it in Converge.
 
-- **Embedded:** uses `converge-kernel` directly (in-process)
-- **Remote:** uses `converge-client` over gRPC (out-of-process)
+- **Embedded:** use `converge-kernel` directly (primary path)
+- **Remote:** use `converge-client` only when deployment requires out-of-process execution
 
 ## What to Build
 
@@ -16,43 +17,40 @@ The organism pipeline ends with a commit submission to Converge. The `runtime` c
 
 ```toml
 [dependencies]
-converge-pack = "3.0.0"
-converge-model = "3.0.0"
-converge-kernel = "3.0.0"   # embedded mode
-# converge-client = "3.0.0" # remote mode — add when needed
+converge-pack = "3.4"
+converge-model = "3.4"
+converge-kernel = "3.4"
+# converge-client = "3.4" # only when you truly need remote mode
 ```
 
-### 2. Implement embedded CommitBoundary
+### 2. Implement embedded Formation execution
 
 ```rust
-use converge_kernel::Engine;
-use converge_pack::ProposedFact;
+let formation = Formation::new("example")
+    .agent(my_llm)
+    .agent(my_policy_gate)
+    .seed(ContextKey::Seeds, "intent-1", payload_json, "organism");
 
-pub struct EmbeddedConverge {
-    engine: Engine,
-}
-
-impl CommitBoundary for EmbeddedConverge {
-    fn submit(&self, run_id: &str, key: &str, content: &str, provenance: &str) -> Result<(), String> {
-        // Construct ProposedFact, submit to engine
-    }
-}
+let result = formation.run().await?;
 ```
 
 ### 3. Write a test proving the axioms hold
 
 - Construct a `ProposedFact` — verify it compiles
 - Attempt to construct a `Fact` directly — verify it does NOT compile (trybuild)
-- Submit a proposal through the engine — verify promotion gate runs
+- Run a formation through the engine — verify promotion gate runs
 
 ## What NOT to Build
 
 - No wrapper types around Converge types — use them directly
 - No separate crate for Converge integration — runtime owns it
 - Do not depend on `converge-core` or other internal Converge crates
+- Do not resurrect a `CommitBoundary` abstraction over embedded Converge execution
+- Do not invent side-car in-loop traits to bypass `Suggestor`
 
 ## Reference Points
 
-Use `crates/runtime/src/lib.rs` for the current `CommitBoundary` contract and `examples/expense-approval` for the intended end-to-end wiring pattern.
+Use `crates/runtime/src/formation.rs` for the current Formation contract and
+`examples/expense-approval` for the intended end-to-end wiring pattern.
 
 See also: [[Architecture/Converge Contract]], [[Philosophy/Relationship to Converge]]

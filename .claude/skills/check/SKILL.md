@@ -1,6 +1,7 @@
 ---
 name: check
 description: Lint + type check + test. Am I clean?
+model: sonnet
 user-invocable: true
 allowed-tools: Bash, Read
 ---

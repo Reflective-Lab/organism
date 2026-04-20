@@ -1,6 +1,7 @@
 ---
 name: fix
 description: Fix a GitHub issue — read, branch, implement, check, PR.
+model: opus
 user-invocable: true
 argument-hint: [issue-number]
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob

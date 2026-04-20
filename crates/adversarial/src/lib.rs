@@ -1,15 +1,12 @@
-//! Adversarial agents.
+//! Adversarial vocabulary.
 //!
-//! Institutionalized disagreement: assumption breakers, constraint checkers,
-//! causal skeptics, economic skeptics, operational skeptics. Their job is to
-//! attack candidate plans before they reach the simulation swarm.
+//! Types for institutionalized disagreement: challenges, findings, signals.
+//! Adversarial agents are Suggestors — they participate in the convergence
+//! loop alongside planners, simulators, and policy gates.
 //!
-//! Challenges emitted as Facts block convergence. The debate loop cycles:
-//! planning proposes → adversaries challenge → planning revises → repeat.
-//! Converge's fixed-point detection handles this naturally.
-//!
-//! Second-order effect: adversarial firings become labeled training signals
-//! for the learning system.
+//! The debate cycle is natural convergence: planning proposes → adversaries
+//! challenge (via `ContextKey::Constraints`) → planning revises → repeat.
+//! Converge's fixed-point detection handles termination.
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -87,14 +84,6 @@ pub struct AdversarialSignal {
     pub failed_assumption: String,
     pub context: serde_json::Value,
     pub revision_summary: Option<String>,
-}
-
-// ── Skeptic Trait ──────────────────────────────────────────────────
-
-pub trait Skeptic: Send + Sync {
-    fn name(&self) -> &str;
-    fn kind(&self) -> SkepticismKind;
-    fn review(&self, plan: &serde_json::Value) -> Vec<Challenge>;
 }
 
 #[cfg(test)]
@@ -320,8 +309,4 @@ mod tests {
             prop_assert_eq!(c.is_blocking(), sev == Severity::Blocker);
         }
     }
-
-    // NOTE: The `Skeptic` trait cannot be unit-tested here — it requires
-    // concrete implementations with domain logic. Tests for trait impls
-    // belong in the crate that provides the implementation.
 }

@@ -63,6 +63,7 @@ pub use organism_intent::{
     IntentNode,
     IntentPacket,
     Reversibility,
+    admission::DefaultAdmissionController,
     // Resolution
     resolution::{
         CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,
@@ -104,18 +105,18 @@ pub use organism_planning::{
 };
 
 // ── Adversarial ────────────────────────────────────────────────────
-// Institutionalized disagreement before commit.
+// Adversarial agents are Suggestors — they participate in the convergence loop.
+// These types are the vocabulary for what adversarial agents produce.
 
-pub use organism_adversarial::{
-    AdversarialSignal, Challenge, Finding, Severity, Skeptic, SkepticismKind,
-};
+pub use organism_adversarial::{AdversarialSignal, Challenge, Finding, Severity, SkepticismKind};
 
 // ── Simulation ─────────────────────────────────────────────────────
-// Parallel stress-testing of candidate plans.
+// Simulation agents are Suggestors — they stress-test plans inside the loop.
+// These types describe simulation results and configuration.
 
 pub use organism_simulation::{
-    DimensionResult, Sample, SimulationDimension, SimulationRecommendation, SimulationReport,
-    SimulationResult, SimulationRunner,
+    DimensionResult, OutcomeSimulationAgent, OutcomeSimulator, OutcomeSimulatorConfig, Sample,
+    SimulationDimension, SimulationRecommendation, SimulationReport, SimulationResult,
 };
 
 // ── Learning ───────────────────────────────────────────────────────

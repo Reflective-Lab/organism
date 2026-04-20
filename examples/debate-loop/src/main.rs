@@ -11,8 +11,7 @@
 //!
 //! Requires: ANTHROPIC_API_KEY environment variable.
 
-use converge_kernel::{AgentEffect, ContextKey, Engine, ProposedFact, Suggestor};
-use converge_pack::Context as ContextView;
+use converge_kernel::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
 use organism_pack::{Severity, SkepticismKind};
 
@@ -71,7 +70,7 @@ impl Suggestor for LlmPlannerAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         // Run if: seeds exist AND (no plan yet, OR challenges exist without a revised plan)
         if !ctx.has(ContextKey::Seeds) {
             return false;
@@ -86,7 +85,7 @@ impl Suggestor for LlmPlannerAgent {
         !has_plan || (has_challenges && !has_revised)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let intent = seeds
             .first()
@@ -186,7 +185,7 @@ impl Suggestor for LlmSkepticAgent {
         &[ContextKey::Proposals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         // Run if: there's a plan but no challenges yet for the current version
         let proposals = ctx.get(ContextKey::Proposals);
         let evaluations = ctx.get(ContextKey::Evaluations);
@@ -201,7 +200,7 @@ impl Suggestor for LlmSkepticAgent {
         (has_initial_plan && !has_challenges) || (has_revised_plan && !has_final_review)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let proposals = ctx.get(ContextKey::Proposals);
         let evaluations = ctx.get(ContextKey::Evaluations);
 
@@ -317,7 +316,7 @@ async fn main() {
     println!("Intent: {intent}\n");
     println!("--- Debate begins ---\n");
 
-    let mut ctx = converge_kernel::Context::new();
+    let mut ctx = converge_kernel::ContextState::new();
     let _ = ctx.add_input(ContextKey::Seeds, "intent-1", intent.to_string());
 
     match engine.run(ctx).await {

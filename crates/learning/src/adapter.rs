@@ -435,7 +435,7 @@ fn budget_exceeded_count(events: &[ExperienceEventEnvelope]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_kernel::{Context, Engine, ExperienceEvent, ExperienceEventEnvelope};
+    use converge_kernel::{ContextState, Engine, ExperienceEvent, ExperienceEventEnvelope};
     use converge_pack::ContextKey;
     use std::collections::HashMap;
 
@@ -456,8 +456,8 @@ mod tests {
         )
     }
 
-    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> Context {
-        let mut ctx = Context::new();
+    fn promoted_context(entries: &[(ContextKey, &str, &str)]) -> ContextState {
+        let mut ctx = ContextState::new();
         for (key, id, content) in entries {
             ctx.add_input(*key, *id, *content)
                 .expect("should stage test input");
@@ -540,7 +540,7 @@ mod tests {
 
     #[test]
     fn build_episode_from_run_tracks_run_status_without_business_outcome() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let episode = build_episode_from_run(
             Uuid::new_v4(),
             Uuid::new_v4(),
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn extract_signals_from_run_prefers_recorded_outcome() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let signals = extract_signals_from_run(&ctx, &[make_outcome_event(true, "converged")]);
 
         assert!(
@@ -611,7 +611,7 @@ mod tests {
 
     #[test]
     fn build_episode_empty_context_no_events() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let episode = build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "EmptyCo", &ctx, &[]);
 
         assert!(episode.actual_outcome.is_none());
@@ -624,7 +624,7 @@ mod tests {
 
     #[test]
     fn extract_signals_empty_context_no_events_emits_missed() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let signals = extract_signals_from_run(&ctx, &[]);
 
         assert!(
@@ -636,7 +636,7 @@ mod tests {
 
     #[test]
     fn extract_signals_failing_outcome_emits_missed() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let signals =
             extract_signals_from_run(&ctx, &[make_outcome_event(false, "budget_exhausted")]);
 
@@ -650,7 +650,7 @@ mod tests {
 
     #[test]
     fn budget_exceeded_events_produce_blocker_signal() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let budget_event = ExperienceEventEnvelope::new(
             "evt-budget",
             ExperienceEvent::BudgetExceeded {
@@ -671,7 +671,7 @@ mod tests {
 
     #[test]
     fn build_episode_budget_exceeded_produces_lesson() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         let budget_event = ExperienceEventEnvelope::new(
             "evt-budget",
             ExperienceEvent::BudgetExceeded {
@@ -771,7 +771,7 @@ mod tests {
 
     #[test]
     fn has_infra_failure_false_for_empty_context() {
-        let ctx = converge_kernel::Context::new();
+        let ctx = converge_kernel::ContextState::new();
         assert!(!has_infra_failure(&ctx));
     }
 

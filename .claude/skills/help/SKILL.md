@@ -1,6 +1,7 @@
 ---
 name: help
 description: Show available skills — the daily workflow cheat sheet.
+model: haiku
 user-invocable: true
 allowed-tools: Read
 ---

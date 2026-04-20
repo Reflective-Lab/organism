@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Formation pattern** — replaces `CommitBoundary`; teams of heterogeneous agents (LLMs, optimizers, schedulers) assembled by Organism and run in Converge Engine instances
+- **Pipeline wiring** — full intent → admission → adversarial → simulation → formation → converge flow in `organism-runtime`
+- **Outcome simulator** — Monte Carlo sampling over plan annotations (impacts + risks) with configurable thresholds
+- **DefaultAdmissionController** — evaluates 4 feasibility dimensions: capability, context, resources, authority
+- **Axiom enforcement tests** (trybuild) — compile-time proof that `Fact` cannot be forged from Organism
+- **Connector Architecture** decision record — three-tier model (Tool/Port/Provider), API-only infrastructure strategy
+- **The Gap** philosophy doc — why Organism exists and how formations fill the intent→convergence gap
+
+### Changed
+- Converge deps bumped to rev `a277ab3` (ContextState rename, optimization/policy Suggestors)
+- Removed `CommitBoundary` trait — replaced by `Formation` which directly uses Converge's Engine
+- `organism-learning` tests updated for `Context` → `ContextState` rename
+
 ## [1.3.0] - 2026-04-19
 
 ### Added

@@ -1,6 +1,7 @@
 ---
 name: next
 description: Show remaining tasks for current milestone.
+model: haiku
 user-invocable: true
 allowed-tools: Read, Grep
 ---

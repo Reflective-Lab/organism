@@ -9,8 +9,7 @@
 //! This is what organism-domain pack metadata looks like when implemented
 //! as real Suggestors running on the Converge engine.
 
-use converge_kernel::{AgentEffect, ContextKey, Engine, ProposedFact, Suggestor};
-use converge_pack::Context as ContextView;
+use converge_kernel::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
 // ── Agents ─────────────────────────────────────────────────────────
 //
@@ -30,11 +29,11 @@ impl Suggestor for VendorDataAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -76,11 +75,11 @@ impl Suggestor for PriceEvaluator {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         evaluate_vendors(ctx, "price", |vendor| {
             let price = vendor
                 .get("price")
@@ -112,11 +111,11 @@ impl Suggestor for ComplianceEvaluator {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         evaluate_vendors(ctx, "compliance", |vendor| {
             if vendor
                 .get("compliant")
@@ -144,11 +143,11 @@ impl Suggestor for RiskEvaluator {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         evaluate_vendors(ctx, "risk", |vendor| {
             let years = vendor
                 .get("years_in_business")
@@ -180,11 +179,11 @@ impl Suggestor for TimelineEvaluator {
         &[ContextKey::Signals]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         evaluate_vendors(ctx, "timeline", |vendor| {
             let weeks = vendor
                 .get("delivery_weeks")
@@ -219,11 +218,11 @@ impl Suggestor for ConsensusAgent {
         &[ContextKey::Evaluations]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Proposals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let mut scores: std::collections::HashMap<String, (f64, u32)> =
             std::collections::HashMap::new();
@@ -273,7 +272,7 @@ impl Suggestor for ConsensusAgent {
 
 // ── Shared evaluation helper ───────────────────────────────────────
 
-fn evaluate_vendors<F>(ctx: &dyn ContextView, criterion: &str, scorer: F) -> AgentEffect
+fn evaluate_vendors<F>(ctx: &dyn Context, criterion: &str, scorer: F) -> AgentEffect
 where
     F: Fn(&serde_json::Value) -> f64,
 {
@@ -366,7 +365,7 @@ async fn main() {
         ]
     });
 
-    let mut ctx = converge_kernel::Context::new();
+    let mut ctx = converge_kernel::ContextState::new();
     let _ = ctx.add_input(ContextKey::Seeds, "rfp-1", rfp.to_string());
 
     println!("Evaluating 3 vendors across 4 criteria...\n");

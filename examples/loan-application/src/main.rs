@@ -11,8 +11,7 @@
 //! Demonstrates: parallel agents, all 5 skepticism kinds, 5 simulation dimensions,
 //! and learning episode capture.
 
-use converge_kernel::{AgentEffect, ContextKey, Engine, ProposedFact, Suggestor};
-use converge_pack::Context as ContextView;
+use converge_kernel::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
 use organism_pack::{
     // Intent
@@ -49,11 +48,11 @@ impl Suggestor for LoanAdmissionAgent {
         &[ContextKey::Seeds]
     }
 
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Signals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
         let Some(seed) = seeds.first() else {
             return AgentEffect::empty();
@@ -149,11 +148,11 @@ impl Suggestor for CreditCheckAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Signals]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let app = get_application(ctx);
         let credit = app
             .get("credit_score")
@@ -210,11 +209,11 @@ impl Suggestor for DocumentVerificationAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Signals]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let app = get_application(ctx);
         let docs = app
             .get("documents")
@@ -239,11 +238,11 @@ impl Suggestor for ComplianceCheckAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Signals]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let app = get_application(ctx);
         let citizen = app
             .get("us_citizen")
@@ -279,11 +278,11 @@ impl Suggestor for RiskAssessmentAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Signals]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Signals) && !ctx.has(ContextKey::Evaluations)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let app = get_application(ctx);
         let years = app
             .get("employment_years")
@@ -321,11 +320,11 @@ impl Suggestor for LoanSkepticAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Evaluations, ContextKey::Signals]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Evaluations) && !ctx.has(ContextKey::Strategies)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let evaluations = ctx.get(ContextKey::Evaluations);
         let app = get_application(ctx);
         let requested = app
@@ -433,11 +432,11 @@ impl Suggestor for LoanDecisionAgent {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Strategies]
     }
-    fn accepts(&self, ctx: &dyn ContextView) -> bool {
+    fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Proposals)
     }
 
-    async fn execute(&self, ctx: &dyn ContextView) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
         let Some(review_fact) = strategies.first() else {
             return AgentEffect::empty();
@@ -579,7 +578,7 @@ impl Suggestor for LoanDecisionAgent {
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-fn get_application(ctx: &dyn ContextView) -> serde_json::Value {
+fn get_application(ctx: &dyn Context) -> serde_json::Value {
     ctx.get(ContextKey::Signals)
         .iter()
         .find(|s| s.id == "application:parsed")
@@ -641,7 +640,7 @@ async fn main() {
         "employment_years": 5
     });
 
-    let mut ctx = converge_kernel::Context::new();
+    let mut ctx = converge_kernel::ContextState::new();
     let _ = ctx.add_input(ContextKey::Seeds, "app-1", application.to_string());
 
     println!(

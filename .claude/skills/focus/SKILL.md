@@ -1,6 +1,7 @@
 ---
 name: focus
 description: Session opener — milestone, days left, open deliverables. TRIGGER at the start of every conversation.
+model: sonnet
 user-invocable: true
 allowed-tools: Read, Grep, Bash
 ---
