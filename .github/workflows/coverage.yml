@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -27,10 +28,28 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage
-        run: cargo llvm-cov --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --json --output-path coverage.json
         continue-on-error: true
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Extract coverage percentage
+        id: cov
+        run: |
+          if [ -f coverage.json ]; then
+            COV=$(python3 -c "import json; d=json.load(open('coverage.json')); print(f\"{d['data'][0]['totals']['lines']['percent']:.1f}\")")
+            echo "percent=$COV" >> "$GITHUB_OUTPUT"
+            echo "### Coverage: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "percent=0" >> "$GITHUB_OUTPUT"
+            echo "### Coverage: unknown" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
         with:
-          files: lcov.info
-          fail_ci_if_error: false
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: 0d02060b27bfee904bf5b805102ea382
+          filename: organism-coverage.json
+          label: coverage
+          message: ${{ steps.cov.outputs.percent }}%
+          valColorRange: ${{ steps.cov.outputs.percent }}
+          minColorRange: 0
+          maxColorRange: 100
