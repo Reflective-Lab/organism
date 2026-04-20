@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/Reflective-Lab/organism/actions/workflows/ci.yml/badge.svg)](https://github.com/Reflective-Lab/organism/actions/workflows/ci.yml)
 [![Security](https://github.com/Reflective-Lab/organism/actions/workflows/security.yml/badge.svg)](https://github.com/Reflective-Lab/organism/actions/workflows/security.yml)
-[![codecov](https://codecov.io/gh/Reflective-Lab/organism/graph/badge.svg)](https://codecov.io/gh/Reflective-Lab/organism)
 [![dependency status](https://deps.rs/repo/github/Reflective-Lab/organism/status.svg)](https://deps.rs/repo/github/Reflective-Lab/organism)
 ![MSRV](https://img.shields.io/badge/MSRV-1.94.0-blue)
 <img alt="gitleaks badge" src="https://img.shields.io/badge/protected%20by-gitleaks-blue">
