@@ -17,13 +17,17 @@ fn main() {
     println!("=== Charter Derivation from Intent ===\n");
 
     // ── Intent 1: Low-stakes exploration ──────────────────────────
-    let exploration = IntentPacket::new("Research market trends in Nordic SaaS", now + Duration::days(14));
+    let exploration = IntentPacket::new(
+        "Research market trends in Nordic SaaS",
+        now + Duration::days(14),
+    );
 
     let derived = derive_charter(&exploration, now);
     print_derived("1. Low-Stakes Exploration", &derived);
 
     // ── Intent 2: High-stakes irreversible acquisition ────────────
-    let mut acquisition = IntentPacket::new("Acquire Outpost24 for €200M", now + Duration::days(30));
+    let mut acquisition =
+        IntentPacket::new("Acquire Outpost24 for €200M", now + Duration::days(30));
     acquisition.reversibility = Reversibility::Irreversible;
     acquisition.authority = vec!["board".into(), "cfo".into(), "legal".into(), "ceo".into()];
     acquisition.constraints = vec![
@@ -33,9 +37,18 @@ fn main() {
         "financing_secured".into(),
     ];
     acquisition.forbidden = vec![
-        ForbiddenAction { action: "public_disclosure".into(), reason: "NDA in effect".into() },
-        ForbiddenAction { action: "direct_contact".into(), reason: "Intermediary required".into() },
-        ForbiddenAction { action: "binding_offer".into(), reason: "Board approval needed first".into() },
+        ForbiddenAction {
+            action: "public_disclosure".into(),
+            reason: "NDA in effect".into(),
+        },
+        ForbiddenAction {
+            action: "direct_contact".into(),
+            reason: "Intermediary required".into(),
+        },
+        ForbiddenAction {
+            action: "binding_offer".into(),
+            reason: "Board approval needed first".into(),
+        },
     ];
     acquisition.expiry_action = ExpiryAction::Escalate;
 
@@ -43,18 +56,29 @@ fn main() {
     print_derived("2. High-Stakes Irreversible Acquisition", &derived);
 
     // ── Intent 3: Urgent time-pressured decision ──────────────────
-    let urgent = IntentPacket::new("Respond to competitor's hostile bid", now + Duration::hours(4));
+    let urgent = IntentPacket::new(
+        "Respond to competitor's hostile bid",
+        now + Duration::hours(4),
+    );
 
     let derived = derive_charter(&urgent, now);
     print_derived("3. Urgent Time-Pressured Decision", &derived);
 
     // ── Intent 4: Moderate complexity ─────────────────────────────
-    let mut moderate = IntentPacket::new("Evaluate new vendor for data pipeline", now + Duration::days(7));
+    let mut moderate = IntentPacket::new(
+        "Evaluate new vendor for data pipeline",
+        now + Duration::days(7),
+    );
     moderate.reversibility = Reversibility::Partial;
-    moderate.constraints = vec!["budget_cap".into(), "timeline".into(), "soc2_required".into()];
-    moderate.forbidden = vec![
-        ForbiddenAction { action: "multi_year_commitment".into(), reason: "Trial first".into() },
+    moderate.constraints = vec![
+        "budget_cap".into(),
+        "timeline".into(),
+        "soc2_required".into(),
     ];
+    moderate.forbidden = vec![ForbiddenAction {
+        action: "multi_year_commitment".into(),
+        reason: "Trial first".into(),
+    }];
 
     let derived = derive_charter(&moderate, now);
     print_derived("4. Moderate Complexity Vendor Evaluation", &derived);
@@ -62,8 +86,15 @@ fn main() {
     // ── Show how a single field changes the entire shape ──────────
     println!("=== Sensitivity: Changing Reversibility Alone ===\n");
 
-    for rev in [Reversibility::Reversible, Reversibility::Partial, Reversibility::Irreversible] {
-        let mut intent = IntentPacket::new("Same outcome, different reversibility", now + Duration::days(7));
+    for rev in [
+        Reversibility::Reversible,
+        Reversibility::Partial,
+        Reversibility::Irreversible,
+    ] {
+        let mut intent = IntentPacket::new(
+            "Same outcome, different reversibility",
+            now + Duration::days(7),
+        );
         intent.reversibility = rev;
         intent.constraints = vec!["budget".into(), "timeline".into()];
 
@@ -103,7 +134,13 @@ fn print_derived(title: &str, derived: &organism_pack::DerivedCharter) {
     println!("    Explicit turns: {}", ch.require_explicit_turns);
     println!("    Dissent map:    {}", ch.require_dissent_map);
     println!("    Done gate:      {}", ch.require_done_gate);
-    println!("    Roles:          {:?}", ch.expected_roles.iter().map(|r| r.label()).collect::<Vec<_>>());
+    println!(
+        "    Roles:          {:?}",
+        ch.expected_roles
+            .iter()
+            .map(|r| r.label())
+            .collect::<Vec<_>>()
+    );
     println!("    Confidence:     {:.2}", derived.confidence);
     println!();
 

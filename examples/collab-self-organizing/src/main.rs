@@ -81,9 +81,7 @@ fn main() {
     println!("  Voters: {}", runner.voters().len());
     println!(
         "  Report owner: {}",
-        runner
-            .report_owner()
-            .map_or("none", |p| p.display_name())
+        runner.report_owner().map_or("none", |p| p.display_name())
     );
 
     // Generalist can do everything — that's the point.
@@ -106,10 +104,26 @@ fn main() {
         ],
     );
     let grown_agents = vec![
-        SwarmAgent { id: "scout".into(), name: "Scout Agent".into(), role: CollaborationRole::Generalist },
-        SwarmAgent { id: "deep-1".into(), name: "Deep Diver 1".into(), role: CollaborationRole::Generalist },
-        SwarmAgent { id: "deep-2".into(), name: "Deep Diver 2".into(), role: CollaborationRole::Generalist },
-        SwarmAgent { id: "watcher".into(), name: "Observer".into(), role: CollaborationRole::Observer },
+        SwarmAgent {
+            id: "scout".into(),
+            name: "Scout Agent".into(),
+            role: CollaborationRole::Generalist,
+        },
+        SwarmAgent {
+            id: "deep-1".into(),
+            name: "Deep Diver 1".into(),
+            role: CollaborationRole::Generalist,
+        },
+        SwarmAgent {
+            id: "deep-2".into(),
+            name: "Deep Diver 2".into(),
+            role: CollaborationRole::Generalist,
+        },
+        SwarmAgent {
+            id: "watcher".into(),
+            name: "Observer".into(),
+            role: CollaborationRole::Observer,
+        },
     ];
 
     let runner = CollaborationRunner::new(grown_team, charter.clone(), grown_agents)
@@ -118,14 +132,26 @@ fn main() {
     println!("  Team size: {}", runner.team().member_count());
     println!("  Contributors: {}", runner.contributors().len());
     println!("  Voters: {}", runner.voters().len());
-    println!("  Observer (watcher) contributes: {}", CollaborationRole::Observer.contributes_in_rounds());
-    println!("  Observer (watcher) votes: {}", CollaborationRole::Observer.votes_on_done_gate());
+    println!(
+        "  Observer (watcher) contributes: {}",
+        CollaborationRole::Observer.contributes_in_rounds()
+    );
+    println!(
+        "  Observer (watcher) votes: {}",
+        CollaborationRole::Observer.votes_on_done_gate()
+    );
     println!();
 
     // Advisory consensus — the done gate always passes, even with 0 yes votes.
     println!("--- Advisory Consensus ---");
-    println!("  Advisory with 0/3 yes: {}", ConsensusRule::AdvisoryOnly.passes(0, 3));
-    println!("  Advisory with 0/0:     {}", ConsensusRule::AdvisoryOnly.passes(0, 0));
+    println!(
+        "  Advisory with 0/3 yes: {}",
+        ConsensusRule::AdvisoryOnly.passes(0, 3)
+    );
+    println!(
+        "  Advisory with 0/0:     {}",
+        ConsensusRule::AdvisoryOnly.passes(0, 0)
+    );
     println!("  (The done gate is a formality — the team decides when it's done)");
     println!();
 
@@ -141,6 +167,12 @@ fn main() {
     let strict_swarm = CollaborationCharter::self_organizing()
         .with_consensus_rule(ConsensusRule::Majority)
         .with_turn_cadence(TurnCadence::RoundRobin);
-    println!("  Swarm with majority consensus: {:?}", strict_swarm.consensus_rule);
-    println!("  Swarm with round-robin turns:  {:?}", strict_swarm.turn_cadence);
+    println!(
+        "  Swarm with majority consensus: {:?}",
+        strict_swarm.consensus_rule
+    );
+    println!(
+        "  Swarm with round-robin turns:  {:?}",
+        strict_swarm.turn_cadence
+    );
 }

@@ -20,6 +20,11 @@ check:
 clean:
     cargo clean
 
+# Install git pre-commit hooks (fmt + clippy)
+hooks:
+    git config core.hooksPath .githooks
+    @echo "Git hooks installed — .githooks/pre-commit will run on each commit"
+
 # ── Workflow ──────────────────────────────────────────────────────────
 
 # Session opener — repo health + recent activity

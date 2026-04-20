@@ -13,8 +13,8 @@
 use chrono::{Duration, Utc};
 use organism_intent::{IntentPacket, Reversibility};
 use organism_pack::{
-    CollaborationTopology, ShapeCompetition, ShapeMetric, ShapeObservation,
-    calibrate_shape, classify_problem, generate_candidates, score_observation, select_winner,
+    CollaborationTopology, ShapeCompetition, ShapeMetric, ShapeObservation, calibrate_shape,
+    classify_problem, generate_candidates, score_observation, select_winner,
 };
 use uuid::Uuid;
 
@@ -24,10 +24,15 @@ fn main() {
     println!("=== Shape Competition: The Shape Is a Hypothesis ===\n");
 
     // ── Step 1: Generate candidates for an irreversible intent ────
-    let mut intent = IntentPacket::new("Acquire target company for €100M", now + Duration::days(30));
+    let mut intent =
+        IntentPacket::new("Acquire target company for €100M", now + Duration::days(30));
     intent.reversibility = Reversibility::Irreversible;
     intent.authority = vec!["board".into(), "cfo".into(), "legal".into()];
-    intent.constraints = vec!["regulatory".into(), "financing".into(), "due_diligence".into()];
+    intent.constraints = vec![
+        "regulatory".into(),
+        "financing".into(),
+        "due_diligence".into(),
+    ];
 
     let problem_class = classify_problem(&intent);
     println!("Problem class: {problem_class}\n");
@@ -95,7 +100,10 @@ fn main() {
 
     let winner_id = select_winner(&competition, &observations);
     let winner = candidates.iter().find(|c| Some(c.id) == winner_id).unwrap();
-    let winner_obs = observations.iter().find(|o| Some(o.candidate_id) == winner_id).unwrap();
+    let winner_obs = observations
+        .iter()
+        .find(|o| Some(o.candidate_id) == winner_id)
+        .unwrap();
     let winner_score = score_observation(winner_obs, ShapeMetric::Balanced);
 
     println!(
@@ -154,11 +162,18 @@ fn main() {
     println!();
 
     // Show that prior-informed candidates include the best performer.
-    let has_prior_informed = new_candidates.iter().any(|c| c.rationale.contains("Prior-informed"));
+    let has_prior_informed = new_candidates
+        .iter()
+        .any(|c| c.rationale.contains("Prior-informed"));
     if has_prior_informed {
-        println!("  The system learned from past episodes and included a prior-informed candidate.");
+        println!(
+            "  The system learned from past episodes and included a prior-informed candidate."
+        );
     } else {
-        println!("  With only {} observations, the system hasn't yet accumulated enough data", calibrations[0].observation_count);
+        println!(
+            "  With only {} observations, the system hasn't yet accumulated enough data",
+            calibrations[0].observation_count
+        );
         println!("  to override the derivation. It needs >= 3 observations per topology.");
     }
 }

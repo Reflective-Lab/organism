@@ -435,9 +435,9 @@ fn budget_exceeded_count(events: &[ExperienceEventEnvelope]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use converge_kernel::{Context, Engine, ExperienceEvent, ExperienceEventEnvelope};
     use converge_pack::ContextKey;
+    use std::collections::HashMap;
 
     fn make_outcome_event(passed: bool, stop_reason: &str) -> ExperienceEventEnvelope {
         ExperienceEventEnvelope::new(
@@ -612,8 +612,7 @@ mod tests {
     #[test]
     fn build_episode_empty_context_no_events() {
         let ctx = converge_kernel::Context::new();
-        let episode =
-            build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "EmptyCo", &ctx, &[]);
+        let episode = build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "EmptyCo", &ctx, &[]);
 
         assert!(episode.actual_outcome.is_none());
         assert!(episode.run_status.is_none());
@@ -682,10 +681,13 @@ mod tests {
                 observed: None,
             },
         );
-        let episode =
-            build_episode_from_run(Uuid::new_v4(), Uuid::new_v4(), "BudgetCo", &ctx, &[
-                budget_event,
-            ]);
+        let episode = build_episode_from_run(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "BudgetCo",
+            &ctx,
+            &[budget_event],
+        );
 
         assert!(
             episode
@@ -780,16 +782,13 @@ mod tests {
         use proptest::prelude::*;
 
         fn arb_error_dimension() -> impl Strategy<Value = ErrorDimension> {
-            (
-                "[a-z_]{3,15}",
-                proptest::num::f64::NORMAL,
-                0.0..=1.0_f64,
-            )
-                .prop_map(|(name, predicted, actual)| ErrorDimension {
+            ("[a-z_]{3,15}", proptest::num::f64::NORMAL, 0.0..=1.0_f64).prop_map(
+                |(name, predicted, actual)| ErrorDimension {
                     name,
                     predicted,
                     actual,
-                })
+                },
+            )
         }
 
         proptest! {

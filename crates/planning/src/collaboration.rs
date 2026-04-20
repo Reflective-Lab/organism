@@ -596,12 +596,14 @@ mod tests {
     fn done_gate_requires_at_least_one_voter() {
         let team = TeamFormation::new(
             TeamFormationMode::OpenCall,
-            vec![
-                CollaborationMember::new("writer", "Writer", CollaborationRole::ReportWriter),
-            ],
+            vec![CollaborationMember::new(
+                "writer",
+                "Writer",
+                CollaborationRole::ReportWriter,
+            )],
         );
-        let charter = CollaborationCharter::self_organizing()
-            .with_consensus_rule(ConsensusRule::Majority);
+        let charter =
+            CollaborationCharter::self_organizing().with_consensus_rule(ConsensusRule::Majority);
 
         let result = charter.validate(&team);
         assert_eq!(
@@ -639,9 +641,11 @@ mod tests {
 
         let team = TeamFormation::new(
             TeamFormationMode::OpenCall,
-            vec![
-                CollaborationMember::new("critic", "Critic", CollaborationRole::Critic),
-            ],
+            vec![CollaborationMember::new(
+                "critic",
+                "Critic",
+                CollaborationRole::Critic,
+            )],
         );
         assert_eq!(
             charter.validate(&team),
@@ -737,12 +741,9 @@ mod tests {
         let team = sample_panel_team();
         let contributors = team.contributors();
         assert!(contributors.iter().all(|m| m.role.contributes_in_rounds()));
-        assert!(
-            !contributors
-                .iter()
-                .any(|m| m.role == CollaborationRole::Judge
-                    || m.role == CollaborationRole::ReportWriter)
-        );
+        assert!(!contributors.iter().any(
+            |m| m.role == CollaborationRole::Judge || m.role == CollaborationRole::ReportWriter
+        ));
     }
 
     #[test]

@@ -92,8 +92,9 @@ pub fn evaluate_transitions(
 ) -> Option<TransitionDecision> {
     for rule in rules {
         if let Some(from) = rule.from
-            && from != signals.current_topology {
-                continue;
+            && from != signals.current_topology
+        {
+            continue;
         }
 
         if signals.current_topology == rule.to {
@@ -171,8 +172,7 @@ fn trigger_matches(trigger: &TransitionTrigger, signals: &ConvergenceSignals) ->
             if signals.hypothesis_count == 0 {
                 return false;
             }
-            let ratio =
-                signals.contradiction_count as f64 / signals.hypothesis_count as f64;
+            let ratio = signals.contradiction_count as f64 / signals.hypothesis_count as f64;
             ratio >= *contradiction_ratio && signals.contradiction_count >= *min_contradictions
         }
         TransitionTrigger::StabilityReached {
@@ -182,12 +182,12 @@ fn trigger_matches(trigger: &TransitionTrigger, signals: &ConvergenceSignals) ->
             signals.stable_cycles >= *min_stable_cycles
                 && signals.hypothesis_count >= *min_hypotheses
         }
-        TransitionTrigger::BudgetPressure {
-            remaining_fraction,
-        } => signals.budget_remaining_fraction <= *remaining_fraction,
-        TransitionTrigger::ConsensusDeadlock {
-            failed_vote_count,
-        } => signals.failed_vote_count >= *failed_vote_count,
+        TransitionTrigger::BudgetPressure { remaining_fraction } => {
+            signals.budget_remaining_fraction <= *remaining_fraction
+        }
+        TransitionTrigger::ConsensusDeadlock { failed_vote_count } => {
+            signals.failed_vote_count >= *failed_vote_count
+        }
     }
 }
 
@@ -214,7 +214,8 @@ pub fn default_transition_rules() -> Vec<TransitionRule> {
                 minimum_members: Some(3),
                 ..CharterAdjustments::default()
             },
-            rationale: "Evidence is clustering — tighten into a huddle for focused synthesis".into(),
+            rationale: "Evidence is clustering — tighten into a huddle for focused synthesis"
+                .into(),
         },
         TransitionRule {
             name: "huddle-to-panel".into(),
@@ -322,8 +323,7 @@ mod tests {
         signals.contradiction_count = 5; // 5/20 = 0.25 >= 0.2
         signals.hypothesis_count = 20;
 
-        let decision =
-            evaluate_transitions(&CollaborationCharter::huddle(), &signals, &rules);
+        let decision = evaluate_transitions(&CollaborationCharter::huddle(), &signals, &rules);
 
         assert!(decision.is_some());
         let d = decision.unwrap();
@@ -338,12 +338,14 @@ mod tests {
         let mut signals = base_signals();
         signals.contradiction_count = 10;
 
-        assert!(evaluate_transitions(&base_charter(), &signals, &rules).is_none()
-            || evaluate_transitions(&base_charter(), &signals, &rules)
-                .unwrap()
-                .rule
-                .name
-                != "huddle-to-panel");
+        assert!(
+            evaluate_transitions(&base_charter(), &signals, &rules).is_none()
+                || evaluate_transitions(&base_charter(), &signals, &rules)
+                    .unwrap()
+                    .rule
+                    .name
+                    != "huddle-to-panel"
+        );
     }
 
     #[test]
@@ -354,8 +356,7 @@ mod tests {
         signals.stable_cycles = 3;
         signals.hypothesis_count = 10;
 
-        let decision =
-            evaluate_transitions(&CollaborationCharter::panel(), &signals, &rules);
+        let decision = evaluate_transitions(&CollaborationCharter::panel(), &signals, &rules);
 
         assert!(decision.is_some());
         let d = decision.unwrap();
@@ -370,8 +371,7 @@ mod tests {
         signals.current_topology = CollaborationTopology::Panel;
         signals.budget_remaining_fraction = 0.15;
 
-        let decision =
-            evaluate_transitions(&CollaborationCharter::panel(), &signals, &rules);
+        let decision = evaluate_transitions(&CollaborationCharter::panel(), &signals, &rules);
 
         assert!(decision.is_some());
         let d = decision.unwrap();
@@ -388,8 +388,7 @@ mod tests {
 
         // budget-tighten targets Huddle, and current is already Huddle → skipped
         // But swarm-to-huddle won't fire either (wrong source topology for clustering)
-        let decision =
-            evaluate_transitions(&CollaborationCharter::huddle(), &signals, &rules);
+        let decision = evaluate_transitions(&CollaborationCharter::huddle(), &signals, &rules);
 
         // Should be None since all rules either don't match source or target == current
         assert!(decision.is_none());
@@ -439,7 +438,11 @@ mod tests {
 
         assert!(result.expected_roles.contains(&CollaborationRole::Critic));
         assert!(result.expected_roles.contains(&CollaborationRole::Judge));
-        assert!(result.expected_roles.contains(&CollaborationRole::Generalist));
+        assert!(
+            result
+                .expected_roles
+                .contains(&CollaborationRole::Generalist)
+        );
     }
 
     #[test]

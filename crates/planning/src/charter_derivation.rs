@@ -114,19 +114,23 @@ pub fn derive_charter_with_priors(
     }
 
     // Find the best-performing topology for this problem class.
-    let best = relevant
-        .iter()
-        .max_by(|a, b| a.posterior_score.partial_cmp(&b.posterior_score).unwrap_or(std::cmp::Ordering::Equal));
+    let best = relevant.iter().max_by(|a, b| {
+        a.posterior_score
+            .partial_cmp(&b.posterior_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     if let Some(best) = best
-        && best.posterior_score > derived.confidence && best.observation_count >= 3 {
-            let preset = topology_preset(best.topology);
-            derived.rationale.topology_reason = format!(
-                "Prior calibration favors {:?} for problem class '{}' (score {:.2}, {} observations)",
-                best.topology, problem_class, best.posterior_score, best.observation_count
-            );
-            derived.charter = preset;
-            derived.confidence = f64::midpoint(derived.confidence, best.posterior_score);
+        && best.posterior_score > derived.confidence
+        && best.observation_count >= 3
+    {
+        let preset = topology_preset(best.topology);
+        derived.rationale.topology_reason = format!(
+            "Prior calibration favors {:?} for problem class '{}' (score {:.2}, {} observations)",
+            best.topology, problem_class, best.posterior_score, best.observation_count
+        );
+        derived.charter = preset;
+        derived.confidence = f64::midpoint(derived.confidence, best.posterior_score);
     }
 
     derived
@@ -198,10 +202,7 @@ fn derive_from_complexity(c: &IntentComplexity) -> DerivedCharter {
     }
 }
 
-fn derive_topology(
-    c: &IntentComplexity,
-    stakes: f64,
-) -> (CollaborationTopology, String) {
+fn derive_topology(c: &IntentComplexity, stakes: f64) -> (CollaborationTopology, String) {
     if c.time_pressure >= 0.8 {
         (
             CollaborationTopology::Huddle,
@@ -236,10 +237,7 @@ fn derive_topology(
     }
 }
 
-fn derive_discipline(
-    c: &IntentComplexity,
-    stakes: f64,
-) -> (CollaborationDiscipline, String) {
+fn derive_discipline(c: &IntentComplexity, stakes: f64) -> (CollaborationDiscipline, String) {
     if c.reversibility_weight >= 0.8 || stakes >= 0.7 {
         (
             CollaborationDiscipline::Enforced,
@@ -263,10 +261,7 @@ fn derive_discipline(
     }
 }
 
-fn derive_consensus(
-    c: &IntentComplexity,
-    stakes: f64,
-) -> (ConsensusRule, String) {
+fn derive_consensus(c: &IntentComplexity, stakes: f64) -> (ConsensusRule, String) {
     if c.reversibility_weight >= 1.0 && stakes >= 0.8 {
         (
             ConsensusRule::Unanimous,
@@ -301,10 +296,7 @@ fn derive_consensus(
     }
 }
 
-fn derive_cadence(
-    c: &IntentComplexity,
-    stakes: f64,
-) -> (TurnCadence, String) {
+fn derive_cadence(c: &IntentComplexity, stakes: f64) -> (TurnCadence, String) {
     if c.time_pressure >= 0.8 {
         (
             TurnCadence::RoundRobin,
@@ -355,37 +347,70 @@ fn derive_formation(c: &IntentComplexity) -> (TeamFormationMode, String) {
 
 type RoleList = Vec<(CollaborationRole, String)>;
 
-fn derive_roles(
-    c: &IntentComplexity,
-    topology: CollaborationTopology,
-) -> (RoleList, RoleList) {
+fn derive_roles(c: &IntentComplexity, topology: CollaborationTopology) -> (RoleList, RoleList) {
     let mut roles = Vec::new();
 
     match topology {
         CollaborationTopology::Panel => {
-            roles.push((CollaborationRole::Lead, "Panel requires a lead to frame the discussion".into()));
-            roles.push((CollaborationRole::Domain, "Domain expertise needed for substantive review".into()));
-            roles.push((CollaborationRole::Critic, "Adversarial critic required for high-stakes decisions".into()));
+            roles.push((
+                CollaborationRole::Lead,
+                "Panel requires a lead to frame the discussion".into(),
+            ));
+            roles.push((
+                CollaborationRole::Domain,
+                "Domain expertise needed for substantive review".into(),
+            ));
+            roles.push((
+                CollaborationRole::Critic,
+                "Adversarial critic required for high-stakes decisions".into(),
+            ));
             if c.authority_breadth >= 0.5 {
-                roles.push((CollaborationRole::Judge, format!(
-                    "Multi-authority (breadth={:.2}) needs independent judges",
-                    c.authority_breadth
-                )));
+                roles.push((
+                    CollaborationRole::Judge,
+                    format!(
+                        "Multi-authority (breadth={:.2}) needs independent judges",
+                        c.authority_breadth
+                    ),
+                ));
             }
         }
         CollaborationTopology::Huddle => {
-            roles.push((CollaborationRole::Lead, "Huddle lead keeps the team focused".into()));
-            roles.push((CollaborationRole::Domain, "Domain expertise grounds the discussion".into()));
-            roles.push((CollaborationRole::Critic, "Critic provides necessary pushback".into()));
-            roles.push((CollaborationRole::Synthesizer, "Synthesizer captures round outcomes".into()));
+            roles.push((
+                CollaborationRole::Lead,
+                "Huddle lead keeps the team focused".into(),
+            ));
+            roles.push((
+                CollaborationRole::Domain,
+                "Domain expertise grounds the discussion".into(),
+            ));
+            roles.push((
+                CollaborationRole::Critic,
+                "Critic provides necessary pushback".into(),
+            ));
+            roles.push((
+                CollaborationRole::Synthesizer,
+                "Synthesizer captures round outcomes".into(),
+            ));
         }
         CollaborationTopology::DiscussionGroup => {
-            roles.push((CollaborationRole::Moderator, "Discussion group needs a moderator".into()));
-            roles.push((CollaborationRole::Domain, "Domain perspective required".into()));
-            roles.push((CollaborationRole::Generalist, "Generalist provides breadth".into()));
+            roles.push((
+                CollaborationRole::Moderator,
+                "Discussion group needs a moderator".into(),
+            ));
+            roles.push((
+                CollaborationRole::Domain,
+                "Domain perspective required".into(),
+            ));
+            roles.push((
+                CollaborationRole::Generalist,
+                "Generalist provides breadth".into(),
+            ));
         }
         CollaborationTopology::SelfOrganizing => {
-            roles.push((CollaborationRole::Generalist, "Self-organizing team — generalists can fill any gap".into()));
+            roles.push((
+                CollaborationRole::Generalist,
+                "Self-organizing team — generalists can fill any gap".into(),
+            ));
         }
     }
 
@@ -496,7 +521,10 @@ mod tests {
 
         let derived = derive_charter(&intent, now);
 
-        assert_eq!(derived.charter.discipline, CollaborationDiscipline::Enforced);
+        assert_eq!(
+            derived.charter.discipline,
+            CollaborationDiscipline::Enforced
+        );
         assert!(matches!(
             derived.charter.consensus_rule,
             ConsensusRule::Supermajority | ConsensusRule::Unanimous
@@ -512,7 +540,10 @@ mod tests {
 
         let derived = derive_charter(&intent, now);
 
-        assert_eq!(derived.charter.topology, CollaborationTopology::SelfOrganizing);
+        assert_eq!(
+            derived.charter.topology,
+            CollaborationTopology::SelfOrganizing
+        );
         assert_eq!(derived.charter.discipline, CollaborationDiscipline::Loose);
         assert_eq!(derived.charter.consensus_rule, ConsensusRule::AdvisoryOnly);
         assert_eq!(derived.charter.turn_cadence, TurnCadence::FigureItOut);
@@ -534,7 +565,10 @@ mod tests {
                 .expected_roles
                 .contains(&CollaborationRole::Judge)
         );
-        assert_eq!(derived.charter.turn_cadence, TurnCadence::LeadThenRoundRobin);
+        assert_eq!(
+            derived.charter.turn_cadence,
+            TurnCadence::LeadThenRoundRobin
+        );
     }
 
     #[test]
@@ -568,15 +602,30 @@ mod tests {
         intent.reversibility = Reversibility::Partial;
         intent.constraints = vec!["budget".into(), "timeline".into(), "scope".into()];
         intent.forbidden = vec![
-            ForbiddenAction { action: "a".into(), reason: "r".into() },
-            ForbiddenAction { action: "b".into(), reason: "r".into() },
-            ForbiddenAction { action: "c".into(), reason: "r".into() },
+            ForbiddenAction {
+                action: "a".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "b".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "c".into(),
+                reason: "r".into(),
+            },
         ];
 
         let derived = derive_charter(&intent, now);
 
-        assert_eq!(derived.charter.topology, CollaborationTopology::DiscussionGroup);
-        assert_eq!(derived.charter.discipline, CollaborationDiscipline::Moderated);
+        assert_eq!(
+            derived.charter.topology,
+            CollaborationTopology::DiscussionGroup
+        );
+        assert_eq!(
+            derived.charter.discipline,
+            CollaborationDiscipline::Moderated
+        );
     }
 
     #[test]
@@ -617,11 +666,26 @@ mod tests {
         let now = Utc::now();
         let mut intent = base_intent(now);
         intent.forbidden = vec![
-            ForbiddenAction { action: "a".into(), reason: "r".into() },
-            ForbiddenAction { action: "b".into(), reason: "r".into() },
-            ForbiddenAction { action: "c".into(), reason: "r".into() },
-            ForbiddenAction { action: "d".into(), reason: "r".into() },
-            ForbiddenAction { action: "e".into(), reason: "r".into() },
+            ForbiddenAction {
+                action: "a".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "b".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "c".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "d".into(),
+                reason: "r".into(),
+            },
+            ForbiddenAction {
+                action: "e".into(),
+                reason: "r".into(),
+            },
         ];
         intent.constraints = vec!["a".into(), "b".into(), "c".into(), "d".into()];
         intent.reversibility = Reversibility::Partial;

@@ -129,9 +129,7 @@ pub fn generate_candidates(
     candidates.push(ShapeCandidate {
         id: Uuid::new_v4(),
         charter: alt_charter,
-        rationale: format!(
-            "Alternative: {alt_topology:?} explores the opposite structure point",
-        ),
+        rationale: format!("Alternative: {alt_topology:?} explores the opposite structure point",),
         prior_score: alt_prior,
         evidence_quality: None,
     });
@@ -296,7 +294,11 @@ mod tests {
 
         let candidates = generate_candidates(&intent, Utc::now(), &priors);
         assert!(candidates.len() >= 3);
-        assert!(candidates.iter().any(|c| c.rationale.contains("Prior-informed")));
+        assert!(
+            candidates
+                .iter()
+                .any(|c| c.rationale.contains("Prior-informed"))
+        );
     }
 
     #[test]
@@ -407,7 +409,10 @@ mod tests {
         let mut irreversible = IntentPacket::new("B", now + Duration::days(7));
         irreversible.reversibility = Reversibility::Irreversible;
 
-        assert_ne!(classify_problem(&reversible), classify_problem(&irreversible));
+        assert_ne!(
+            classify_problem(&reversible),
+            classify_problem(&irreversible)
+        );
     }
 
     #[test]
@@ -426,12 +431,7 @@ mod tests {
     fn calibrate_shape_converges() {
         let mut calibrations: Vec<ShapeCalibration> = vec![];
         for _ in 0..10 {
-            let cal = calibrate_shape(
-                "test",
-                CollaborationTopology::Panel,
-                0.9,
-                &calibrations,
-            );
+            let cal = calibrate_shape("test", CollaborationTopology::Panel, 0.9, &calibrations);
             calibrations = vec![cal];
         }
 
@@ -472,7 +472,7 @@ mod tests {
         let obs = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 10_000,
-            avg_confidence: 10.0, // out of range, should clamp
+            avg_confidence: 10.0,    // out of range, should clamp
             contradiction_rate: 5.0, // out of range
             cycles_to_stability: 1000,
             budget_used_fraction: 2.0, // out of range
