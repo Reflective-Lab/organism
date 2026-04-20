@@ -59,4 +59,4 @@ jobs:
         with:
           components: rustfmt
       - name: Check formatting
-        run: find crates examples -name '*.rs' | xargs rustfmt --check
+        run: find crates -name '*.rs' | xargs rustfmt --edition 2024 --check
