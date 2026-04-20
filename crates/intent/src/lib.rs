@@ -177,3 +177,306 @@ pub enum IntentError {
     #[error("intent infeasible: {0}")]
     Infeasible(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    fn future() -> DateTime<Utc> {
+        Utc::now() + Duration::hours(1)
+    }
+
+    fn past() -> DateTime<Utc> {
+        Utc::now() - Duration::seconds(10)
+    }
+
+    #[test]
+    fn new_sets_defaults() {
+        let intent = IntentPacket::new("ship q3", future());
+        assert_eq!(intent.outcome, "ship q3");
+        assert_eq!(intent.context, serde_json::Value::Null);
+        assert!(intent.constraints.is_empty());
+        assert!(intent.authority.is_empty());
+        assert!(intent.forbidden.is_empty());
+        assert_eq!(intent.reversibility, Reversibility::Reversible);
+        assert_eq!(intent.expiry_action, ExpiryAction::Halt);
+    }
+
+    #[test]
+    fn new_generates_unique_ids() {
+        let a = IntentPacket::new("a", future());
+        let b = IntentPacket::new("b", future());
+        assert_ne!(a.id, b.id);
+    }
+
+    #[test]
+    fn is_expired_past() {
+        let intent = IntentPacket::new("late", past());
+        assert!(intent.is_expired(Utc::now()));
+    }
+
+    #[test]
+    fn is_expired_future() {
+        let intent = IntentPacket::new("on time", future());
+        assert!(!intent.is_expired(Utc::now()));
+    }
+
+    #[test]
+    fn is_expired_exact_boundary() {
+        let now = Utc::now();
+        let intent = IntentPacket::new("boundary", now);
+        assert!(intent.is_expired(now));
+    }
+
+    #[test]
+    fn with_context() {
+        let intent =
+            IntentPacket::new("ctx", future()).with_context(serde_json::json!({"key": "value"}));
+        assert_eq!(intent.context["key"], "value");
+    }
+
+    #[test]
+    fn with_authority() {
+        let intent = IntentPacket::new("auth", future())
+            .with_authority(vec!["admin".into(), "finance".into()]);
+        assert_eq!(intent.authority.len(), 2);
+        assert_eq!(intent.authority[0], "admin");
+    }
+
+    #[test]
+    fn with_reversibility() {
+        let intent =
+            IntentPacket::new("rev", future()).with_reversibility(Reversibility::Irreversible);
+        assert_eq!(intent.reversibility, Reversibility::Irreversible);
+    }
+
+    #[test]
+    fn with_expiry_action() {
+        let intent = IntentPacket::new("exp", future()).with_expiry_action(ExpiryAction::Escalate);
+        assert_eq!(intent.expiry_action, ExpiryAction::Escalate);
+    }
+
+    #[test]
+    fn builder_chain() {
+        let intent = IntentPacket::new("full", future())
+            .with_context(serde_json::json!(null))
+            .with_authority(vec![])
+            .with_reversibility(Reversibility::Partial)
+            .with_expiry_action(ExpiryAction::CompleteAndHalt);
+        assert_eq!(intent.reversibility, Reversibility::Partial);
+        assert_eq!(intent.expiry_action, ExpiryAction::CompleteAndHalt);
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let intent = IntentPacket::new("roundtrip", future())
+            .with_context(serde_json::json!({"n": 42}))
+            .with_authority(vec!["ops".into()])
+            .with_reversibility(Reversibility::Partial)
+            .with_expiry_action(ExpiryAction::Escalate);
+
+        let json = serde_json::to_string(&intent).unwrap();
+        let back: IntentPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.id, intent.id);
+        assert_eq!(back.outcome, "roundtrip");
+        assert_eq!(back.context["n"], 42);
+        assert_eq!(back.authority, vec!["ops"]);
+        assert_eq!(back.reversibility, Reversibility::Partial);
+        assert_eq!(back.expiry_action, ExpiryAction::Escalate);
+    }
+
+    #[test]
+    fn serde_with_forbidden() {
+        let mut intent = IntentPacket::new("forbidden", future());
+        intent.forbidden.push(ForbiddenAction {
+            action: "delete_prod".into(),
+            reason: "destructive".into(),
+        });
+
+        let json = serde_json::to_string(&intent).unwrap();
+        let back: IntentPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.forbidden.len(), 1);
+        assert_eq!(back.forbidden[0].action, "delete_prod");
+    }
+
+    #[test]
+    fn reversibility_all_variants_serde() {
+        for v in [
+            Reversibility::Reversible,
+            Reversibility::Partial,
+            Reversibility::Irreversible,
+        ] {
+            let json = serde_json::to_string(&v).unwrap();
+            let back: Reversibility = serde_json::from_str(&json).unwrap();
+            assert_eq!(v, back);
+        }
+    }
+
+    #[test]
+    fn reversibility_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&Reversibility::Reversible).unwrap(),
+            "\"reversible\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Reversibility::Partial).unwrap(),
+            "\"partial\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Reversibility::Irreversible).unwrap(),
+            "\"irreversible\""
+        );
+    }
+
+    #[test]
+    fn expiry_action_all_variants_serde() {
+        for v in [
+            ExpiryAction::Halt,
+            ExpiryAction::Escalate,
+            ExpiryAction::CompleteAndHalt,
+        ] {
+            let json = serde_json::to_string(&v).unwrap();
+            let back: ExpiryAction = serde_json::from_str(&json).unwrap();
+            assert_eq!(v, back);
+        }
+    }
+
+    #[test]
+    fn expiry_action_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&ExpiryAction::Halt).unwrap(),
+            "\"halt\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ExpiryAction::Escalate).unwrap(),
+            "\"escalate\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ExpiryAction::CompleteAndHalt).unwrap(),
+            "\"complete_and_halt\""
+        );
+    }
+
+    #[test]
+    fn feasibility_dimension_all_variants_serde() {
+        for v in [
+            FeasibilityDimension::Capability,
+            FeasibilityDimension::Context,
+            FeasibilityDimension::Resources,
+            FeasibilityDimension::Authority,
+        ] {
+            let json = serde_json::to_string(&v).unwrap();
+            let back: FeasibilityDimension = serde_json::from_str(&json).unwrap();
+            assert_eq!(v, back);
+        }
+    }
+
+    #[test]
+    fn feasibility_kind_all_variants_serde() {
+        for v in [
+            FeasibilityKind::Feasible,
+            FeasibilityKind::FeasibleWithConstraints,
+            FeasibilityKind::Uncertain,
+            FeasibilityKind::Infeasible,
+        ] {
+            let json = serde_json::to_string(&v).unwrap();
+            let back: FeasibilityKind = serde_json::from_str(&json).unwrap();
+            assert_eq!(v, back);
+        }
+    }
+
+    #[test]
+    fn feasibility_kind_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&FeasibilityKind::FeasibleWithConstraints).unwrap(),
+            "\"feasible_with_constraints\""
+        );
+    }
+
+    #[test]
+    fn admission_result_serde_roundtrip() {
+        let result = AdmissionResult {
+            feasible: false,
+            dimensions: vec![FeasibilityAssessment {
+                dimension: FeasibilityDimension::Authority,
+                kind: FeasibilityKind::Infeasible,
+                reason: "no authority".into(),
+            }],
+            rejection_reason: Some("not authorized".into()),
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let back: AdmissionResult = serde_json::from_str(&json).unwrap();
+        assert!(!back.feasible);
+        assert_eq!(back.dimensions.len(), 1);
+        assert_eq!(back.rejection_reason.as_deref(), Some("not authorized"));
+    }
+
+    #[test]
+    fn forbidden_action_serde_roundtrip() {
+        let fa = ForbiddenAction {
+            action: "fire_all".into(),
+            reason: "HR policy".into(),
+        };
+        let json = serde_json::to_string(&fa).unwrap();
+        let back: ForbiddenAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.action, "fire_all");
+        assert_eq!(back.reason, "HR policy");
+    }
+
+    #[test]
+    fn intent_node_leaf_is_leaf() {
+        let node = IntentNode::leaf(IntentPacket::new("leaf", future()));
+        assert!(node.is_leaf());
+    }
+
+    #[test]
+    fn intent_node_with_children_not_leaf() {
+        let child = IntentNode::leaf(IntentPacket::new("child", future()));
+        let parent = IntentNode {
+            id: Uuid::new_v4(),
+            intent: IntentPacket::new("parent", future()),
+            children: vec![child],
+        };
+        assert!(!parent.is_leaf());
+    }
+
+    #[test]
+    fn intent_error_display() {
+        let err = IntentError::Forbidden("no access".into());
+        assert_eq!(err.to_string(), "intent forbidden by rule: no access");
+
+        let err = IntentError::Infeasible("not enough resources".into());
+        assert_eq!(err.to_string(), "intent infeasible: not enough resources");
+    }
+
+    #[test]
+    fn intent_error_expired_display() {
+        let t = Utc::now();
+        let err = IntentError::Expired(t);
+        assert!(err.to_string().starts_with("intent expired at "));
+    }
+
+    #[test]
+    fn intent_packet_accepts_string_and_str() {
+        let from_str = IntentPacket::new("literal", future());
+        let from_string = IntentPacket::new(String::from("owned"), future());
+        assert_eq!(from_str.outcome, "literal");
+        assert_eq!(from_string.outcome, "owned");
+    }
+
+    #[test]
+    fn intent_packet_empty_outcome() {
+        let intent = IntentPacket::new("", future());
+        assert_eq!(intent.outcome, "");
+    }
+
+    #[test]
+    fn intent_packet_with_constraints() {
+        let mut intent = IntentPacket::new("constrained", future());
+        intent.constraints = vec!["budget < 10k".into(), "no external vendors".into()];
+        let json = serde_json::to_string(&intent).unwrap();
+        let back: IntentPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.constraints.len(), 2);
+    }
+}

@@ -174,4 +174,188 @@ mod tests {
         assert_eq!(binding.packs[0].source, ResolutionLevel::Declarative);
         assert!((binding.resolution.completeness_confidence - 1.0).abs() < f64::EPSILON);
     }
+
+    #[test]
+    fn declarative_binding_empty() {
+        let binding = DeclarativeBinding::new().build();
+        assert!(binding.packs.is_empty());
+        assert!(binding.capabilities.is_empty());
+        assert!(binding.invariants.is_empty());
+        assert_eq!(
+            binding.resolution.levels_attempted,
+            vec![ResolutionLevel::Declarative]
+        );
+        assert_eq!(
+            binding.resolution.levels_contributed,
+            vec![ResolutionLevel::Declarative]
+        );
+        assert_eq!(binding.resolution.prior_episodes_consulted, 0);
+    }
+
+    #[test]
+    fn declarative_binding_pack_confidence_is_one() {
+        let binding = DeclarativeBinding::new().pack("test", "reason").build();
+        assert!((binding.packs[0].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn declarative_binding_capability_confidence_is_one() {
+        let binding = DeclarativeBinding::new()
+            .capability("ocr", "doc processing")
+            .build();
+        assert!((binding.capabilities[0].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn declarative_binding_multiple_invariants() {
+        let binding = DeclarativeBinding::new()
+            .invariant("inv_a")
+            .invariant("inv_b")
+            .invariant("inv_c")
+            .build();
+        assert_eq!(binding.invariants, vec!["inv_a", "inv_b", "inv_c"]);
+    }
+
+    #[test]
+    fn declarative_binding_default() {
+        let binding = DeclarativeBinding::default();
+        assert!(binding.packs.is_empty());
+        assert!(binding.capabilities.is_empty());
+        assert!(binding.invariants.is_empty());
+    }
+
+    #[test]
+    fn intent_binding_default() {
+        let binding = IntentBinding::default();
+        assert!(binding.packs.is_empty());
+        assert!(binding.capabilities.is_empty());
+        assert!(binding.invariants.is_empty());
+        assert!(binding.resolution.levels_attempted.is_empty());
+        assert!(binding.resolution.levels_contributed.is_empty());
+        assert_eq!(binding.resolution.prior_episodes_consulted, 0);
+        assert!((binding.resolution.completeness_confidence - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn resolution_trace_default() {
+        let trace = ResolutionTrace::default();
+        assert!(trace.levels_attempted.is_empty());
+        assert!(trace.levels_contributed.is_empty());
+        assert_eq!(trace.prior_episodes_consulted, 0);
+        assert!((trace.completeness_confidence - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn resolution_level_all_variants_distinct() {
+        let variants = [
+            ResolutionLevel::Declarative,
+            ResolutionLevel::Structural,
+            ResolutionLevel::Semantic,
+            ResolutionLevel::Learned,
+        ];
+        for (i, a) in variants.iter().enumerate() {
+            for (j, b) in variants.iter().enumerate() {
+                assert_eq!(i == j, a == b);
+            }
+        }
+    }
+
+    #[test]
+    fn resolution_level_serde_roundtrip() {
+        for level in [
+            ResolutionLevel::Declarative,
+            ResolutionLevel::Structural,
+            ResolutionLevel::Semantic,
+            ResolutionLevel::Learned,
+        ] {
+            let json = serde_json::to_string(&level).unwrap();
+            let back: ResolutionLevel = serde_json::from_str(&json).unwrap();
+            assert_eq!(level, back);
+        }
+    }
+
+    #[test]
+    fn resolution_level_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&ResolutionLevel::Declarative).unwrap(),
+            "\"declarative\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResolutionLevel::Structural).unwrap(),
+            "\"structural\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResolutionLevel::Semantic).unwrap(),
+            "\"semantic\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResolutionLevel::Learned).unwrap(),
+            "\"learned\""
+        );
+    }
+
+    #[test]
+    fn pack_requirement_serde_roundtrip() {
+        let req = PackRequirement {
+            pack_name: "customers".into(),
+            reason: "lead workflow".into(),
+            confidence: 0.85,
+            source: ResolutionLevel::Structural,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let back: PackRequirement = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.pack_name, "customers");
+        assert_eq!(back.reason, "lead workflow");
+        assert!((back.confidence - 0.85).abs() < f64::EPSILON);
+        assert_eq!(back.source, ResolutionLevel::Structural);
+    }
+
+    #[test]
+    fn capability_requirement_serde_roundtrip() {
+        let req = CapabilityRequirement {
+            capability: "vision".into(),
+            reason: "document scanning".into(),
+            confidence: 0.7,
+            source: ResolutionLevel::Semantic,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let back: CapabilityRequirement = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.capability, "vision");
+        assert_eq!(back.source, ResolutionLevel::Semantic);
+    }
+
+    #[test]
+    fn intent_binding_serde_roundtrip() {
+        let binding = DeclarativeBinding::new()
+            .pack("dd", "due diligence")
+            .capability("web", "scraping")
+            .invariant("hypothesis_has_source")
+            .build();
+
+        let json = serde_json::to_string(&binding).unwrap();
+        let back: IntentBinding = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.packs.len(), 1);
+        assert_eq!(back.capabilities.len(), 1);
+        assert_eq!(back.invariants, vec!["hypothesis_has_source"]);
+        assert_eq!(
+            back.resolution.levels_attempted,
+            vec![ResolutionLevel::Declarative]
+        );
+    }
+
+    #[test]
+    fn resolution_trace_serde_roundtrip() {
+        let trace = ResolutionTrace {
+            levels_attempted: vec![ResolutionLevel::Declarative, ResolutionLevel::Structural],
+            levels_contributed: vec![ResolutionLevel::Declarative],
+            prior_episodes_consulted: 42,
+            completeness_confidence: 0.95,
+        };
+        let json = serde_json::to_string(&trace).unwrap();
+        let back: ResolutionTrace = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.levels_attempted.len(), 2);
+        assert_eq!(back.levels_contributed.len(), 1);
+        assert_eq!(back.prior_episodes_consulted, 42);
+        assert!((back.completeness_confidence - 0.95).abs() < f64::EPSILON);
+    }
 }

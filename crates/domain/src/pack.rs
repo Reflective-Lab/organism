@@ -77,3 +77,165 @@ pub struct PackProfile {
     /// Keywords for semantic matching beyond agent descriptions.
     pub keywords: &'static [&'static str],
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn context_key_serde_roundtrip() {
+        for key in [
+            ContextKey::Seeds,
+            ContextKey::Signals,
+            ContextKey::Proposals,
+            ContextKey::Evaluations,
+            ContextKey::Strategies,
+            ContextKey::Constraints,
+            ContextKey::Hypotheses,
+            ContextKey::Diagnostic,
+        ] {
+            let json = serde_json::to_string(&key).unwrap();
+            let back: ContextKey = serde_json::from_str(&json).unwrap();
+            assert_eq!(key, back);
+        }
+    }
+
+    #[test]
+    fn context_key_snake_case_serialization() {
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Seeds).unwrap(),
+            "\"seeds\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Signals).unwrap(),
+            "\"signals\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Proposals).unwrap(),
+            "\"proposals\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Evaluations).unwrap(),
+            "\"evaluations\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Strategies).unwrap(),
+            "\"strategies\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Constraints).unwrap(),
+            "\"constraints\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Hypotheses).unwrap(),
+            "\"hypotheses\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Diagnostic).unwrap(),
+            "\"diagnostic\""
+        );
+    }
+
+    #[test]
+    fn context_key_rejects_unknown_variant() {
+        let result = serde_json::from_str::<ContextKey>("\"nonexistent\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn invariant_class_serde_roundtrip() {
+        for class in [
+            InvariantClass::Structural,
+            InvariantClass::Semantic,
+            InvariantClass::Acceptance,
+        ] {
+            let json = serde_json::to_string(&class).unwrap();
+            let back: InvariantClass = serde_json::from_str(&json).unwrap();
+            assert_eq!(class, back);
+        }
+    }
+
+    #[test]
+    fn invariant_class_snake_case_serialization() {
+        assert_eq!(
+            serde_json::to_string(&InvariantClass::Structural).unwrap(),
+            "\"structural\""
+        );
+        assert_eq!(
+            serde_json::to_string(&InvariantClass::Semantic).unwrap(),
+            "\"semantic\""
+        );
+        assert_eq!(
+            serde_json::to_string(&InvariantClass::Acceptance).unwrap(),
+            "\"acceptance\""
+        );
+    }
+
+    #[test]
+    fn agent_meta_fields() {
+        let agent = AgentMeta {
+            name: "test_agent",
+            dependencies: &[ContextKey::Seeds, ContextKey::Signals],
+            fact_prefix: "test:",
+            target_key: ContextKey::Proposals,
+            description: "A test agent",
+        };
+        assert_eq!(agent.name, "test_agent");
+        assert_eq!(agent.dependencies.len(), 2);
+        assert_eq!(agent.fact_prefix, "test:");
+        assert_eq!(agent.target_key, ContextKey::Proposals);
+        assert_eq!(agent.description, "A test agent");
+    }
+
+    #[test]
+    fn agent_meta_clone() {
+        let agent = AgentMeta {
+            name: "cloneable",
+            dependencies: &[ContextKey::Hypotheses],
+            fact_prefix: "clone:",
+            target_key: ContextKey::Evaluations,
+            description: "Clone test",
+        };
+        let cloned = agent.clone();
+        assert_eq!(cloned.name, agent.name);
+        assert_eq!(cloned.fact_prefix, agent.fact_prefix);
+    }
+
+    #[test]
+    fn invariant_meta_fields() {
+        let inv = InvariantMeta {
+            name: "test_invariant",
+            class: InvariantClass::Acceptance,
+            description: "Must pass",
+        };
+        assert_eq!(inv.name, "test_invariant");
+        assert_eq!(inv.class, InvariantClass::Acceptance);
+    }
+
+    #[test]
+    fn pack_profile_default() {
+        let profile = PackProfile::default();
+        assert!(profile.entities.is_empty());
+        assert!(profile.required_capabilities.is_empty());
+        assert!(!profile.uses_llm);
+        assert!(!profile.requires_hitl);
+        assert!(!profile.handles_irreversible);
+        assert!(profile.keywords.is_empty());
+    }
+
+    #[test]
+    fn pack_profile_clone() {
+        let profile = PackProfile {
+            entities: &["lead", "deal"],
+            required_capabilities: &["web"],
+            uses_llm: true,
+            requires_hitl: true,
+            handles_irreversible: false,
+            keywords: &["sales"],
+        };
+        let cloned = profile.clone();
+        assert_eq!(cloned.entities, profile.entities);
+        assert_eq!(cloned.uses_llm, profile.uses_llm);
+        assert_eq!(cloned.requires_hitl, profile.requires_hitl);
+    }
+}

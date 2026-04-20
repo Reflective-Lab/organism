@@ -15,5 +15,10 @@ organism-adversarial.workspace = true
 organism-simulation.workspace = true
 organism-learning.workspace = true
 
+[dev-dependencies]
+chrono.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
 [lints]
 workspace = true
