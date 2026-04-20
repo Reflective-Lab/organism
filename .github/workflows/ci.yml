@@ -9,12 +9,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: "1.90.0"
-  # Examples with converge path deps (not available on CI)
-  EXCLUDES: >-
-    --exclude example-debate-loop
-    --exclude example-expense-approval
-    --exclude example-loan-application
-    --exclude example-vendor-selection
 
 jobs:
   check:
@@ -26,8 +20,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Check workspace
-        run: cargo check --workspace ${{ env.EXCLUDES }}
+      - name: Check default members
+        run: cargo check
 
   test:
     name: Test
@@ -40,7 +34,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace ${{ env.EXCLUDES }}
+        run: cargo test
 
   lint:
     name: Lint
@@ -54,7 +48,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace ${{ env.EXCLUDES }} --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
   format:
     name: Format

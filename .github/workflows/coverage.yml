@@ -9,11 +9,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: "1.90.0"
-  EXCLUDES: >-
-    --exclude example-debate-loop
-    --exclude example-expense-approval
-    --exclude example-loan-application
-    --exclude example-vendor-selection
 
 jobs:
   coverage:
@@ -30,7 +25,7 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage
-        run: cargo llvm-cov --workspace ${{ env.EXCLUDES }} --lcov --output-path lcov.info
+        run: cargo llvm-cov --lcov --output-path lcov.info
         continue-on-error: true
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
