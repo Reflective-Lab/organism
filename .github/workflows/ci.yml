@@ -16,10 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
-        with:
-          repository: Reflective-Lab/converge
-          path: ../converge
+      - name: Clone converge (sibling path dep)
+        run: git clone --depth 1 https://github.com/Reflective-Lab/converge.git ../converge
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -33,10 +31,8 @@ jobs:
     needs: check
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
-        with:
-          repository: Reflective-Lab/converge
-          path: ../converge
+      - name: Clone converge (sibling path dep)
+        run: git clone --depth 1 https://github.com/Reflective-Lab/converge.git ../converge
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -50,10 +46,8 @@ jobs:
     needs: check
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/checkout@v5
-        with:
-          repository: Reflective-Lab/converge
-          path: ../converge
+      - name: Clone converge (sibling path dep)
+        run: git clone --depth 1 https://github.com/Reflective-Lab/converge.git ../converge
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
