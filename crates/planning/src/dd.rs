@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-use converge_pack::{AgentEffect, Context, ContextKey, Fact, ProposedFact, Suggestor};
+use converge_pack::{AgentEffect, Context, ContextKey, Fact, FactId, ProposedFact, Suggestor};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -116,7 +116,7 @@ fn error_to_constraint(error: &DdError, suggestor: &str) -> ProposedFact {
         "message": error.to_string(),
     })
     .to_string();
-    ProposedFact::new(ContextKey::Constraints, &id, content, suggestor).with_confidence(1.0)
+    ProposedFact::new(ContextKey::Constraints, id, content, suggestor).with_confidence(1.0)
 }
 
 // ── Backend traits ───────────────────────────────────────────────
@@ -250,7 +250,7 @@ pub struct BreadthResearchSuggestor {
     budget: Arc<SharedBudget>,
     search: Arc<dyn DdSearch>,
     tag: String,
-    processed: Mutex<HashSet<String>>,
+    processed: Mutex<HashSet<FactId>>,
 }
 
 impl BreadthResearchSuggestor {
@@ -326,7 +326,7 @@ impl Suggestor for BreadthResearchSuggestor {
                         proposals.push(
                             ProposedFact::new(
                                 ContextKey::Signals,
-                                &id,
+                                id,
                                 content,
                                 "dd-breadth-research",
                             )
@@ -346,8 +346,7 @@ impl Suggestor for BreadthResearchSuggestor {
                 ctx.get(ContextKey::Strategies)
                     .iter()
                     .find(|f| f.content == strategy)
-                    .map(|f| f.id.clone())
-                    .unwrap_or_default(),
+                    .map_or_else(|| FactId::new(""), |f| f.id.clone()),
             );
         }
 
@@ -364,7 +363,7 @@ pub struct DepthResearchSuggestor {
     budget: Arc<SharedBudget>,
     search: Arc<dyn DdSearch>,
     tag: String,
-    processed: Mutex<HashSet<String>>,
+    processed: Mutex<HashSet<FactId>>,
 }
 
 impl DepthResearchSuggestor {
@@ -440,7 +439,7 @@ impl Suggestor for DepthResearchSuggestor {
                         proposals.push(
                             ProposedFact::new(
                                 ContextKey::Signals,
-                                &id,
+                                id,
                                 content,
                                 "dd-depth-research",
                             )
@@ -460,8 +459,7 @@ impl Suggestor for DepthResearchSuggestor {
                 ctx.get(ContextKey::Strategies)
                     .iter()
                     .find(|f| f.content == strategy)
-                    .map(|f| f.id.clone())
-                    .unwrap_or_default(),
+                    .map_or_else(|| FactId::new(""), |f| f.id.clone()),
             );
         }
 
@@ -549,7 +547,7 @@ impl Suggestor for FactExtractorSuggestor {
                         proposals.push(
                             ProposedFact::new(
                                 ContextKey::Hypotheses,
-                                &id,
+                                id,
                                 normalized_fact.to_string(),
                                 "dd-fact-extractor",
                             )
@@ -675,7 +673,7 @@ impl Suggestor for GapDetectorSuggestor {
 
                         proposals.push(ProposedFact::new(
                             ContextKey::Strategies,
-                            &id,
+                            id,
                             content,
                             "dd-gap-detector",
                         ));
@@ -738,7 +736,7 @@ impl Suggestor for ContradictionFinderSuggestor {
         *self.last_hypothesis_count.lock().unwrap() = hypotheses.len();
 
         // Group hypotheses by topic (from JSON "category" field)
-        let mut by_category: HashMap<String, Vec<(String, String)>> = HashMap::new();
+        let mut by_category: HashMap<String, Vec<(FactId, String)>> = HashMap::new();
         for fact in hypotheses {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&fact.content) {
                 let category = v["category"].as_str().unwrap_or("unknown").to_string();
@@ -753,7 +751,7 @@ impl Suggestor for ContradictionFinderSuggestor {
         }
 
         let mut proposals = Vec::new();
-        let existing_evaluations: HashSet<String> = ctx
+        let existing_evaluations: HashSet<FactId> = ctx
             .get(ContextKey::Evaluations)
             .iter()
             .map(|f| f.id.clone())
@@ -774,7 +772,7 @@ impl Suggestor for ContradictionFinderSuggestor {
 
             if has_contradiction {
                 let id = format!("contradiction-{category}-{}", Uuid::new_v4());
-                if existing_evaluations.contains(&id) {
+                if existing_evaluations.contains(id.as_str()) {
                     continue;
                 }
 
@@ -792,7 +790,7 @@ impl Suggestor for ContradictionFinderSuggestor {
                 proposals.push(
                     ProposedFact::new(
                         ContextKey::Evaluations,
-                        &id,
+                        id,
                         content,
                         "dd-contradiction-finder",
                     )
@@ -878,7 +876,7 @@ impl Suggestor for SynthesisSuggestor {
             Ok(raw) => {
                 let id = format!("synthesis-{}", Uuid::new_v4());
                 AgentEffect::with_proposal(
-                    ProposedFact::new(ContextKey::Proposals, &id, raw, "dd-synthesis")
+                    ProposedFact::new(ContextKey::Proposals, id, raw, "dd-synthesis")
                         .with_confidence(0.8),
                 )
             }

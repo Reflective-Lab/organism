@@ -195,4 +195,79 @@ mod tests {
         };
         assert_eq!(verdict.fact_id("s1"), "assumption-breaker-pass-s1");
     }
+
+    #[test]
+    fn adversarial_verdict_fact_id_block() {
+        let verdict = AdversarialVerdict {
+            strategy_id: "s2".into(),
+            agent: AgentId::EconomicSkeptic,
+            kind: SkepticismKind::EconomicSkepticism,
+            passed: false,
+            severity: Severity::Blocker,
+            findings: vec!["over budget".into()],
+        };
+        assert_eq!(verdict.fact_id("s2"), "economic-skeptic-block-s2");
+    }
+
+    #[test]
+    fn agent_id_display_matches_as_str() {
+        for agent in [
+            AgentId::AssumptionBreaker,
+            AgentId::ConstraintChecker,
+            AgentId::EconomicSkeptic,
+            AgentId::OperationalSkeptic,
+            AgentId::OutcomeSimulation,
+            AgentId::CostSimulation,
+            AgentId::PolicySimulation,
+            AgentId::CausalSimulation,
+            AgentId::OperationalSimulation,
+            AgentId::PlanningPrior,
+        ] {
+            assert_eq!(format!("{agent}"), agent.as_str());
+        }
+    }
+
+    #[test]
+    fn complexity_min_timeline_all_variants() {
+        assert_eq!(Complexity::Low.min_timeline_days(), 0);
+        assert_eq!(Complexity::Medium.min_timeline_days(), 14);
+        assert_eq!(Complexity::High.min_timeline_days(), 30);
+        assert_eq!(Complexity::Critical.min_timeline_days(), 90);
+    }
+
+    #[test]
+    fn complexity_min_team_size_all_variants() {
+        assert_eq!(Complexity::Low.min_team_size(), 1);
+        assert_eq!(Complexity::Medium.min_team_size(), 1);
+        assert_eq!(Complexity::High.min_team_size(), 3);
+        assert_eq!(Complexity::Critical.min_team_size(), 5);
+    }
+
+    #[test]
+    fn agent_id_invalid_serde_rejects() {
+        let result: Result<AgentId, _> = serde_json::from_str("\"not-a-real-agent\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn complexity_invalid_serde_rejects() {
+        let result: Result<Complexity, _> = serde_json::from_str("\"extreme\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn adversarial_verdict_empty_findings() {
+        let verdict = AdversarialVerdict {
+            strategy_id: "s1".into(),
+            agent: AgentId::ConstraintChecker,
+            kind: SkepticismKind::ConstraintChecking,
+            passed: true,
+            severity: Severity::Advisory,
+            findings: vec![],
+        };
+        let json = verdict.to_json();
+        let back: AdversarialVerdict = serde_json::from_str(&json).unwrap();
+        assert!(back.findings.is_empty());
+        assert!(back.passed);
+    }
 }

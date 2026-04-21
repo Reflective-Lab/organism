@@ -9,6 +9,7 @@
 use converge_kernel::{
     AgentEffect, Budget, Context, ContextKey, ContextState, ConvergeResult, Engine, Suggestor,
 };
+use converge_pack::ProposalId;
 
 /// Wrapper that implements `Suggestor` for a boxed trait object.
 /// Needed because converge-pack does not provide a blanket impl.
@@ -52,7 +53,7 @@ pub struct Formation {
 /// A seed input to stage into the Context before the Engine runs.
 pub struct Seed {
     pub key: ContextKey,
-    pub id: String,
+    pub id: ProposalId,
     pub content: String,
     pub provenance: String,
 }
@@ -92,7 +93,7 @@ impl Formation {
     pub fn seed(
         mut self,
         key: ContextKey,
-        id: impl Into<String>,
+        id: impl Into<ProposalId>,
         content: impl Into<String>,
         provenance: impl Into<String>,
     ) -> Self {
@@ -128,7 +129,12 @@ impl Formation {
         let mut context = ContextState::new();
         for seed in &self.seeds {
             context
-                .add_input_with_provenance(seed.key, &seed.id, &seed.content, &seed.provenance)
+                .add_input_with_provenance(
+                    seed.key,
+                    seed.id.clone(),
+                    &seed.content,
+                    &seed.provenance,
+                )
                 .map_err(|e| FormationError::ConvergenceFailed(e.to_string()))?;
         }
 

@@ -931,4 +931,215 @@ mod tests {
         );
         assert!(!findings.iter().any(|f| f.severity == Severity::Blocker));
     }
+
+    // ── Negative / Edge Tests ────────────────────────────────────────
+
+    #[test]
+    fn assumption_breaker_empty_plan() {
+        let findings = AssumptionBreakerAgent::analyze_assumptions(&json!({}));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.message.contains("no assumptions"))
+        );
+    }
+
+    #[test]
+    fn assumption_breaker_non_object_annotation() {
+        let findings = AssumptionBreakerAgent::analyze_assumptions(&json!({"annotation": 42}));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.message.contains("no assumptions"))
+        );
+    }
+
+    #[test]
+    fn assumption_breaker_empty_assumptions_array() {
+        let plan = json!({"annotation": {"assumptions": [], "evidence": []}});
+        let findings = AssumptionBreakerAgent::analyze_assumptions(&plan);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.message.contains("no assumptions"))
+        );
+    }
+
+    #[test]
+    fn assumption_breaker_all_supported_no_warnings() {
+        let plan = json!({
+            "annotation": {
+                "assumptions": ["demand"],
+                "evidence": ["demand is strong per Q4 report"]
+            }
+        });
+        let findings = AssumptionBreakerAgent::analyze_assumptions(&plan);
+        assert!(!findings.iter().any(|f| f.message.contains("unsupported")));
+    }
+
+    #[test]
+    fn constraint_checker_no_constraints_passes() {
+        let agent = ConstraintCheckerAgent::default_config();
+        let plan = json!({"annotation": {"actions": ["deploy"]}});
+        let findings = agent.check_plan(&plan);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn constraint_checker_required_tag_warns_when_missing() {
+        let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
+            name: "security-review".into(),
+            check: ConstraintCheck::RequiredTag("security-reviewed".into()),
+        }]);
+        let plan = json!({"annotation": {"tags": ["tested"]}});
+        let findings = agent.check_plan(&plan);
+        assert!(
+            findings
+                .iter()
+                .any(|f| { f.severity == Severity::Warning && f.message.contains("missing tag") })
+        );
+    }
+
+    #[test]
+    fn constraint_checker_required_tag_passes_when_present() {
+        let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
+            name: "security-review".into(),
+            check: ConstraintCheck::RequiredTag("security-reviewed".into()),
+        }]);
+        let plan = json!({"annotation": {"tags": ["security-reviewed"]}});
+        let findings = agent.check_plan(&plan);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn constraint_checker_required_approval_passes_when_present() {
+        let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
+            name: "cfo-approval".into(),
+            check: ConstraintCheck::RequiredApproval("cfo".into()),
+        }]);
+        let plan = json!({"annotation": {"approvals": ["cfo", "eng-lead"]}});
+        let findings = agent.check_plan(&plan);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn constraint_checker_empty_plan() {
+        let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
+            name: "budget".into(),
+            check: ConstraintCheck::MaxBudget(100.0),
+        }]);
+        let findings = agent.check_plan(&json!({}));
+        assert!(!findings.iter().any(|f| f.severity == Severity::Blocker));
+    }
+
+    #[test]
+    fn economic_skeptic_no_costs_warns() {
+        let findings = EconomicSkepticAgent::analyze_economics(&json!({"annotation": {}}), 0.3);
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.message.contains("no cost estimates"))
+        );
+    }
+
+    #[test]
+    fn economic_skeptic_roi_below_threshold_ok() {
+        let findings =
+            EconomicSkepticAgent::analyze_economics(&json!({"annotation": {"roi": 2.0}}), 0.3);
+        assert!(!findings.iter().any(|f| f.message.contains("ROI")));
+    }
+
+    #[test]
+    fn economic_skeptic_healthy_margin_ok() {
+        let findings = EconomicSkepticAgent::analyze_economics(
+            &json!({
+                "annotation": {
+                    "costs": [{"category": "total", "estimate": 30.0}],
+                    "expected_revenue": 100.0
+                }
+            }),
+            0.3,
+        );
+        assert!(!findings.iter().any(|f| f.message.contains("margin")));
+    }
+
+    #[test]
+    fn economic_skeptic_non_round_cost_not_flagged() {
+        let findings = EconomicSkepticAgent::analyze_economics(
+            &json!({
+                "annotation": {
+                    "costs": [{"category": "compute", "estimate": 1234.56}]
+                }
+            }),
+            0.3,
+        );
+        assert!(!findings.iter().any(|f| f.message.contains("round")));
+    }
+
+    #[test]
+    fn economic_skeptic_default_config_threshold() {
+        let agent = EconomicSkepticAgent::default_config();
+        assert!((agent.skepticism_threshold - 0.3).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn operational_skeptic_default_config_parallel() {
+        let agent = OperationalSkepticAgent::default_config();
+        assert_eq!(agent.max_parallel_initiatives, 3);
+    }
+
+    #[test]
+    fn operational_skeptic_empty_plan_no_findings() {
+        let findings = OperationalSkepticAgent::analyze_operations(&json!({}), 3);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn operational_skeptic_understaffed_high_warns() {
+        let findings = OperationalSkepticAgent::analyze_operations(
+            &json!({"annotation": {"team_size": 2, "complexity": "high"}}),
+            3,
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.severity == Severity::Warning && f.message.contains("understaffed"))
+        );
+    }
+
+    #[test]
+    fn operational_skeptic_medium_timeline_aggressive() {
+        let findings = OperationalSkepticAgent::analyze_operations(
+            &json!({"annotation": {"timeline_days": 7, "complexity": "medium"}}),
+            3,
+        );
+        assert!(findings.iter().any(|f| f.message.contains("aggressive")));
+    }
+
+    #[test]
+    fn operational_skeptic_critical_timeline_aggressive() {
+        let findings = OperationalSkepticAgent::analyze_operations(
+            &json!({"annotation": {"timeline_days": 30, "complexity": "critical"}}),
+            3,
+        );
+        assert!(findings.iter().any(|f| f.message.contains("aggressive")));
+    }
+
+    #[test]
+    fn operational_skeptic_within_parallel_cap_ok() {
+        let findings = OperationalSkepticAgent::analyze_operations(
+            &json!({"annotation": {"parallel_initiatives": 2}}),
+            3,
+        );
+        assert!(!findings.iter().any(|f| f.message.contains("parallel")));
+    }
+
+    #[test]
+    fn operational_skeptic_multiple_key_people_no_spof() {
+        let findings = OperationalSkepticAgent::analyze_operations(
+            &json!({"annotation": {"key_people": ["alice", "bob"]}}),
+            3,
+        );
+        assert!(!findings.iter().any(|f| f.message.contains("single point")));
+    }
 }

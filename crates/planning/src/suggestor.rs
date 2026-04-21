@@ -12,7 +12,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{AgentEffect, Context, ContextKey, FactId, ProposedFact, Suggestor};
 use organism_intent::IntentPacket;
 
 use crate::{Plan, ReasoningSystem};
@@ -121,7 +121,7 @@ impl Suggestor for HuddleSeedSuggestor {
 
             proposals.push(ProposedFact::new(
                 ContextKey::Strategies,
-                &named.id,
+                named.id.as_str(),
                 strategy_content,
                 "organism-huddle-seed",
             ));
@@ -301,9 +301,7 @@ where
 
         let proposals: Vec<ProposedFact> = new_strategies
             .into_iter()
-            .map(|(id, content)| {
-                ProposedFact::new(ContextKey::Strategies, &id, content, &self.name)
-            })
+            .map(|(id, content)| ProposedFact::new(ContextKey::Strategies, id, content, &self.name))
             .collect();
 
         AgentEffect::with_proposals(proposals)
@@ -404,7 +402,7 @@ where
         let proposals: Vec<ProposedFact> = results
             .into_iter()
             .map(|(id, content, confidence)| {
-                ProposedFact::new(self.output_key, &id, content, &self.name)
+                ProposedFact::new(self.output_key, id, content, &self.name)
                     .with_confidence(confidence)
             })
             .collect();
@@ -500,7 +498,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
         // Convention: evaluation facts referencing a hypothesis use the hypothesis
         // fact ID as a substring in their content (same pattern as DD's
         // ContradictionFinderSuggestor).
-        let contradiction_targets: Vec<(String, String)> = evaluation_facts
+        let contradiction_targets: Vec<(FactId, String)> = evaluation_facts
             .iter()
             .map(|f| (f.id.clone(), f.content.clone()))
             .collect();
@@ -508,7 +506,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
         let mut roster = self.hypotheses.lock().unwrap();
 
         // Register new hypotheses
-        let known_ids: std::collections::HashSet<String> =
+        let known_ids: std::collections::HashSet<FactId> =
             roster.iter().map(|h| h.fact_id.clone()).collect();
 
         for fact in hypothesis_facts {
@@ -545,7 +543,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
             }
 
             for (eval_id, eval_content) in &contradiction_targets {
-                if eval_content.contains(&h.fact_id) {
+                if eval_content.contains(h.fact_id.as_str()) {
                     h.outcome = crate::HypothesisOutcome::Falsified {
                         contradiction_id: eval_id.clone(),
                     };

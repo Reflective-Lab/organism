@@ -13,7 +13,7 @@
 
 use converge_kernel::{AgentEffect, Context, ContextKey, Engine, ProposedFact, Suggestor};
 
-use organism_pack::{Severity, SkepticismKind};
+use organism_pack::{CONFIDENCE_STEP_MAJOR, CONFIDENCE_STEP_MEDIUM, Severity, SkepticismKind};
 
 // ── LLM Client ─────────────────────────────────────────────────────
 
@@ -122,7 +122,8 @@ impl Suggestor for LlmPlannerAgent {
                     .to_string(),
                     self.name(),
                 )
-                .with_confidence(0.7),
+                .with_confidence(0.5)
+                .adjust_confidence(CONFIDENCE_STEP_MAJOR),
             )
         } else {
             // Revision pass: address challenges
@@ -163,7 +164,8 @@ impl Suggestor for LlmPlannerAgent {
                     .to_string(),
                     self.name(),
                 )
-                .with_confidence(0.85),
+                .with_confidence(0.7)
+                .adjust_confidence(CONFIDENCE_STEP_MEDIUM),
             )
         }
     }
@@ -285,7 +287,12 @@ impl Suggestor for LlmSkepticAgent {
                 .to_string(),
                 self.name(),
             )
-            .with_confidence(if is_approved { 0.9 } else { 0.6 }),
+            .with_confidence(0.75)
+            .adjust_confidence(if is_approved {
+                CONFIDENCE_STEP_MEDIUM
+            } else {
+                -CONFIDENCE_STEP_MEDIUM
+            }),
         )
     }
 }

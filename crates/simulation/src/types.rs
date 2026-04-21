@@ -3,6 +3,7 @@
 //! Replaces string-based likelihood parsing and untyped JSON payloads
 //! with compile-time checked types.
 
+use converge_pack::FactId;
 use serde::{Deserialize, Serialize};
 
 use crate::SimulationDimension;
@@ -54,7 +55,7 @@ impl RiskLikelihood {
 /// Replaces `serde_json::json!({...})` with compile-time structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulationVerdict {
-    pub strategy_id: String,
+    pub strategy_id: FactId,
     pub dimension: SimulationDimension,
     pub passed: bool,
     pub confidence: f64,

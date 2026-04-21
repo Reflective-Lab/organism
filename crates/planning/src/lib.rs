@@ -17,6 +17,7 @@ pub mod shape_hypothesis;
 pub mod suggestor;
 pub mod topology_transition;
 
+use converge_pack::FactId;
 use organism_intent::IntentPacket;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -156,7 +157,7 @@ pub struct PlanBundle {
 pub enum HypothesisOutcome {
     Open,
     Confirmed,
-    Falsified { contradiction_id: String },
+    Falsified { contradiction_id: FactId },
     Superseded,
     Unresolved,
 }
@@ -167,7 +168,7 @@ pub enum HypothesisOutcome {
 /// when it was first seen, its confidence trajectory, and its final outcome.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackedHypothesis {
-    pub fact_id: String,
+    pub fact_id: FactId,
     pub domain: String,
     pub claim: String,
     pub confidence: f64,

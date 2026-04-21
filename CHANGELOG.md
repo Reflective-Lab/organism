@@ -16,6 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **The Gap** philosophy doc — why Organism exists and how formations fill the intent→convergence gap
 
 ### Changed
+- Converge deps bumped to `branch = "main"` (v3.7.0) — typed ID newtypes (`FactId`, `ProposalId`, `BackendId`) adopted throughout
+- `FactId` and `ProposalId` replace `String` in all domain structs: `TrackedHypothesis`, `HypothesisOutcome`, `SimulationVerdict`, `Seed`, processed-ID sets in DD suggestors
+- `CONFIDENCE_STEP_*` constants defined in `organism-pack` (pending re-export once converge main is indexed on crates.io)
+- `adjust_confidence(delta)` pattern adopted in debate-loop example — replaces magic `with_confidence(n)` floats
+- `organism-learning` tests use real `StopReason` and `BudgetResource` enum variants (no string coercions); `converge-core` added as dev-dep to access these types (API gap to close upstream by exporting through `converge-kernel`)
+- `outcome_signal_note` takes `&OutcomeEventView` (was by-value); all clippy pedantic warnings resolved
 - Converge deps bumped to rev `a277ab3` (ContextState rename, optimization/policy Suggestors)
 - Removed `CommitBoundary` trait — replaced by `Formation` which directly uses Converge's Engine
 - `organism-learning` tests updated for `Context` → `ContextState` rename

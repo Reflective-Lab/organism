@@ -13,7 +13,7 @@
 //!
 //! Learning signals NEVER feed into authority — only into planning priors.
 
-use converge_kernel::{ExperienceEvent, ExperienceEventEnvelope};
+use converge_kernel::{BackendId, ExperienceEvent, ExperienceEventEnvelope};
 use converge_pack::{Context, ContextKey, Fact};
 use uuid::Uuid;
 
@@ -246,7 +246,7 @@ pub fn extract_signals_from_run(
                 SignalKind::OutcomeMissedExpectation
             },
             weight: if outcome.passed { 1.0 } else { 0.9 },
-            note: outcome_signal_note(outcome),
+            note: outcome_signal_note(&outcome),
         });
     } else if !proposals.is_empty() {
         signals.push(LearningSignal {
@@ -402,14 +402,20 @@ fn extract_categories(hypotheses: &[Fact]) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, Clone, Copy)]
-struct OutcomeEventView<'a> {
+/// Extracted view of an OutcomeRecorded event.
+///
+/// `backend` uses the typed `BackendId` from converge_kernel.
+/// `stop_reason` is formatted to String because `converge_core::StopReason`
+/// is not yet exported through the public `converge_kernel` surface — a gap
+/// to close upstream.
+#[derive(Debug, Clone)]
+struct OutcomeEventView {
     passed: bool,
-    stop_reason: &'a Option<String>,
-    backend: &'a Option<String>,
+    stop_reason: Option<String>,
+    backend: Option<BackendId>,
 }
 
-fn latest_outcome_event(events: &[ExperienceEventEnvelope]) -> Option<OutcomeEventView<'_>> {
+fn latest_outcome_event(events: &[ExperienceEventEnvelope]) -> Option<OutcomeEventView> {
     events.iter().rev().find_map(|event| {
         if let ExperienceEvent::OutcomeRecorded {
             passed,
@@ -420,8 +426,8 @@ fn latest_outcome_event(events: &[ExperienceEventEnvelope]) -> Option<OutcomeEve
         {
             Some(OutcomeEventView {
                 passed: *passed,
-                stop_reason,
-                backend,
+                stop_reason: stop_reason.as_ref().map(ToString::to_string),
+                backend: backend.clone(),
             })
         } else {
             None
@@ -445,7 +451,7 @@ fn latest_run_status(events: &[ExperienceEventEnvelope]) -> Option<String> {
     })
 }
 
-fn outcome_signal_note(outcome: OutcomeEventView<'_>) -> String {
+fn outcome_signal_note(outcome: &OutcomeEventView) -> String {
     let status = if outcome.passed {
         "Outcome recorded as passing"
     } else {
@@ -483,18 +489,19 @@ fn is_from_adversarial_agent(content: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_core::{BudgetResource, StopReason};
     use converge_kernel::{ContextState, Engine, ExperienceEvent, ExperienceEventEnvelope};
     use converge_pack::ContextKey;
     use std::collections::HashMap;
 
-    fn make_outcome_event(passed: bool, stop_reason: &str) -> ExperienceEventEnvelope {
+    fn make_outcome_event(passed: bool, stop_reason: StopReason) -> ExperienceEventEnvelope {
         ExperienceEventEnvelope::new(
             "evt-outcome",
             ExperienceEvent::OutcomeRecorded {
                 chain_id: "dd:test".into(),
                 step: converge_kernel::DecisionStep::Planning,
                 passed,
-                stop_reason: Some(stop_reason.into()),
+                stop_reason: Some(stop_reason),
                 latency_ms: None,
                 tokens: None,
                 cost_microdollars: None,
@@ -594,13 +601,19 @@ mod tests {
             Uuid::new_v4(),
             "Acme",
             &ctx,
-            &[make_outcome_event(false, "budget_exhausted")],
+            &[make_outcome_event(
+                false,
+                StopReason::CycleBudgetExhausted {
+                    cycles_executed: 0,
+                    limit: 0,
+                },
+            )],
         );
 
         assert_eq!(episode.actual_outcome, None);
         assert_eq!(
             episode.run_status.as_deref(),
-            Some("Run failed via converge-engine (budget_exhausted)")
+            Some("Run failed via converge-engine (Cycle budget exhausted: 0/0)")
         );
         assert!(episode.lessons.iter().any(|lesson| {
             lesson
@@ -621,7 +634,7 @@ mod tests {
             Uuid::new_v4(),
             "Acme",
             &ctx,
-            &[make_outcome_event(true, "converged")],
+            &[make_outcome_event(true, StopReason::Converged)],
         );
 
         assert_eq!(
@@ -634,14 +647,15 @@ mod tests {
         );
         assert_eq!(
             episode.run_status.as_deref(),
-            Some("Run passed via converge-engine (converged)")
+            Some("Run passed via converge-engine (Converged)")
         );
     }
 
     #[test]
     fn extract_signals_from_run_prefers_recorded_outcome() {
         let ctx = converge_kernel::ContextState::new();
-        let signals = extract_signals_from_run(&ctx, &[make_outcome_event(true, "converged")]);
+        let signals =
+            extract_signals_from_run(&ctx, &[make_outcome_event(true, StopReason::Converged)]);
 
         assert!(
             signals
@@ -651,7 +665,7 @@ mod tests {
         assert!(
             signals
                 .iter()
-                .any(|signal| signal.note.contains("converged"))
+                .any(|signal| signal.note.contains("Converged"))
         );
     }
 
@@ -685,15 +699,23 @@ mod tests {
     #[test]
     fn extract_signals_failing_outcome_emits_missed() {
         let ctx = converge_kernel::ContextState::new();
-        let signals =
-            extract_signals_from_run(&ctx, &[make_outcome_event(false, "budget_exhausted")]);
+        let signals = extract_signals_from_run(
+            &ctx,
+            &[make_outcome_event(
+                false,
+                StopReason::CycleBudgetExhausted {
+                    cycles_executed: 5,
+                    limit: 5,
+                },
+            )],
+        );
 
         assert!(
             signals
                 .iter()
                 .any(|s| matches!(s.kind, SignalKind::OutcomeMissedExpectation))
         );
-        assert!(signals.iter().any(|s| s.note.contains("budget_exhausted")));
+        assert!(signals.iter().any(|s| s.note.contains("budget exhausted")));
     }
 
     #[test]
@@ -703,7 +725,7 @@ mod tests {
             "evt-budget",
             ExperienceEvent::BudgetExceeded {
                 chain_id: "dd:test".into(),
-                resource: "tokens".into(),
+                resource: BudgetResource::Tokens,
                 limit: "10000".into(),
                 observed: Some("15000".into()),
             },
@@ -724,7 +746,7 @@ mod tests {
             "evt-budget",
             ExperienceEvent::BudgetExceeded {
                 chain_id: "dd:test".into(),
-                resource: "tokens".into(),
+                resource: BudgetResource::Tokens,
                 limit: "10000".into(),
                 observed: None,
             },

@@ -9,11 +9,12 @@ allowed-tools: Bash, Read, Grep
 Morning briefing — catch up on everything.
 ## Steps
 1. Pull latest: `git pull --rebase origin main`
-2. Open PRs: `gh pr list`
-3. Recently merged: `gh pr list --state=merged --limit=5`
-4. Open issues: `gh issue list --limit=10`
-5. Milestone progress from `MILESTONES.md`
-6. Compile check: `just check 2>&1 | tail -3` or `bun run check 2>&1 | tail -3`
+2. Git hygiene: `just git-hygiene`
+3. Open PRs: `gh pr list`
+4. Recently merged: `gh pr list --state=merged --limit=5`
+5. Open issues: `gh issue list --limit=10`
+6. Milestone progress from `MILESTONES.md`
+7. Compile check: `just check 2>&1 | tail -3` or `bun run check 2>&1 | tail -3`
 ## Output
 ```
 ── Sync ───────────────────────────────────────────

@@ -49,6 +49,7 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 ## Workflow
 
 - [[Workflow/Daily Journey]] — start-to-finish cheat sheet
+- [[Workflow/Git Strategy]] — branch model, worktrees, merge policy, release tagging
 - [[Workflow/Working with Claude]] — skills vs Justfile
 - [[Workflow/Working with Codex]] — plain-language workflow equivalents
 - [[Workflow/Working with Gemini]] — native tools + shared scripts

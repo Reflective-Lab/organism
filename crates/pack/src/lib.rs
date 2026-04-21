@@ -47,6 +47,15 @@
 //! };
 //! ```
 
+// ── Converge confidence vocabulary ────────────────────────────────
+// Named steps for adjust_confidence() — same values as converge_pack once
+// those constants land on main. Switch to re-exports when converge is updated.
+pub const CONFIDENCE_STEP_TINY: f64 = 0.05;
+pub const CONFIDENCE_STEP_MINOR: f64 = 0.1;
+pub const CONFIDENCE_STEP_MEDIUM: f64 = 0.15;
+pub const CONFIDENCE_STEP_MAJOR: f64 = 0.2;
+pub const CONFIDENCE_STEP_PRIMARY: f64 = 0.25;
+
 // ── Intent ─────────────────────────────────────────────────────────
 // The input: what the organization wants to achieve.
 

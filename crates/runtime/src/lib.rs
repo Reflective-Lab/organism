@@ -17,6 +17,7 @@ pub mod collaboration;
 pub mod formation;
 pub mod readiness;
 pub mod registry;
+pub mod tournament;
 
 pub use collaboration::{
     CollaborationParticipant, CollaborationRunner, CollaborationRunnerError, TransitionRecord,
@@ -31,6 +32,7 @@ pub use readiness::{
     ReadinessItem, ReadinessProbe, ReadinessReport, ResourceKind, check as check_readiness,
 };
 pub use registry::{RegisteredCapability, RegisteredPack, Registry, StructuralResolver};
+pub use tournament::{FormationScore, FormationTournament, TournamentError, TournamentResult};
 
 use organism_intent::admission::{self, Admission};
 use organism_pack::IntentPacket;
