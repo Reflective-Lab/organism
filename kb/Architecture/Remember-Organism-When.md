@@ -133,10 +133,11 @@ Monterro's convergent due diligence flow was built app-first:
    - `GapDetectorSuggestor` — debate-as-suggestor, reactive gap detection
    - `StabilitySuggestor` — fires when a context key stabilizes for N cycles
    - `SharedBudget` — cross-suggestor resource tracking with named limits
-4. **Next step:** The five DD suggestors themselves (search, extract, detect, synthesize)
-   move into `organism-domain/src/packs/due_diligence.rs` as a proper domain pack
-   with generic callbacks for search and LLM. Monterro and hackathon become thin
-   wiring layers that inject their backends.
+4. **DD loop now lives in Organism too:** The reusable DD suggestors live in
+   `organism-planning::dd` with generic `DdSearch` and `DdLlm` callbacks, and
+   `examples/due-diligence-loop` proves the full adaptive loop end to end.
+   Monterro and other apps should stay as thin wiring layers that inject their
+   own backends and product framing.
 
 This is the intended lifecycle: **app → pattern → organism crate → multiple apps reuse**.
 

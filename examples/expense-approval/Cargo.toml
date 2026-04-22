@@ -5,8 +5,8 @@ edition = "2024"
 publish = false
 
 [dependencies]
-converge-kernel = { path = "../../../converge/crates/kernel" }
-converge-pack = { path = "../../../converge/crates/pack" }
+converge-kernel = { workspace = true }
+converge-pack = { workspace = true }
 organism-pack = { path = "../../crates/pack" }
 organism-domain = { path = "../../crates/domain" }
 serde = { version = "1", features = ["derive"] }

@@ -253,11 +253,18 @@ Important Converge changes:
 
 ## Examples
 
+See [examples/README.md](examples/README.md) for the grouped guide. The short
+version is: Organism has both straightforward pipeline examples and the
+non-obvious formation patterns that matter when the default huddle is the wrong
+shape.
+
 | Example | What it demonstrates |
 |---|---|
 | [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, domain pack metadata |
 | [`expense-approval`](examples/expense-approval) | Full pipeline: admission → planning → adversarial → simulation |
 | [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
+| [`due-diligence-loop`](examples/due-diligence-loop) | Self-organizing formation → huddle seeding → adaptive DD loop → synthesis at stability |
+| [`formation-tournament`](examples/formation-tournament) | Competing formations on one DD brief, scored by `FormationTournament` using governed runtime data |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
 | [`collab-huddle`](examples/collab-huddle) | Strict huddle with done-gate voting and validation failures |
