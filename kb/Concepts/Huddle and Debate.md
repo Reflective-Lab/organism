@@ -60,6 +60,27 @@ Default rules: Swarm→Huddle, Huddle→Panel, Panel→Synthesis, Any→Tighter 
 
 The collaboration shape itself competes as a hypothesis. `generate_candidates()` produces 2–3 candidate shapes. Each is evaluated by `score_observation()` against one of four metrics (EvidenceQuality, ConvergenceSpeed, ContradictionMinimization, Balanced). `calibrate_shape()` converges priors over episodes. Future derivations are informed by past outcomes.
 
+## Non-Obvious Formations That Matter
+
+The point is not to collect cute topologies. The point is to use the wrong
+shape less often.
+
+- **Start loose, tighten later.**
+  `CollaborationCharter::self_organizing()` is useful when the work is still
+  exploratory and a prematurely curated team would narrow the search space too
+  early. See `examples/collab-self-organizing`.
+- **Change shape mid-run.**
+  A team that was appropriate for exploration is often the wrong team once
+  contradictions spike or budget pressure rises. See `examples/topology-transition`.
+- **Let shape compete.**
+  When the best topology is genuinely unknown, treat it as a hypothesis and let
+  the learning layer calibrate it over episodes. See `examples/shape-competition`.
+- **Use adaptive loops for diligence.**
+  Some flows are neither a fixed huddle nor a fixed pipeline. Due diligence is
+  the canonical case: kickoff, research, extraction, gap reopening,
+  contradiction detection, then synthesis at stability. See
+  `examples/due-diligence-loop`.
+
 ## Debate
 
 Plans that survive the huddle enter debate. The debate loop filters and ranks candidates, producing a `PlanBundle` of the strongest survivors.

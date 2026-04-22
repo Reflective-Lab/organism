@@ -23,6 +23,7 @@ members = [
     "examples/charter-from-intent",
     "examples/topology-transition",
     "examples/shape-competition",
+    "examples/due-diligence-loop",
 ]
 # Default members exclude examples with converge path deps (CI can't resolve them)
 default-members = [
@@ -35,6 +36,7 @@ default-members = [
     "examples/charter-from-intent",
     "examples/topology-transition",
     "examples/shape-competition",
+    "examples/due-diligence-loop",
 ]
 
 [workspace.package]
