@@ -75,6 +75,10 @@ shape less often.
 - **Let shape compete.**
   When the best topology is genuinely unknown, treat it as a hypothesis and let
   the learning layer calibrate it over episodes. See `examples/shape-competition`.
+- **Let actual formations compete.**
+  Once shapes become concrete teams of suggestors, run them through
+  `organism-runtime::FormationTournament` and score the governed results instead
+  of arguing from taste. See `examples/formation-tournament`.
 - **Use adaptive loops for diligence.**
   Some flows are neither a fixed huddle nor a fixed pipeline. Due diligence is
   the canonical case: kickoff, research, extraction, gap reopening,

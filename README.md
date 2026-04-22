@@ -264,6 +264,7 @@ shape.
 | [`expense-approval`](examples/expense-approval) | Full pipeline: admission → planning → adversarial → simulation |
 | [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
 | [`due-diligence-loop`](examples/due-diligence-loop) | Self-organizing formation → huddle seeding → adaptive DD loop → synthesis at stability |
+| [`formation-tournament`](examples/formation-tournament) | Competing formations on one DD brief, scored by `FormationTournament` using governed runtime data |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
 | [`collab-huddle`](examples/collab-huddle) | Strict huddle with done-gate voting and validation failures |

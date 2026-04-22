@@ -15,6 +15,7 @@ derived, adapted, or discovered.
 | [`loan-application`](loan-application) | Parallel evaluation, skepticism, simulation, and learning capture |
 | [`debate-loop`](debate-loop) | Planner and skeptic revising each other inside one converge loop |
 | [`due-diligence-loop`](due-diligence-loop) | Self-organizing `Formation` that seeds diligence strategies, reopens gaps, and only synthesizes at stability |
+| [`formation-tournament`](formation-tournament) | Run competing formations on the same diligence brief and pick the winner from governed results |
 
 ## Formation and Shape
 
@@ -43,5 +44,8 @@ story is too tidy.
 - [`due-diligence-loop`](due-diligence-loop): useful when a loose open-call team
   should seed the first passes, but the work itself keeps discovering missing
   information and the loop must reopen until coverage is good enough.
+- [`formation-tournament`](formation-tournament): useful when the question is no
+  longer “can this formation work?” but “which formation should win for this
+  kind of problem?”
 
 Those are not novelty demos. They are the reason Organism exists above Converge.
