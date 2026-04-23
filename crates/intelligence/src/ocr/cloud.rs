@@ -1442,9 +1442,16 @@ impl OcrProvider for TesseractOcrProvider {
 #[must_use]
 pub fn compute_hash(data: &[u8]) -> String {
     use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+
     let mut hasher = Sha256::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    let digest = hasher.finalize();
+    let mut encoded = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    encoded
 }
 
 /// Computes input/output hashes and returns updated provenance.
