@@ -405,9 +405,8 @@ fn extract_categories(hypotheses: &[Fact]) -> Vec<String> {
 /// Extracted view of an OutcomeRecorded event.
 ///
 /// `backend` uses the typed `BackendId` from converge_kernel.
-/// `stop_reason` is formatted to String because `converge_core::StopReason`
-/// is not yet exported through the public `converge_kernel` surface — a gap
-/// to close upstream.
+/// `stop_reason` is formatted to String because learning stores a stable
+/// narrative status rather than matching on engine termination variants.
 #[derive(Debug, Clone)]
 struct OutcomeEventView {
     passed: bool,
@@ -489,8 +488,9 @@ fn is_from_adversarial_agent(content: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_core::{BudgetResource, StopReason};
-    use converge_kernel::{ContextState, Engine, ExperienceEvent, ExperienceEventEnvelope};
+    use converge_kernel::{
+        BudgetResource, ContextState, Engine, ExperienceEvent, ExperienceEventEnvelope, StopReason,
+    };
     use converge_pack::ContextKey;
     use std::collections::HashMap;
 

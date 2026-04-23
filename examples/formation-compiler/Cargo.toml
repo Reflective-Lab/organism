@@ -1,0 +1,21 @@
+[package]
+name = "example-formation-compiler"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+organism-runtime.workspace = true
+organism-pack.workspace = true
+converge-kernel.workspace = true
+converge-provider-api.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

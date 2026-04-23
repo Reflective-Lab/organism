@@ -25,7 +25,12 @@ assembling Organism from phase crates.
 | `converge-pack` | Suggestor trait, ProposedFact, Invariant — for authoring packs that run inside Converge |
 | `converge-model` | Governed semantic types — for interpreting Converge results |
 | `converge-kernel` | Engine, `ContextState`, `ConvergeResult`, re-exported `Suggestor` contract — for embedded execution |
+| `converge-provider-api` | Backend identity and role-level `BackendRequirements` |
 | `converge-client` | gRPC SDK — only for remote (out-of-process) deployment |
+
+Use published Converge crates for normal development. Local path dependencies
+are only for coordinated Converge changes, and those should be exceptional now
+that the formation compiler substrate is released.
 
 ## Forbidden Dependencies
 

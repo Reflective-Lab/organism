@@ -6,7 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-04-23
+
 ### Added
+- **Formation compiler** — Organism-owned compile step from formation templates,
+  suggestor descriptors, and provider descriptors into auditable formation plans.
+- **Executable suggestor catalog** — compiled `suggestor_id` values now resolve
+  explicitly to concrete suggestor factories before execution.
+- **Vendor selection proof wedge** — F1 Frame, F2 Source, F3 Decide, and F4
+  Operate templates plus a runnable F3 compiler example.
+- **Formation outcome records** — learning-ready run records with template,
+  roster, provider assignments, tenant, correlation, stop reason, gates, quality
+  signal, and writeback target.
+- **Run-scoped experience observer** — wraps Converge events with Organism-owned
+  tenant and correlation metadata.
+- **Single-candidate compile/run path** — `Runtime::compile_and_run_formation`
+  admits, compiles, instantiates, executes, and returns a `FormationExecutionRecord`.
 - **Formation pattern** — replaces `CommitBoundary`; teams of heterogeneous agents (LLMs, optimizers, schedulers) assembled by Organism and run in Converge Engine instances
 - **Pipeline wiring** — full intent → admission → adversarial → simulation → formation → converge flow in `organism-runtime`
 - **Outcome simulator** — Monte Carlo sampling over plan annotations (impacts + risks) with configurable thresholds
@@ -16,11 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **The Gap** philosophy doc — why Organism exists and how formations fill the intent→convergence gap
 
 ### Changed
-- Converge deps bumped to `branch = "main"` (v3.7.0) — typed ID newtypes (`FactId`, `ProposalId`, `BackendId`) adopted throughout
+- Converge dependencies now use published `3.7.3` crates instead of GitHub or
+  sibling path dependencies.
 - `FactId` and `ProposalId` replace `String` in all domain structs: `TrackedHypothesis`, `HypothesisOutcome`, `SimulationVerdict`, `Seed`, processed-ID sets in DD suggestors
 - `CONFIDENCE_STEP_*` constants defined in `organism-pack` (pending re-export once converge main is indexed on crates.io)
 - `adjust_confidence(delta)` pattern adopted in debate-loop example — replaces magic `with_confidence(n)` floats
-- `organism-learning` tests use real `StopReason` and `BudgetResource` enum variants (no string coercions); `converge-core` added as dev-dep to access these types (API gap to close upstream by exporting through `converge-kernel`)
+- `organism-learning` tests use `StopReason` and `BudgetResource` through
+  `converge-kernel`; the direct `converge-core` dev dependency is removed.
 - `outcome_signal_note` takes `&OutcomeEventView` (was by-value); all clippy pedantic warnings resolved
 - Converge deps bumped to rev `a277ab3` (ContextState rename, optimization/policy Suggestors)
 - Removed `CommitBoundary` trait — replaced by `Formation` which directly uses Converge's Engine

@@ -17,11 +17,16 @@ assembling a `Formation` and running it in Converge.
 
 ```toml
 [dependencies]
-converge-pack = "3.4"
-converge-model = "3.4"
-converge-kernel = "3.4"
-# converge-client = "3.4" # only when you truly need remote mode
+converge-pack = "3.7.3"
+converge-model = "3.7.3"
+converge-kernel = "3.7.3"
+converge-provider-api = "3.7.3"
+# converge-client = "3.7.3" # only when you truly need remote mode
 ```
+
+Current Converge release for the formation compiler substrate: `3.7.3`.
+Use workspace-pinned published crates, not sibling path dependencies, unless
+you are deliberately coordinating a Converge change.
 
 ### 2. Implement embedded Formation execution
 

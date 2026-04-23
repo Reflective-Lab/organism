@@ -7,9 +7,11 @@
 //! operate on.
 
 use converge_kernel::{
-    AgentEffect, Budget, Context, ContextKey, ContextState, ConvergeResult, Engine, Suggestor,
+    AgentEffect, Budget, Context, ContextKey, ContextState, ConvergeResult, Engine,
+    ExperienceEventObserver, Suggestor,
 };
 use converge_pack::ProposalId;
+use std::sync::Arc;
 
 /// Wrapper that implements `Suggestor` for a boxed trait object.
 /// Needed because converge-pack does not provide a blanket impl.
@@ -118,7 +120,28 @@ impl Formation {
     /// Converge runs it. Agents propose, the engine promotes, and the
     /// returned result is governed by Converge.
     pub async fn run(self) -> Result<FormationResult, FormationError> {
+        self.run_observed(None).await
+    }
+
+    /// Run this formation with a run-scoped experience observer.
+    ///
+    /// Organism should use this with `FormationExperienceObserver` when it needs
+    /// tenant/correlation metadata on Converge experience envelopes.
+    pub async fn run_with_event_observer(
+        self,
+        observer: Arc<dyn ExperienceEventObserver>,
+    ) -> Result<FormationResult, FormationError> {
+        self.run_observed(Some(observer)).await
+    }
+
+    async fn run_observed(
+        self,
+        observer: Option<Arc<dyn ExperienceEventObserver>>,
+    ) -> Result<FormationResult, FormationError> {
         let mut engine = Engine::with_budget(self.budget);
+        if let Some(observer) = observer {
+            engine.set_event_observer(observer);
+        }
 
         // Register all agents
         for agent in self.agents {

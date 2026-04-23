@@ -25,6 +25,7 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 - [[Concepts/Simulation Swarm]] — outcome, cost, policy, causal, operational simulation
 - [[Concepts/Intent Resolution]] — 4-level mapping from intent to packs, capabilities, invariants
 - [[Concepts/Organizational Learning]] — calibrating planning priors from execution outcomes
+- [[Concepts/Vendor Selection Lifecycle]] — first decision wedge for the formation compiler
 
 ## Architecture
 
@@ -45,6 +46,10 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 
 - [[Stack/Rust]] — language conventions
 - [[Stack/Business Services]] — OCR, LinkedIn, Patent search, Brave
+
+## Planning
+
+- [[Planning/Organism Formation Compiler Milestone]] — broad compiler milestone with vendor selection as the first proof wedge
 
 ## Workflow
 
