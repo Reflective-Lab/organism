@@ -9,7 +9,7 @@ Converge emits `ExperienceEvent`s during every convergence run — fact promotio
 The converge application binary creates an `InMemoryExperienceStore` and a `StoreObserver` bridge, then attaches it to the engine:
 
 ```rust
-use converge_core::{Engine, ExperienceStore};
+use converge_kernel::{Engine, EventQuery, ExperienceStore};
 use converge_experience::{InMemoryExperienceStore, StoreObserver};
 use std::sync::Arc;
 
@@ -23,7 +23,7 @@ engine.set_event_observer(observer);
 let result = engine.run(context)?;
 
 // Query captured events
-let events = store.query_events(&converge_core::EventQuery::default())?;
+let events = store.query_events(&EventQuery::default())?;
 ```
 
 Those queried `ExperienceEventEnvelope`s are the canonical input to Organism learning. The adapter now lives in `organism-learning`:
@@ -59,7 +59,7 @@ converge-experience = { workspace = true, features = ["surrealdb"] }
 
 ```rust
 use converge_experience::{SurrealDbConfig, SurrealDbExperienceStore, StoreObserver};
-use converge_core::Engine;
+use converge_kernel::Engine;
 use std::sync::Arc;
 
 let config = SurrealDbConfig::new(
@@ -94,7 +94,7 @@ Same pattern — use `StoreObserver<LanceDbExperienceStore>`. LanceDB adds `Vect
 ## Querying events
 
 ```rust
-use converge_core::EventQuery;
+use converge_kernel::EventQuery;
 
 // All events
 let all = store.query_events(&EventQuery::default())?;

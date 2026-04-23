@@ -41,7 +41,7 @@ Human intent → Organism (form, reason, debate, simulate) → Converge (run, pr
 | `notes` | Vault management, source adapters, cleanup, enrichment |
 | `domain` | 13 org packs + knowledge lifecycle + 8 blueprints |
 
-## Converge v3.4.x contract
+## Converge v3.7.3 contract
 
 Organism uses Converge types directly. Two deployment modes:
 

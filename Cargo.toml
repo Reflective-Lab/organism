@@ -12,6 +12,7 @@ members = [
     "crates/pack",
     "crates/notes",
     "examples/vendor-selection",
+    "examples/formation-compiler",
     "examples/expense-approval",
     "examples/loan-application",
     "examples/resolution-showcase",
@@ -24,10 +25,12 @@ members = [
     "examples/topology-transition",
     "examples/shape-competition",
 ]
-# Default members exclude examples with converge path deps (CI can't resolve them)
+# Default members exclude heavier live Converge execution examples; the
+# formation-compiler example is pure planning/compilation.
 default-members = [
     "crates/*",
     "examples/resolution-showcase",
+    "examples/formation-compiler",
     "examples/collab-huddle",
     "examples/collab-panel",
     "examples/collab-self-organizing",
@@ -38,7 +41,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.0.0"
+version = "1.4.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -46,22 +49,21 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.0.0" }
-organism-planning = { path = "crates/planning", version = "1.0.0" }
-organism-adversarial = { path = "crates/adversarial", version = "1.0.0" }
-organism-simulation = { path = "crates/simulation", version = "1.0.0" }
-organism-learning = { path = "crates/learning", version = "1.0.0" }
-organism-runtime = { path = "crates/runtime", version = "1.0.0" }
-organism-pack = { path = "crates/pack", version = "1.0.0" }
-organism-intelligence = { path = "crates/intelligence", version = "1.0.0" }
-organism-domain = { path = "crates/domain", version = "1.0.0" }
-organism-notes = { path = "crates/notes", version = "1.0.0" }
+organism-intent = { path = "crates/intent", version = "1.4.0" }
+organism-planning = { path = "crates/planning", version = "1.4.0" }
+organism-adversarial = { path = "crates/adversarial", version = "1.4.0" }
+organism-simulation = { path = "crates/simulation", version = "1.4.0" }
+organism-learning = { path = "crates/learning", version = "1.4.0" }
+organism-runtime = { path = "crates/runtime", version = "1.4.0" }
+organism-pack = { path = "crates/pack", version = "1.4.0" }
+organism-intelligence = { path = "crates/intelligence", version = "1.4.0" }
+organism-domain = { path = "crates/domain", version = "1.4.0" }
+organism-notes = { path = "crates/notes", version = "1.4.0" }
 
 # Converge contract
-converge-pack = { git = "https://github.com/Reflective-Lab/converge", branch = "main" }
-converge-kernel = { git = "https://github.com/Reflective-Lab/converge", branch = "main" }
-converge-core = { git = "https://github.com/Reflective-Lab/converge", branch = "main" }
-converge-provider-api = { git = "https://github.com/Reflective-Lab/converge", branch = "main" }
+converge-pack = "3.7.3"
+converge-kernel = "3.7.3"
+converge-provider-api = "3.7.3"
 
 # Shared deps
 anyhow = "1"
