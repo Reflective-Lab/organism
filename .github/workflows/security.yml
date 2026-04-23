@@ -51,11 +51,11 @@ jobs:
           duplicate_names = sorted(name for name, count in package_names.items() if count > 1)
           registry_packages = [
               package for package in packages
-              if package.get("source", "").startswith("registry+")
+              if (package.get("source") or "").startswith("registry+")
           ]
           git_packages = [
               package for package in packages
-              if package.get("source", "").startswith("git+")
+              if (package.get("source") or "").startswith("git+")
           ]
 
           print("### Dependency Analysis")
@@ -143,10 +143,11 @@ jobs:
 
           parser = DependencyTableParser()
           parser.feed(html)
-          dependencies = [
-              row for row in parser.rows
+          dependencies = sorted({
+              tuple(row[:4])
+              for row in parser.rows
               if len(row) >= 4 and row[0] != "Crate" and row[2] != "Latest"
-          ]
+          })
           stale = [
               row for row in dependencies
               if row[3] and row[3] != "up to date"
@@ -161,7 +162,7 @@ jobs:
           if stale:
               print("| Crate | Required | Latest | Status |")
               print("|---|---:|---:|---|")
-              for crate, required, latest, status, *_ in stale[:50]:
+              for crate, required, latest, status in stale[:50]:
                   print(f"| {crate} | `{required}` | `{latest}` | {status} |")
           else:
               print("All deps.rs-reported dependencies are up to date.")
