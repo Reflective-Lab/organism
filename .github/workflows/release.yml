@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  CARGO_TERM_COLOR: always
+  EXCLUDES: >-
+    --exclude example-vendor-selection
+    --exclude example-expense-approval
+    --exclude example-loan-application
+    --exclude example-debate-loop
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.94.0"
+      - uses: Swatinem/rust-cache@v2
+      - name: Check workspace
+        run: cargo check --workspace ${{ env.EXCLUDES }}
+      - name: Run tests
+        run: cargo test --workspace ${{ env.EXCLUDES }}

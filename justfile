@@ -21,25 +21,25 @@ clean:
     cargo clean
 
 # Install git pre-commit hooks (fmt + clippy)
-hooks:
+git-hooks:
     git config core.hooksPath .githooks
     @echo "Git hooks installed — .githooks/pre-commit will run on each commit"
 
-# ── Git Hygiene ───────────────────────────────────────────────────────
+# ── Git ───────────────────────────────────────────────────────────────
 
-# Create a worktree for parallel work (e.g., just worktree feat/my-feature)
-worktree branch:
+# Create a worktree for parallel work (e.g., just git-worktree feat/my-feature)
+git-worktree branch:
     git worktree add ../organism-{{branch}} -b {{branch}}
     @echo "Worktree ready at ../organism-{{branch}}"
-    @echo "When done: just worktree-rm {{branch}}"
+    @echo "When done: just git-worktree-rm {{branch}}"
 
 # Remove a worktree
-worktree-rm branch:
+git-worktree-rm branch:
     git worktree remove ../organism-{{branch}}
     @echo "Worktree removed. Branch '{{branch}}' still exists — delete with: git branch -d {{branch}}"
 
 # List active worktrees
-worktrees:
+git-worktrees:
     git worktree list
 
 # Report branch/worktree/release hygiene and remote cleanup candidates
@@ -128,16 +128,16 @@ git-hygiene:
         fi
     fi
 
-# ── Workflow ──────────────────────────────────────────────────────────
-
-# Session opener — repo health + recent activity
-focus:
-    @bash scripts/workflow/focus.sh
-
-# Team sync — PRs, issues, recent commits
-sync:
+# Repo state and recent commits
+git-sync:
     @bash scripts/workflow/sync.sh
 
 # Build health, test results
-status:
+git-status:
     @bash scripts/workflow/status.sh
+
+# ── Workflow ──────────────────────────────────────────────────────────
+
+# Session opener — repo health + recent activity
+wow-focus:
+    @bash scripts/workflow/focus.sh

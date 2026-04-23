@@ -24,7 +24,7 @@ jobs:
         with:
           tool: cargo-audit
       - name: Run cargo-audit
-        run: cargo audit || echo "::warning::cargo-audit failed (path deps may prevent workspace resolution)"
+        run: cargo audit
 
   secrets:
     name: Secrets Scan

@@ -27,7 +27,7 @@ If `$ARGUMENTS` is provided, use it as the branch name. Otherwise ask.
 
 3. Remove worktree (if it exists):
    ```bash
-   just worktree-rm <branch>
+   just git-worktree-rm <branch>
    ```
    If `../organism-<branch>` does not exist, skip silently.
 
