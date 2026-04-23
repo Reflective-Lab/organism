@@ -1,11 +1,5 @@
-error[E0599]: no function or associated item named `new` found for struct `Fact` in the current scope
+error[E0599]: no function or associated item named `construct_unchecked` found for struct `Fact` in the current scope
  --> tests/compile_fail/fact_no_new.rs:7:23
   |
-7 |     let _fact = Fact::new(ContextKey::Seeds, "test-id", "test-content");
-  |                       ^^^ function or associated item not found in `Fact`
-  |
-help: there is a method `ne` with a similar name, but with different arguments
- --> $RUST/core/src/cmp.rs
-  |
-  |     fn ne(&self, other: &Rhs) -> bool {
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+7 |     let _fact = Fact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
+  |                       ^^^^^^^^^^^^^^^^^^^ function or associated item not found in `Fact`
