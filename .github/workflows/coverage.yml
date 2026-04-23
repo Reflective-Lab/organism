@@ -17,8 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Clone converge (sibling path dep)
-        run: git clone --depth 1 https://github.com/Reflective-Lab/converge.git ../converge
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -29,18 +27,21 @@ jobs:
           tool: cargo-llvm-cov
       - name: Generate coverage
         run: cargo llvm-cov --workspace --json --output-path coverage.json
-        continue-on-error: true
       - name: Extract coverage percentage
         id: cov
         run: |
-          if [ -f coverage.json ]; then
-            COV=$(python3 -c "import json; d=json.load(open('coverage.json')); print(f\"{d['data'][0]['totals']['lines']['percent']:.1f}\")")
-            echo "percent=$COV" >> "$GITHUB_OUTPUT"
-            echo "### Coverage: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "percent=0" >> "$GITHUB_OUTPUT"
-            echo "### Coverage: unknown" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          COV=$(python3 - <<'PY'
+          import json
+
+          with open("coverage.json", encoding="utf-8") as f:
+              data = json.load(f)
+
+          percent = data["data"][0]["totals"]["lines"]["percent"]
+          print(f"{percent:.1f}")
+          PY
+          )
+          echo "percent=$COV" >> "$GITHUB_OUTPUT"
+          echo "### Coverage: ${COV}%" >> "$GITHUB_STEP_SUMMARY"
       - name: Update coverage badge
         if: github.ref == 'refs/heads/main'
         uses: schneegans/dynamic-badges-action@v1.7.0

@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   audit:
-    name: Audit
+    name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -24,7 +24,156 @@ jobs:
         with:
           tool: cargo-audit
       - name: Run cargo-audit
-        run: cargo audit
+        run: cargo audit --deny warnings
+
+  dependency-analysis:
+    name: Dependency Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.94.0"
+      - name: Capture dependency metadata
+        run: cargo metadata --locked --format-version 1 > cargo-metadata.json
+      - name: Analyze dependency graph
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from collections import Counter
+
+          with open("cargo-metadata.json", encoding="utf-8") as f:
+              metadata = json.load(f)
+
+          packages = metadata["packages"]
+          workspace_ids = set(metadata["workspace_members"])
+          package_names = Counter(package["name"] for package in packages)
+          duplicate_names = sorted(name for name, count in package_names.items() if count > 1)
+          registry_packages = [
+              package for package in packages
+              if package.get("source", "").startswith("registry+")
+          ]
+          git_packages = [
+              package for package in packages
+              if package.get("source", "").startswith("git+")
+          ]
+
+          print("### Dependency Analysis")
+          print()
+          print(f"- Workspace packages: {len(workspace_ids)}")
+          print(f"- Total packages resolved: {len(packages)}")
+          print(f"- Registry packages: {len(registry_packages)}")
+          print(f"- Git packages: {len(git_packages)}")
+          print(f"- Package names with multiple versions: {len(duplicate_names)}")
+          if duplicate_names:
+              print()
+              print("Duplicate package names:")
+              for name in duplicate_names:
+                  versions = sorted(
+                      package["version"]
+                      for package in packages
+                      if package["name"] == name
+                  )
+                  print(f"- {name}: {', '.join(versions)}")
+          PY
+      - name: Capture duplicate dependency versions
+        run: |
+          cargo tree --workspace --locked --duplicates > dependency-duplicates.txt || true
+          {
+            echo
+            echo "### Duplicate Dependency Versions"
+            echo
+            if [ -s dependency-duplicates.txt ]; then
+              echo '```text'
+              cat dependency-duplicates.txt
+              echo '```'
+            else
+              echo "No duplicate dependency versions reported by cargo tree."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fetch deps.rs latest release report
+        run: |
+          DEPS_RS_URL="https://deps.rs/repo/github/${GITHUB_REPOSITORY}"
+          curl --fail --show-error --silent --location --retry 3 \
+            "${DEPS_RS_URL}" \
+            --output deps-rs-report.html
+          curl --fail --show-error --silent --location --retry 3 \
+            "${DEPS_RS_URL}/status.svg" \
+            --output deps-rs-status.svg
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+
+          class DependencyTableParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.in_cell = False
+                  self.in_row = False
+                  self.current_cell = []
+                  self.current_row = []
+                  self.rows = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "tr":
+                      self.in_row = True
+                      self.current_row = []
+                  elif self.in_row and tag in {"td", "th"}:
+                      self.in_cell = True
+                      self.current_cell = []
+
+              def handle_data(self, data):
+                  if self.in_cell:
+                      self.current_cell.append(data)
+
+              def handle_endtag(self, tag):
+                  if self.in_cell and tag in {"td", "th"}:
+                      text = " ".join("".join(self.current_cell).split())
+                      self.current_row.append(text)
+                      self.in_cell = False
+                  elif self.in_row and tag == "tr":
+                      if self.current_row:
+                          self.rows.append(self.current_row)
+                      self.in_row = False
+
+
+          html = Path("deps-rs-report.html").read_text(encoding="utf-8")
+          if "Failed to analyze repository" in html:
+              raise SystemExit("deps.rs could not analyze this repository")
+
+          parser = DependencyTableParser()
+          parser.feed(html)
+          dependencies = [
+              row for row in parser.rows
+              if len(row) >= 4 and row[0] != "Crate" and row[2] != "Latest"
+          ]
+          stale = [
+              row for row in dependencies
+              if row[3] and row[3] != "up to date"
+          ]
+
+          print()
+          print("### deps.rs Latest Releases")
+          print()
+          print(f"- deps.rs dependencies parsed: {len(dependencies)}")
+          print(f"- deps.rs non-current or flagged dependencies: {len(stale)}")
+          print()
+          if stale:
+              print("| Crate | Required | Latest | Status |")
+              print("|---|---:|---:|---|")
+              for crate, required, latest, status, *_ in stale[:50]:
+                  print(f"| {crate} | `{required}` | `{latest}` | {status} |")
+          else:
+              print("All deps.rs-reported dependencies are up to date.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-analysis
+          path: |
+            cargo-metadata.json
+            dependency-duplicates.txt
+            deps-rs-report.html
+            deps-rs-status.svg
 
   secrets:
     name: Secrets Scan

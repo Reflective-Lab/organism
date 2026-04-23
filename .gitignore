@@ -5,7 +5,6 @@ dist/
 .svelte-kit/
 .obsidian/
 **/*.rs.bk
-Cargo.lock
 .env
 .env.*
 !.env.example
