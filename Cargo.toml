@@ -61,9 +61,9 @@ organism-domain = { path = "crates/domain", version = "1.4.0" }
 organism-notes = { path = "crates/notes", version = "1.4.0" }
 
 # Converge contract
-converge-pack = "3.7.3"
-converge-kernel = "3.7.3"
-converge-provider-api = "3.7.3"
+converge-pack = "3.7.4"
+converge-kernel = "3.7.4"
+converge-provider-api = "3.7.4"
 
 # Shared deps
 anyhow = "1"
