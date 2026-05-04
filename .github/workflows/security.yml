@@ -167,7 +167,7 @@ jobs:
           else:
               print("All deps.rs-reported dependencies are up to date.")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dependency-analysis
           path: |
