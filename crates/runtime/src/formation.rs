@@ -216,6 +216,21 @@ impl Formation {
             .with_adversarial_team()
             .with_simulation_swarm()
     }
+
+    /// Add the platform consensus evaluator: tallies `Vote` facts under
+    /// [`ContextKey::Votes`] against `rule` and emits `ConsensusOutcome`
+    /// facts under [`ContextKey::ConsensusOutcomes`].
+    ///
+    /// Use this for any team that needs collective sign-off — research
+    /// huddles, vendor-selection panels, multi-agent reviews. Vote facts are
+    /// authored by domain pack agents; this evaluator stays domain-agnostic.
+    pub fn with_consensus_evaluator(
+        self,
+        rule: converge_pack::ConsensusRule,
+        total_voters: usize,
+    ) -> Self {
+        self.agent(crate::huddle::ConsensusEvaluator::new(rule, total_voters))
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

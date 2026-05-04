@@ -18,6 +18,7 @@ pub mod compiler;
 pub mod execution;
 pub mod experience;
 pub mod formation;
+pub mod huddle;
 pub mod outcome;
 pub mod readiness;
 pub mod registry;
@@ -38,6 +39,7 @@ pub use execution::{
 };
 pub use experience::{ExperienceEnvelopeSink, FormationExperienceObserver};
 pub use formation::{Formation, FormationError, FormationResult, Seed};
+pub use huddle::ConsensusEvaluator;
 pub use organism_pack::{
     CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,
     ResolutionLevel, ResolutionTrace,

@@ -18,6 +18,9 @@ pub enum ContextKey {
     Constraints,
     Hypotheses,
     Diagnostic,
+    Votes,
+    Disagreements,
+    ConsensusOutcomes,
 }
 
 /// Invariant severity class.
@@ -93,6 +96,9 @@ mod tests {
             ContextKey::Constraints,
             ContextKey::Hypotheses,
             ContextKey::Diagnostic,
+            ContextKey::Votes,
+            ContextKey::Disagreements,
+            ContextKey::ConsensusOutcomes,
         ] {
             let json = serde_json::to_string(&key).unwrap();
             let back: ContextKey = serde_json::from_str(&json).unwrap();
@@ -133,6 +139,18 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&ContextKey::Diagnostic).unwrap(),
             "\"diagnostic\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Votes).unwrap(),
+            "\"votes\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::Disagreements).unwrap(),
+            "\"disagreements\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ContextKey::ConsensusOutcomes).unwrap(),
+            "\"consensus_outcomes\""
         );
     }
 
