@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-05
+
 ### Added
 - **`HuddleInvocation` envelope** in `organism-planning` — domain-agnostic
   request to convene a huddle (`subject_id`, `kind`, `urgency`, free-form
@@ -15,6 +17,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `Routine | Elevated | Urgent`. Re-exported from `organism-pack`. Domain
   classifiers (e.g. journalism rules over `ClaimRecord`/`ArticleDraft`) stay
   in consuming crates and emit this envelope at the boundary.
+- **Runtime huddle suggestors** — `RoundStarter`, `ConsensusEvaluator`,
+  `RoundSynthesizer`, and `DisagreementMapper` are available upstream for apps
+  that want reusable huddle-loop mechanics without carrying app-domain voice.
+- **Canonical result constructors** for intent admission, adversarial review,
+  and simulation dimensions/summaries.
+
+### Changed
+- Converge dependencies now target published `3.7.6` crates while local
+  platform development continues to resolve through the sibling Converge
+  checkout via `[patch.crates-io]`.
+- Vendor-selection and spend-approval Suggestors moved into reusable domain
+  packs; the examples now consume pack-level Suggestors instead of owning the
+  reusable business mechanics.
+- The loan-application example graduated out of Organism into
+  `~/dev/apps/loan-application`, keeping lending vocabulary and underwriting
+  assumptions in the app layer.
+- `PlanningPriorAgent` can consult Converge recall through `ExperienceStore`,
+  closing the experience-to-planning feedback loop.
 
 ## [1.4.0] - 2026-04-23
 

@@ -40,7 +40,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.4.0"
+version = "1.4.1"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -48,21 +48,21 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.4.0" }
-organism-planning = { path = "crates/planning", version = "1.4.0" }
-organism-adversarial = { path = "crates/adversarial", version = "1.4.0" }
-organism-simulation = { path = "crates/simulation", version = "1.4.0" }
-organism-learning = { path = "crates/learning", version = "1.4.0" }
-organism-runtime = { path = "crates/runtime", version = "1.4.0" }
-organism-pack = { path = "crates/pack", version = "1.4.0" }
-organism-intelligence = { path = "crates/intelligence", version = "1.4.0" }
-organism-domain = { path = "crates/domain", version = "1.4.0" }
-organism-notes = { path = "crates/notes", version = "1.4.0" }
+organism-intent = { path = "crates/intent", version = "1.4.1" }
+organism-planning = { path = "crates/planning", version = "1.4.1" }
+organism-adversarial = { path = "crates/adversarial", version = "1.4.1" }
+organism-simulation = { path = "crates/simulation", version = "1.4.1" }
+organism-learning = { path = "crates/learning", version = "1.4.1" }
+organism-runtime = { path = "crates/runtime", version = "1.4.1" }
+organism-pack = { path = "crates/pack", version = "1.4.1" }
+organism-intelligence = { path = "crates/intelligence", version = "1.4.1" }
+organism-domain = { path = "crates/domain", version = "1.4.1" }
+organism-notes = { path = "crates/notes", version = "1.4.1" }
 
 # Converge contract
-converge-pack = "3.7.5"
-converge-kernel = "3.7.5"
-converge-provider-api = "3.7.5"
+converge-pack = "3.7.6"
+converge-kernel = "3.7.6"
+converge-provider-api = "3.7.6"
 
 # Shared deps
 anyhow = "1"
@@ -96,8 +96,8 @@ unused_async = "allow"
 codegen-units = 1
 lto = true
 
-# Resolve unreleased converge head from local paths until 3.7.5 publishes.
-# Remove these lines per crate as each publishes.
+# During platform development, resolve Converge from the sibling checkout while
+# keeping the published dependency floor aligned with crates.io.
 [patch.crates-io]
 converge-pack         = { path = "../converge/crates/pack" }
 converge-kernel       = { path = "../converge/crates/kernel" }
