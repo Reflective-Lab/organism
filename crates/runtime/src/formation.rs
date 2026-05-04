@@ -231,6 +231,14 @@ impl Formation {
     ) -> Self {
         self.agent(crate::huddle::ConsensusEvaluator::new(rule, total_voters))
     }
+
+    /// Add the platform round starter: emits `round:start:N` signals to drive
+    /// round-by-round deliberation. Round 1 fires immediately; later rounds
+    /// fire when a `round:continue:N` marker has landed under the configured
+    /// continue key. Stops at `max_rounds`.
+    pub fn with_round_starter(self, max_rounds: u8) -> Self {
+        self.agent(crate::huddle::RoundStarter::new(max_rounds))
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

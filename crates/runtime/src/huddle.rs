@@ -17,6 +17,159 @@ use converge_pack::{
     Vote, VoteTopicId,
 };
 
+/// Fact-id and key conventions for round-based deliberation.
+///
+/// Wolfgang's research huddles, Monterro's diligence loops, and any other
+/// pack that wants round-by-round turn-taking shares this naming so upstream
+/// suggestors can read and write the same facts.
+#[derive(Debug, Clone, Copy)]
+pub struct RoundConventions {
+    /// Where round-start signals live. Default [`ContextKey::Signals`].
+    pub round_signal_key: ContextKey,
+    /// Fact-id prefix for round-start signals. Default `"round:start:"`.
+    pub round_signal_prefix: &'static str,
+    /// Where "this round may continue" markers live. Default
+    /// [`ContextKey::Constraints`].
+    pub continue_key: ContextKey,
+    /// Fact-id prefix for continue markers. Default `"round:continue:"`.
+    pub continue_prefix: &'static str,
+}
+
+impl RoundConventions {
+    #[must_use]
+    pub const fn default_const() -> Self {
+        Self {
+            round_signal_key: ContextKey::Signals,
+            round_signal_prefix: "round:start:",
+            continue_key: ContextKey::Constraints,
+            continue_prefix: "round:continue:",
+        }
+    }
+
+    fn round_signal_id(&self, round: u8) -> String {
+        format!("{}{round}", self.round_signal_prefix)
+    }
+
+    fn continue_id(&self, round: u8) -> String {
+        format!("{}{round}", self.continue_prefix)
+    }
+}
+
+impl Default for RoundConventions {
+    fn default() -> Self {
+        Self::default_const()
+    }
+}
+
+/// Boxed terminal-state predicate: returns true to halt round emission.
+pub type TerminalPredicate = Box<dyn Fn(&dyn Context) -> bool + Send + Sync>;
+
+fn never_terminal() -> TerminalPredicate {
+    Box::new(|_ctx| false)
+}
+
+fn has_fact(ctx: &dyn Context, key: ContextKey, id: &str) -> bool {
+    ctx.get(key).iter().any(|fact| fact.id.as_str() == id)
+}
+
+/// Drives round-by-round deliberation by emitting `round:start:N` signals.
+///
+/// Round 1 fires when no round has started yet. Round N+1 fires when the
+/// previous round has been marked continue (a fact under
+/// [`RoundConventions::continue_key`] with id `round:continue:N`). Stops when
+/// the configured terminal predicate returns true or `max_rounds` is reached.
+///
+/// Domain packs supply the terminal predicate to express research-specific
+/// completion markers (e.g. Wolfgang's `research:complete` /
+/// `research:max_rounds_reached` facts). The platform stays agnostic.
+pub struct RoundStarter {
+    max_rounds: u8,
+    conventions: RoundConventions,
+    is_terminal: TerminalPredicate,
+}
+
+impl RoundStarter {
+    #[must_use]
+    pub fn new(max_rounds: u8) -> Self {
+        Self {
+            max_rounds,
+            conventions: RoundConventions::default(),
+            is_terminal: never_terminal(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_conventions(mut self, conventions: RoundConventions) -> Self {
+        self.conventions = conventions;
+        self
+    }
+
+    /// Provide a domain-specific terminal-state predicate. Returns `true` to
+    /// stop round emission (e.g. when a research-complete fact is present).
+    #[must_use]
+    pub fn with_terminal_predicate<F>(mut self, predicate: F) -> Self
+    where
+        F: Fn(&dyn Context) -> bool + Send + Sync + 'static,
+    {
+        self.is_terminal = Box::new(predicate);
+        self
+    }
+
+    fn next_round_to_emit(&self, ctx: &dyn Context) -> Option<u8> {
+        if !has_fact(
+            ctx,
+            self.conventions.round_signal_key,
+            &self.conventions.round_signal_id(1),
+        ) {
+            return Some(1);
+        }
+        for round in 1..self.max_rounds {
+            if has_fact(
+                ctx,
+                self.conventions.continue_key,
+                &self.conventions.continue_id(round),
+            ) && !has_fact(
+                ctx,
+                self.conventions.round_signal_key,
+                &self.conventions.round_signal_id(round + 1),
+            ) {
+                return Some(round + 1);
+            }
+        }
+        None
+    }
+}
+
+#[async_trait::async_trait]
+impl Suggestor for RoundStarter {
+    fn name(&self) -> &'static str {
+        "organism-round-starter"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[]
+    }
+
+    fn accepts(&self, ctx: &dyn Context) -> bool {
+        if (self.is_terminal)(ctx) {
+            return false;
+        }
+        self.next_round_to_emit(ctx).is_some()
+    }
+
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+        let Some(round) = self.next_round_to_emit(ctx) else {
+            return AgentEffect::empty();
+        };
+        AgentEffect::with_proposal(ProposedFact::new(
+            self.conventions.round_signal_key,
+            self.conventions.round_signal_id(round),
+            format!("start round {round}"),
+            self.name(),
+        ))
+    }
+}
+
 /// Tallies [`Vote`] facts under [`ContextKey::Votes`] against a
 /// [`ConsensusRule`] and emits [`ConsensusOutcome`] facts under
 /// [`ContextKey::ConsensusOutcomes`].
@@ -238,5 +391,116 @@ mod tests {
                 .context
                 .has(ContextKey::ConsensusOutcomes)
         );
+    }
+
+    // ── RoundStarter ──────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn round_starter_emits_round_one_when_no_round_has_started() {
+        let result = Formation::new("round-1")
+            .agent(RoundStarter::new(3))
+            .run()
+            .await
+            .expect("formation should converge");
+
+        let signals = result.converge_result.context.get(ContextKey::Signals);
+        assert_eq!(signals.len(), 1);
+        assert_eq!(signals[0].id.as_str(), "round:start:1");
+    }
+
+    #[tokio::test]
+    async fn round_starter_advances_when_continue_marker_lands() {
+        let result = Formation::new("round-2")
+            .agent(RoundStarter::new(3))
+            .seed(
+                ContextKey::Constraints,
+                "round:continue:1",
+                "round 1 voted to continue",
+                "test-author",
+            )
+            .run()
+            .await
+            .expect("formation should converge");
+
+        let mut signal_ids: Vec<&str> = result
+            .converge_result
+            .context
+            .get(ContextKey::Signals)
+            .iter()
+            .map(|f| f.id.as_str())
+            .collect();
+        signal_ids.sort_unstable();
+        assert_eq!(signal_ids, vec!["round:start:1", "round:start:2"]);
+    }
+
+    #[tokio::test]
+    async fn round_starter_stops_at_max_rounds() {
+        let mut formation = Formation::new("max-cap").agent(RoundStarter::new(2));
+        for round in 1..=2 {
+            formation = formation.seed(
+                ContextKey::Constraints,
+                format!("round:continue:{round}"),
+                format!("continue {round}"),
+                "test-author",
+            );
+        }
+        let result = formation.run().await.expect("formation should converge");
+
+        let signals = result.converge_result.context.get(ContextKey::Signals);
+        assert_eq!(signals.len(), 2);
+        assert!(!signals.iter().any(|f| f.id.as_str() == "round:start:3"));
+    }
+
+    #[tokio::test]
+    async fn round_starter_respects_terminal_predicate() {
+        const TERMINAL_ID: &str = "research:complete";
+        let result = Formation::new("terminal-block")
+            .agent(RoundStarter::new(3).with_terminal_predicate(|ctx| {
+                ctx.get(ContextKey::Strategies)
+                    .iter()
+                    .any(|f| f.id.as_str() == TERMINAL_ID)
+            }))
+            .seed(
+                ContextKey::Strategies,
+                TERMINAL_ID,
+                "research is done",
+                "test-author",
+            )
+            .run()
+            .await
+            .expect("formation should converge");
+
+        assert!(!result.converge_result.context.has(ContextKey::Signals));
+    }
+
+    #[tokio::test]
+    async fn round_starter_honors_custom_conventions() {
+        let conventions = RoundConventions {
+            round_signal_key: ContextKey::Hypotheses,
+            round_signal_prefix: "phase:",
+            continue_key: ContextKey::Strategies,
+            continue_prefix: "phase:next:",
+        };
+        let result = Formation::new("custom-conv")
+            .agent(RoundStarter::new(3).with_conventions(conventions))
+            .seed(
+                ContextKey::Strategies,
+                "phase:next:1",
+                "advance",
+                "test-author",
+            )
+            .run()
+            .await
+            .expect("formation should converge");
+
+        let mut ids: Vec<&str> = result
+            .converge_result
+            .context
+            .get(ContextKey::Hypotheses)
+            .iter()
+            .map(|f| f.id.as_str())
+            .collect();
+        ids.sort_unstable();
+        assert_eq!(ids, vec!["phase:1", "phase:2"]);
     }
 }
