@@ -216,12 +216,14 @@ pub trait SynthesisProducer: Send + Sync {
 /// [`RoundConventions::synthesis_key`].
 ///
 /// Errors from the producer are routed to [`ContextKey::Diagnostic`] with a
-/// `runtime:error:synthesis:{round}` id and never block convergence on the
-/// happy path of other rounds.
+/// `runtime:error:synthesis:{round}` id; the same round is then skipped on
+/// subsequent cycles so a flaky producer does not loop. A terminal predicate
+/// can also halt all synthesis (e.g. when research has been judged complete).
 pub struct RoundSynthesizer<P: SynthesisProducer> {
     expected_note_count: usize,
     conventions: RoundConventions,
     producer: P,
+    is_terminal: TerminalPredicate,
 }
 
 impl<P: SynthesisProducer> RoundSynthesizer<P> {
@@ -231,12 +233,24 @@ impl<P: SynthesisProducer> RoundSynthesizer<P> {
             expected_note_count,
             conventions: RoundConventions::default(),
             producer,
+            is_terminal: never_terminal(),
         }
     }
 
     #[must_use]
     pub fn with_conventions(mut self, conventions: RoundConventions) -> Self {
         self.conventions = conventions;
+        self
+    }
+
+    /// Provide a domain-specific terminal-state predicate. Returns `true` to
+    /// stop all synthesis (mirrors [`RoundStarter::with_terminal_predicate`]).
+    #[must_use]
+    pub fn with_terminal_predicate<F>(mut self, predicate: F) -> Self
+    where
+        F: Fn(&dyn Context) -> bool + Send + Sync + 'static,
+    {
+        self.is_terminal = Box::new(predicate);
         self
     }
 
@@ -272,6 +286,10 @@ impl<P: SynthesisProducer> RoundSynthesizer<P> {
                 ctx,
                 self.conventions.synthesis_key,
                 &self.conventions.synthesis_id(*round),
+            ) && !has_fact(
+                ctx,
+                ContextKey::Diagnostic,
+                &format!("runtime:error:synthesis:{round}"),
             ) && self.count_notes_for_round(ctx, *round) >= self.expected_note_count
         })
     }
@@ -288,6 +306,9 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
+        if (self.is_terminal)(ctx) {
+            return false;
+        }
         self.next_round_needing_synthesis(ctx).is_some()
     }
 
@@ -879,6 +900,62 @@ mod tests {
         assert_eq!(diagnostic.len(), 1);
         assert_eq!(diagnostic[0].id.as_str(), "runtime:error:synthesis:1");
         assert_eq!(diagnostic[0].content, "upstream timeout");
+    }
+
+    #[tokio::test]
+    async fn round_synthesizer_skips_round_with_existing_diagnostic_error() {
+        let result = formation_with_round_one_started("synth-prior-error")
+            .agent(RoundSynthesizer::new(1, StaticProducer("must-not-emit")))
+            .seed(
+                ContextKey::Hypotheses,
+                "note:alice:1",
+                "alice note",
+                "test-author",
+            )
+            .seed(
+                ContextKey::Diagnostic,
+                "runtime:error:synthesis:1",
+                "earlier failure recorded",
+                "test-author",
+            )
+            .run()
+            .await
+            .expect("formation should converge");
+
+        assert!(!result.converge_result.context.has(ContextKey::Strategies));
+    }
+
+    #[tokio::test]
+    async fn round_synthesizer_respects_terminal_predicate() {
+        const TERMINAL_ID: &str = "research:complete";
+        let result = formation_with_round_one_started("synth-terminal")
+            .agent(
+                RoundSynthesizer::new(1, StaticProducer("should-not-appear"))
+                    .with_terminal_predicate(|ctx| {
+                        ctx.get(ContextKey::Strategies)
+                            .iter()
+                            .any(|f| f.id.as_str() == TERMINAL_ID)
+                    }),
+            )
+            .seed(
+                ContextKey::Hypotheses,
+                "note:alice:1",
+                "alice note",
+                "test-author",
+            )
+            .seed(
+                ContextKey::Strategies,
+                TERMINAL_ID,
+                "research is done",
+                "test-author",
+            )
+            .run()
+            .await
+            .expect("formation should converge");
+
+        let strategies = result.converge_result.context.get(ContextKey::Strategies);
+        assert_eq!(strategies.len(), 1);
+        assert_eq!(strategies[0].id.as_str(), TERMINAL_ID);
     }
 
     #[tokio::test]
