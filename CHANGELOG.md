@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **`HuddleInvocation` envelope** in `organism-planning` — domain-agnostic
+  request to convene a huddle (`subject_id`, `kind`, `urgency`, free-form
+  `triggers`, `rationale`, `correlation_id`, `reviewer`, optional
+  `domain_context: serde_json::Value`). `HuddleInvocationKind` covers
+  `Contested | Sensitive | HighRisk | AiAssisted`; `HuddleUrgency` covers
+  `Routine | Elevated | Urgent`. Re-exported from `organism-pack`. Domain
+  classifiers (e.g. journalism rules over `ClaimRecord`/`ArticleDraft`) stay
+  in consuming crates and emit this envelope at the boundary.
+
 ## [1.4.0] - 2026-04-23
 
 ### Added

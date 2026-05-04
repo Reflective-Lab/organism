@@ -12,6 +12,7 @@ pub mod collaboration;
 pub mod dd;
 pub mod debate;
 pub mod huddle;
+pub mod huddle_invocation;
 pub mod kb;
 pub mod shape_hypothesis;
 pub mod suggestor;
@@ -27,6 +28,7 @@ pub use collaboration::{
     CollaborationTopology, CollaborationValidationError, ConsensusRule, TeamFormation,
     TeamFormationMode, TurnCadence,
 };
+pub use huddle_invocation::{HuddleInvocation, HuddleInvocationKind, HuddleUrgency};
 
 // ── Plan ───────────────────────────────────────────────────────────
 

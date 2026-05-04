@@ -85,9 +85,10 @@ pub use organism_intent::{
 
 pub use organism_planning::{
     CollaborationCharter, CollaborationDiscipline, CollaborationMember, CollaborationRole,
-    CollaborationTopology, CollaborationValidationError, ConsensusRule, CostEstimate, Impact,
-    Likelihood, Plan, PlanAnnotation, PlanBundle, PlanContribution, PlanStep, Reasoner,
-    ReasoningSystem, Risk, RiskImpact, TeamFormation, TeamFormationMode, TurnCadence,
+    CollaborationTopology, CollaborationValidationError, ConsensusRule, CostEstimate,
+    HuddleInvocation, HuddleInvocationKind, HuddleUrgency, Impact, Likelihood, Plan,
+    PlanAnnotation, PlanBundle, PlanContribution, PlanStep, Reasoner, ReasoningSystem, Risk,
+    RiskImpact, TeamFormation, TeamFormationMode, TurnCadence,
     charter_derivation::{
         DerivationRationale, DerivedCharter, IntentComplexity, derive_charter,
         derive_charter_with_priors,
