@@ -61,9 +61,9 @@ organism-domain = { path = "crates/domain", version = "1.4.0" }
 organism-notes = { path = "crates/notes", version = "1.4.0" }
 
 # Converge contract
-converge-pack = "3.7.4"
-converge-kernel = "3.7.4"
-converge-provider-api = "3.7.4"
+converge-pack = "3.7.5"
+converge-kernel = "3.7.5"
+converge-provider-api = "3.7.5"
 
 # Shared deps
 anyhow = "1"
@@ -96,3 +96,10 @@ unused_async = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
+
+# Resolve unreleased converge head from local paths until 3.7.5 publishes.
+# Remove these lines per crate as each publishes.
+[patch.crates-io]
+converge-pack         = { path = "../converge/crates/pack" }
+converge-kernel       = { path = "../converge/crates/kernel" }
+converge-provider-api = { path = "../converge/crates/provider-api" }

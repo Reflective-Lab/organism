@@ -277,9 +277,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "converge-core"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e61386a393e5c07eac00fa3f8093da732a2f6a7da266935e925e1d73db643780"
+version = "3.7.5"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -296,9 +294,7 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd7273e866f098e4e97f60a41f09e49bd07b2905f79d88905ed40399b13f73ba"
+version = "3.7.5"
 dependencies = [
  "converge-core",
  "converge-model",
@@ -310,9 +306,7 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e327a4c6d2be0bf74e620755338be682d7e2e9ee2a9f5abaf57bcfaccaeed932"
+version = "3.7.5"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -322,9 +316,7 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd9c066db70126b148cf0485088dbaf261b5b58cdcec48ff840c051195b107d5"
+version = "3.7.5"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -345,9 +337,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b3499bae944247e38a846f3bb0cde59e7413c777d86c266072a6559cb9cd365"
+version = "3.7.5"
 dependencies = [
  "async-trait",
  "hex",
@@ -359,9 +349,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a828f0229daeba66a80dab02ae2fcaae65c2edae340bf649516c18a9c6fa1848"
+version = "3.7.5"
 dependencies = [
  "async-trait",
  "base64",
@@ -369,6 +357,8 @@ dependencies = [
  "converge-optimization",
  "converge-pack",
  "converge-provider-api",
+ "hex",
+ "quick-xml",
  "regex-lite",
  "reqwest 0.12.28",
  "schemars",
@@ -385,9 +375,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c99d8437b79ccb88238ca59e0239408eac856aa659a7c7545c8970d4a6b0f5d"
+version = "3.7.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1976,6 +1964,15 @@ name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
+
+[[package]]
+name = "quick-xml"
+version = "0.39.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "958f21e8e7ceb5a1aa7fa87fab28e7c75976e0bfe7e23ff069e0a260f894067d"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "quinn"
