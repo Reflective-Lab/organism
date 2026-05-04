@@ -201,10 +201,20 @@ pub trait SynthesisProducer: Send + Sync {
     /// Synthesize the given round's notes into a single content payload.
     ///
     /// `notes` are facts from [`RoundConventions::note_key`] whose ids end
-    /// with `:N` for round `N`. Return the content the engine should publish
-    /// under the synthesis fact, or an error message that the orchestrator
-    /// will route to [`ContextKey::Diagnostic`].
-    async fn synthesize(&self, round: u8, notes: &[Fact]) -> Result<String, String>;
+    /// with `:N` for round `N`, pre-filtered by [`RoundSynthesizer`] for
+    /// convenience. `ctx` exposes the full convergence context so producers
+    /// can pull supplementary signals (external evidence, prior decisions,
+    /// charter constraints) that don't fit in the note slice.
+    ///
+    /// Return the content the engine should publish under the synthesis
+    /// fact, or an error message that the orchestrator will route to
+    /// [`ContextKey::Diagnostic`].
+    async fn synthesize(
+        &self,
+        round: u8,
+        notes: &[Fact],
+        ctx: &dyn Context,
+    ) -> Result<String, String>;
 }
 
 /// Drives round-by-round synthesis.
@@ -323,7 +333,7 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
             .cloned()
             .collect();
 
-        match self.producer.synthesize(round, &notes).await {
+        match self.producer.synthesize(round, &notes, ctx).await {
             Ok(content) => AgentEffect::with_proposal(ProposedFact::new(
                 self.conventions.synthesis_key,
                 self.conventions.synthesis_id(round),
@@ -794,7 +804,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for StaticProducer {
-        async fn synthesize(&self, _round: u8, _notes: &[Fact]) -> Result<String, String> {
+        async fn synthesize(
+            &self,
+            _round: u8,
+            _notes: &[Fact],
+            _ctx: &dyn Context,
+        ) -> Result<String, String> {
             Ok(self.0.to_string())
         }
     }
@@ -803,7 +818,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for CountingProducer {
-        async fn synthesize(&self, round: u8, notes: &[Fact]) -> Result<String, String> {
+        async fn synthesize(
+            &self,
+            round: u8,
+            notes: &[Fact],
+            _ctx: &dyn Context,
+        ) -> Result<String, String> {
             Ok(format!("round {round} from {} notes", notes.len()))
         }
     }
@@ -812,7 +832,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for FailingProducer {
-        async fn synthesize(&self, _round: u8, _notes: &[Fact]) -> Result<String, String> {
+        async fn synthesize(
+            &self,
+            _round: u8,
+            _notes: &[Fact],
+            _ctx: &dyn Context,
+        ) -> Result<String, String> {
             Err(self.0.to_string())
         }
     }
