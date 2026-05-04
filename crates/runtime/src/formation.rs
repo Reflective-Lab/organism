@@ -239,6 +239,28 @@ impl Formation {
     pub fn with_round_starter(self, max_rounds: u8) -> Self {
         self.agent(crate::huddle::RoundStarter::new(max_rounds))
     }
+
+    /// Add the platform round synthesizer: once a started round has
+    /// `expected_note_count` notes under [`ContextKey::Hypotheses`], invokes
+    /// the supplied [`SynthesisProducer`] and emits a synthesis fact under
+    /// [`ContextKey::Strategies`]. Producer errors route to
+    /// [`ContextKey::Diagnostic`].
+    pub fn with_round_synthesizer<P>(self, expected_note_count: usize, producer: P) -> Self
+    where
+        P: crate::huddle::SynthesisProducer + 'static,
+    {
+        self.agent(crate::huddle::RoundSynthesizer::new(
+            expected_note_count,
+            producer,
+        ))
+    }
+
+    /// Add the platform disagreement mapper: aggregates `Disagreement` facts
+    /// into per-topic [`crate::huddle::DisagreementMap`] payloads, emitted
+    /// once per topic under [`ContextKey::Diagnostic`].
+    pub fn with_disagreement_mapper(self) -> Self {
+        self.agent(crate::huddle::DisagreementMapper::new())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

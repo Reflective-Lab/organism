@@ -39,7 +39,10 @@ pub use execution::{
 };
 pub use experience::{ExperienceEnvelopeSink, FormationExperienceObserver};
 pub use formation::{Formation, FormationError, FormationResult, Seed};
-pub use huddle::{ConsensusEvaluator, RoundConventions, RoundStarter};
+pub use huddle::{
+    ConsensusEvaluator, DisagreementMap, DisagreementMapper, RoundConventions, RoundStarter,
+    RoundSynthesizer, SynthesisProducer, TerminalPredicate,
+};
 pub use organism_pack::{
     CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,
     ResolutionLevel, ResolutionTrace,
