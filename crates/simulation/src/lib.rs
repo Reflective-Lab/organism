@@ -38,6 +38,48 @@ pub struct SimulationResult {
     pub recommendation: SimulationRecommendation,
 }
 
+impl SimulationResult {
+    /// Build a result with `overall_confidence` set to the mean of dimension
+    /// confidences. The recommendation stays caller-supplied because its
+    /// derivation rules are consumer-specific.
+    #[must_use]
+    pub fn from_dimensions(
+        plan_id: Uuid,
+        runs: u32,
+        dimensions: Vec<DimensionResult>,
+        recommendation: SimulationRecommendation,
+    ) -> Self {
+        let overall_confidence = DimensionResult::mean_confidence(&dimensions);
+        Self {
+            plan_id,
+            runs,
+            dimensions,
+            overall_confidence,
+            recommendation,
+        }
+    }
+
+    /// Canonical JSON sub-payload that consumers embed under `"simulation"`
+    /// inside their decision proposals.
+    #[must_use]
+    pub fn summary(&self) -> serde_json::Value {
+        serde_json::json!({
+            "overall_confidence": self.overall_confidence,
+            "recommendation": format!("{:?}", self.recommendation),
+            "dimensions": self
+                .dimensions
+                .iter()
+                .map(|d| serde_json::json!({
+                    "dimension": format!("{:?}", d.dimension),
+                    "passed": d.passed,
+                    "confidence": d.confidence,
+                    "findings": d.findings,
+                }))
+                .collect::<Vec<_>>(),
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DimensionResult {
     pub dimension: SimulationDimension,
@@ -45,6 +87,26 @@ pub struct DimensionResult {
     pub confidence: f64,
     pub findings: Vec<String>,
     pub samples: Vec<Sample>,
+}
+
+impl DimensionResult {
+    /// Mean confidence across `dimensions`, or `0.0` for an empty slice.
+    #[must_use]
+    pub fn mean_confidence(dimensions: &[Self]) -> f64 {
+        if dimensions.is_empty() {
+            0.0
+        } else {
+            let sum: f64 = dimensions.iter().map(|d| d.confidence).sum();
+            sum / f64::from(u32::try_from(dimensions.len()).unwrap_or(1))
+        }
+    }
+
+    /// True when every dimension's `passed` is true (vacuously true for an
+    /// empty slice).
+    #[must_use]
+    pub fn all_passed(dimensions: &[Self]) -> bool {
+        dimensions.iter().all(|d| d.passed)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -250,6 +312,115 @@ mod tests {
         let back: SimulationReport = serde_json::from_str(&json).unwrap();
         assert_eq!(back.results.len(), 1);
         assert_eq!(back.results[0].runs, 50);
+    }
+
+    #[test]
+    fn mean_confidence_empty_is_zero() {
+        assert!((DimensionResult::mean_confidence(&[]) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn mean_confidence_averages_dimensions() {
+        let dims = vec![
+            DimensionResult {
+                dimension: SimulationDimension::Outcome,
+                passed: true,
+                confidence: 0.6,
+                findings: vec![],
+                samples: vec![],
+            },
+            DimensionResult {
+                dimension: SimulationDimension::Cost,
+                passed: true,
+                confidence: 0.8,
+                findings: vec![],
+                samples: vec![],
+            },
+            DimensionResult {
+                dimension: SimulationDimension::Policy,
+                passed: false,
+                confidence: 0.4,
+                findings: vec![],
+                samples: vec![],
+            },
+        ];
+        let mean = DimensionResult::mean_confidence(&dims);
+        assert!((mean - 0.6).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn all_passed_true_when_every_dimension_passed() {
+        let dims = vec![
+            sample_dimension_result(SimulationDimension::Outcome, true),
+            sample_dimension_result(SimulationDimension::Cost, true),
+        ];
+        assert!(DimensionResult::all_passed(&dims));
+    }
+
+    #[test]
+    fn all_passed_false_when_any_failed() {
+        let dims = vec![
+            sample_dimension_result(SimulationDimension::Outcome, true),
+            sample_dimension_result(SimulationDimension::Cost, false),
+        ];
+        assert!(!DimensionResult::all_passed(&dims));
+    }
+
+    #[test]
+    fn all_passed_vacuously_true_for_empty() {
+        assert!(DimensionResult::all_passed(&[]));
+    }
+
+    #[test]
+    fn from_dimensions_sets_mean_confidence() {
+        let dims = vec![
+            sample_dimension_result(SimulationDimension::Outcome, true),
+            sample_dimension_result(SimulationDimension::Cost, true),
+        ];
+        let result = SimulationResult::from_dimensions(
+            plan_id(),
+            10,
+            dims,
+            SimulationRecommendation::Proceed,
+        );
+        assert!((result.overall_confidence - 0.85).abs() < f64::EPSILON);
+        assert_eq!(result.runs, 10);
+        assert_eq!(result.recommendation, SimulationRecommendation::Proceed);
+    }
+
+    #[test]
+    fn summary_has_canonical_shape() {
+        let dims = vec![
+            DimensionResult {
+                dimension: SimulationDimension::Cost,
+                passed: true,
+                confidence: 0.9,
+                findings: vec!["within budget".into()],
+                samples: vec![],
+            },
+            DimensionResult {
+                dimension: SimulationDimension::Policy,
+                passed: false,
+                confidence: 0.4,
+                findings: vec![],
+                samples: vec![],
+            },
+        ];
+        let result = SimulationResult::from_dimensions(
+            plan_id(),
+            1,
+            dims,
+            SimulationRecommendation::ProceedWithCaution,
+        );
+        let summary = result.summary();
+        assert!((summary["overall_confidence"].as_f64().unwrap() - 0.65).abs() < f64::EPSILON);
+        assert_eq!(summary["recommendation"], "ProceedWithCaution");
+        let dimensions = summary["dimensions"].as_array().expect("dimensions");
+        assert_eq!(dimensions.len(), 2);
+        assert_eq!(dimensions[0]["dimension"], "Cost");
+        assert_eq!(dimensions[0]["passed"], true);
+        assert!((dimensions[0]["confidence"].as_f64().unwrap() - 0.9).abs() < f64::EPSILON);
+        assert_eq!(dimensions[0]["findings"][0], "within budget");
     }
 
     proptest! {

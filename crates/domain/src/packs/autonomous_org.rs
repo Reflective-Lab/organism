@@ -547,21 +547,18 @@ fn build_budget_decision(amount: f64, quarterly_budget: f64, spent_so_far: f64) 
         SimulationRecommendation::ProceedWithCaution => "approved_with_caution",
         SimulationRecommendation::DoNotProceed => "rejected",
     };
-    let overall =
-        (cost_result.confidence + policy_result.confidence + operational_result.confidence) / 3.0;
 
     BudgetDecision {
         amount,
         remaining,
         utilization_after,
         decision,
-        result: SimulationResult {
-            plan_id: uuid::Uuid::nil(),
-            runs: 1,
-            dimensions: vec![cost_result, policy_result, operational_result],
-            overall_confidence: overall,
+        result: SimulationResult::from_dimensions(
+            uuid::Uuid::nil(),
+            1,
+            vec![cost_result, policy_result, operational_result],
             recommendation,
-        },
+        ),
     }
 }
 
@@ -578,16 +575,7 @@ fn budget_recommendation(cost_passed: bool, utilization_after: f64) -> Simulatio
 fn budget_decision_payload(decision: &BudgetDecision) -> serde_json::Value {
     serde_json::json!({
         "decision": decision.decision,
-        "simulation": {
-            "overall_confidence": decision.result.overall_confidence,
-            "recommendation": format!("{:?}", decision.result.recommendation),
-            "dimensions": decision.result.dimensions.iter().map(|dimension| serde_json::json!({
-                "dimension": format!("{:?}", dimension.dimension),
-                "passed": dimension.passed,
-                "confidence": dimension.confidence,
-                "findings": dimension.findings,
-            })).collect::<Vec<_>>(),
-        },
+        "simulation": decision.result.summary(),
         "budget_impact": {
             "amount": decision.amount,
             "remaining_before": decision.remaining,
