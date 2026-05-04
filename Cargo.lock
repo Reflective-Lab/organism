@@ -277,7 +277,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "converge-core"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -294,7 +294,7 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "converge-core",
  "converge-model",
@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "async-trait",
  "hex",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "async-trait",
  "base64",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.7.5"
+version = "3.7.6"
 dependencies = [
  "serde",
  "serde_json",

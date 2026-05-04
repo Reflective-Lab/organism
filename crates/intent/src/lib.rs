@@ -112,11 +112,79 @@ pub struct AdmissionResult {
     pub rejection_reason: Option<String>,
 }
 
+impl AdmissionResult {
+    /// Build a result with `feasible` derived from the standard rule (any
+    /// Infeasible dimension blocks the intent) and `rejection_reason`
+    /// auto-composed from the infeasible reasons joined by "; ".
+    #[must_use]
+    pub fn from_dimensions(dimensions: Vec<FeasibilityAssessment>) -> Self {
+        let infeasible_reasons: Vec<String> = dimensions
+            .iter()
+            .filter(|d| d.kind == FeasibilityKind::Infeasible)
+            .map(|d| d.reason.clone())
+            .collect();
+        let feasible = infeasible_reasons.is_empty();
+        let rejection_reason = if feasible {
+            None
+        } else {
+            Some(infeasible_reasons.join("; "))
+        };
+        Self {
+            feasible,
+            dimensions,
+            rejection_reason,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeasibilityAssessment {
     pub dimension: FeasibilityDimension,
     pub kind: FeasibilityKind,
     pub reason: String,
+}
+
+impl FeasibilityAssessment {
+    #[must_use]
+    pub fn feasible(dimension: FeasibilityDimension, reason: impl Into<String>) -> Self {
+        Self {
+            dimension,
+            kind: FeasibilityKind::Feasible,
+            reason: reason.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn infeasible(dimension: FeasibilityDimension, reason: impl Into<String>) -> Self {
+        Self {
+            dimension,
+            kind: FeasibilityKind::Infeasible,
+            reason: reason.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn uncertain(dimension: FeasibilityDimension, reason: impl Into<String>) -> Self {
+        Self {
+            dimension,
+            kind: FeasibilityKind::Uncertain,
+            reason: reason.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_constraints(dimension: FeasibilityDimension, reason: impl Into<String>) -> Self {
+        Self {
+            dimension,
+            kind: FeasibilityKind::FeasibleWithConstraints,
+            reason: reason.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn is_blocking(&self) -> bool {
+        self.kind == FeasibilityKind::Infeasible
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -410,6 +478,59 @@ mod tests {
         assert!(!back.feasible);
         assert_eq!(back.dimensions.len(), 1);
         assert_eq!(back.rejection_reason.as_deref(), Some("not authorized"));
+    }
+
+    #[test]
+    fn feasibility_constructors_set_kind() {
+        let f = FeasibilityAssessment::feasible(FeasibilityDimension::Capability, "ok");
+        assert_eq!(f.kind, FeasibilityKind::Feasible);
+        assert_eq!(f.reason, "ok");
+
+        let i = FeasibilityAssessment::infeasible(FeasibilityDimension::Context, "missing");
+        assert_eq!(i.kind, FeasibilityKind::Infeasible);
+        assert!(i.is_blocking());
+
+        let u = FeasibilityAssessment::uncertain(FeasibilityDimension::Authority, "unclear");
+        assert_eq!(u.kind, FeasibilityKind::Uncertain);
+        assert!(!u.is_blocking());
+
+        let c = FeasibilityAssessment::with_constraints(FeasibilityDimension::Resources, "tight");
+        assert_eq!(c.kind, FeasibilityKind::FeasibleWithConstraints);
+        assert!(!c.is_blocking());
+    }
+
+    #[test]
+    fn admission_from_dimensions_feasible_when_no_infeasible() {
+        let result = AdmissionResult::from_dimensions(vec![
+            FeasibilityAssessment::feasible(FeasibilityDimension::Capability, "ok"),
+            FeasibilityAssessment::with_constraints(FeasibilityDimension::Resources, "tight"),
+            FeasibilityAssessment::uncertain(FeasibilityDimension::Authority, "unclear"),
+        ]);
+        assert!(result.feasible);
+        assert!(result.rejection_reason.is_none());
+        assert_eq!(result.dimensions.len(), 3);
+    }
+
+    #[test]
+    fn admission_from_dimensions_infeasible_with_joined_reason() {
+        let result = AdmissionResult::from_dimensions(vec![
+            FeasibilityAssessment::feasible(FeasibilityDimension::Capability, "ok"),
+            FeasibilityAssessment::infeasible(FeasibilityDimension::Context, "missing outcome"),
+            FeasibilityAssessment::infeasible(FeasibilityDimension::Authority, "no authority"),
+        ]);
+        assert!(!result.feasible);
+        assert_eq!(
+            result.rejection_reason.as_deref(),
+            Some("missing outcome; no authority")
+        );
+    }
+
+    #[test]
+    fn admission_from_dimensions_empty_is_feasible() {
+        let result = AdmissionResult::from_dimensions(vec![]);
+        assert!(result.feasible);
+        assert!(result.rejection_reason.is_none());
+        assert!(result.dimensions.is_empty());
     }
 
     #[test]

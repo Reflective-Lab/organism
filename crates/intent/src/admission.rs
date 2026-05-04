@@ -7,8 +7,8 @@
 use chrono::Utc;
 
 use crate::{
-    AdmissionController, AdmissionResult, FeasibilityAssessment, FeasibilityDimension,
-    FeasibilityKind, IntentError, IntentPacket, Reversibility,
+    AdmissionController, AdmissionResult, FeasibilityAssessment, FeasibilityDimension, IntentError,
+    IntentPacket, Reversibility,
 };
 
 /// Result of an admission decision.
@@ -55,8 +55,6 @@ impl DefaultAdmissionController {
     }
 
     fn assess_capability(&self, intent: &IntentPacket) -> FeasibilityAssessment {
-        // If we have known capabilities and the intent specifies required ones,
-        // check coverage. Otherwise assume feasible.
         if let Some(arr) = intent
             .context
             .get("required_capabilities")
@@ -72,124 +70,82 @@ impl DefaultAdmissionController {
                 .collect();
 
             if !missing.is_empty() {
-                return FeasibilityAssessment {
-                    dimension: FeasibilityDimension::Capability,
-                    kind: FeasibilityKind::Infeasible,
-                    reason: format!("unknown capabilities: {}", missing.join(", ")),
-                };
+                return FeasibilityAssessment::infeasible(
+                    FeasibilityDimension::Capability,
+                    format!("unknown capabilities: {}", missing.join(", ")),
+                );
             }
         }
 
-        FeasibilityAssessment {
-            dimension: FeasibilityDimension::Capability,
-            kind: FeasibilityKind::Feasible,
-            reason: "all capabilities available".into(),
-        }
+        FeasibilityAssessment::feasible(
+            FeasibilityDimension::Capability,
+            "all capabilities available",
+        )
     }
 
     #[allow(clippy::unused_self)]
     fn assess_context(&self, intent: &IntentPacket) -> FeasibilityAssessment {
         if intent.outcome.trim().is_empty() {
-            return FeasibilityAssessment {
-                dimension: FeasibilityDimension::Context,
-                kind: FeasibilityKind::Infeasible,
-                reason: "empty outcome".into(),
-            };
+            return FeasibilityAssessment::infeasible(
+                FeasibilityDimension::Context,
+                "empty outcome",
+            );
         }
 
         if intent.is_expired(Utc::now()) {
-            return FeasibilityAssessment {
-                dimension: FeasibilityDimension::Context,
-                kind: FeasibilityKind::Infeasible,
-                reason: "intent already expired".into(),
-            };
+            return FeasibilityAssessment::infeasible(
+                FeasibilityDimension::Context,
+                "intent already expired",
+            );
         }
 
-        FeasibilityAssessment {
-            dimension: FeasibilityDimension::Context,
-            kind: FeasibilityKind::Feasible,
-            reason: "context well-formed".into(),
-        }
+        FeasibilityAssessment::feasible(FeasibilityDimension::Context, "context well-formed")
     }
 
     #[allow(clippy::unused_self)]
     fn assess_resources(&self, intent: &IntentPacket) -> FeasibilityAssessment {
-        // Check if the time budget is reasonable (more than 1 minute remaining)
         let remaining = intent.expires - Utc::now();
         if remaining.num_seconds() < 60 {
-            return FeasibilityAssessment {
-                dimension: FeasibilityDimension::Resources,
-                kind: FeasibilityKind::FeasibleWithConstraints,
-                reason: format!(
+            return FeasibilityAssessment::with_constraints(
+                FeasibilityDimension::Resources,
+                format!(
                     "only {}s remaining — tight deadline",
                     remaining.num_seconds()
                 ),
-            };
+            );
         }
 
-        FeasibilityAssessment {
-            dimension: FeasibilityDimension::Resources,
-            kind: FeasibilityKind::Feasible,
-            reason: "adequate time budget".into(),
-        }
+        FeasibilityAssessment::feasible(FeasibilityDimension::Resources, "adequate time budget")
     }
 
     #[allow(clippy::unused_self)]
     fn assess_authority(&self, intent: &IntentPacket) -> FeasibilityAssessment {
-        // Irreversible actions with no declared authority are suspect
         if intent.reversibility == Reversibility::Irreversible && intent.authority.is_empty() {
-            return FeasibilityAssessment {
-                dimension: FeasibilityDimension::Authority,
-                kind: FeasibilityKind::Uncertain,
-                reason: "irreversible action with no declared authority scope".into(),
-            };
+            return FeasibilityAssessment::uncertain(
+                FeasibilityDimension::Authority,
+                "irreversible action with no declared authority scope",
+            );
         }
 
-        FeasibilityAssessment {
-            dimension: FeasibilityDimension::Authority,
-            kind: FeasibilityKind::Feasible,
-            reason: "authority scope declared".into(),
-        }
+        FeasibilityAssessment::feasible(FeasibilityDimension::Authority, "authority scope declared")
     }
 }
 
 impl AdmissionController for DefaultAdmissionController {
     fn evaluate(&self, intent: &IntentPacket) -> AdmissionResult {
-        let dimensions = vec![
+        AdmissionResult::from_dimensions(vec![
             self.assess_capability(intent),
             self.assess_context(intent),
             self.assess_resources(intent),
             self.assess_authority(intent),
-        ];
-
-        let has_infeasible = dimensions
-            .iter()
-            .any(|d| d.kind == FeasibilityKind::Infeasible);
-
-        let rejection_reason = if has_infeasible {
-            Some(
-                dimensions
-                    .iter()
-                    .filter(|d| d.kind == FeasibilityKind::Infeasible)
-                    .map(|d| d.reason.as_str())
-                    .collect::<Vec<_>>()
-                    .join("; "),
-            )
-        } else {
-            None
-        };
-
-        AdmissionResult {
-            feasible: !has_infeasible,
-            dimensions,
-            rejection_reason,
-        }
+        ])
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FeasibilityKind;
     use chrono::Duration;
 
     #[test]

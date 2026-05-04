@@ -6,8 +6,8 @@
 use crate::pack::{AgentMeta, ContextKey, InvariantClass, InvariantMeta};
 use organism_pack::{
     AdmissionResult, AdversarialReview, Challenge, DimensionResult, FeasibilityAssessment,
-    FeasibilityDimension, FeasibilityKind, Sample, Severity, SimulationDimension,
-    SimulationRecommendation, SimulationResult, SkepticismKind,
+    FeasibilityDimension, Sample, Severity, SimulationDimension, SimulationRecommendation,
+    SimulationResult, SkepticismKind,
 };
 
 pub const AGENTS: &[AgentMeta] = &[
@@ -178,53 +178,41 @@ impl converge_pack::Suggestor for SpendAdmissionSuggestor {
         let amount = numeric_field(&expense, "amount").unwrap_or(0.0);
         let category = string_field(&expense, "category").unwrap_or_default();
 
-        let dimensions = vec![
-            FeasibilityAssessment {
-                dimension: FeasibilityDimension::Capability,
-                kind: FeasibilityKind::Feasible,
-                reason: "spend approval workflow available".into(),
-            },
-            FeasibilityAssessment {
-                dimension: FeasibilityDimension::Context,
-                kind: if category.is_empty() {
-                    FeasibilityKind::Infeasible
-                } else {
-                    FeasibilityKind::Feasible
-                },
-                reason: if category.is_empty() {
-                    "missing spend category".into()
-                } else {
-                    format!("category: {category}")
-                },
-            },
-            FeasibilityAssessment {
-                dimension: FeasibilityDimension::Resources,
-                kind: if amount > RESOURCE_UNCERTAINTY_THRESHOLD {
-                    FeasibilityKind::Uncertain
-                } else {
-                    FeasibilityKind::Feasible
-                },
-                reason: format!("amount: ${amount:.2}"),
-            },
-            FeasibilityAssessment {
-                dimension: FeasibilityDimension::Authority,
-                kind: FeasibilityKind::Feasible,
-                reason: "submitter has declared spend authority".into(),
-            },
-        ];
-
-        let feasible = dimensions
-            .iter()
-            .all(|assessment| assessment.kind != FeasibilityKind::Infeasible);
-        let admission = AdmissionResult {
-            feasible,
-            dimensions,
-            rejection_reason: if feasible {
-                None
-            } else {
-                Some("missing required fields".into())
-            },
+        let context_dim = if category.is_empty() {
+            FeasibilityAssessment::infeasible(
+                FeasibilityDimension::Context,
+                "missing spend category",
+            )
+        } else {
+            FeasibilityAssessment::feasible(
+                FeasibilityDimension::Context,
+                format!("category: {category}"),
+            )
         };
+        let resources_dim = if amount > RESOURCE_UNCERTAINTY_THRESHOLD {
+            FeasibilityAssessment::uncertain(
+                FeasibilityDimension::Resources,
+                format!("amount: ${amount:.2}"),
+            )
+        } else {
+            FeasibilityAssessment::feasible(
+                FeasibilityDimension::Resources,
+                format!("amount: ${amount:.2}"),
+            )
+        };
+
+        let admission = AdmissionResult::from_dimensions(vec![
+            FeasibilityAssessment::feasible(
+                FeasibilityDimension::Capability,
+                "spend approval workflow available",
+            ),
+            context_dim,
+            resources_dim,
+            FeasibilityAssessment::feasible(
+                FeasibilityDimension::Authority,
+                "submitter has declared spend authority",
+            ),
+        ]);
 
         let mut facts = vec![
             converge_pack::ProposedFact::new(
@@ -236,7 +224,7 @@ impl converge_pack::Suggestor for SpendAdmissionSuggestor {
             .with_confidence(1.0),
         ];
 
-        if feasible {
+        if admission.feasible {
             facts.push(
                 converge_pack::ProposedFact::new(
                     converge_pack::ContextKey::Signals,
