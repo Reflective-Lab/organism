@@ -499,35 +499,21 @@ fn build_budget_decision(amount: f64, quarterly_budget: f64, spent_so_far: f64) 
         1.0
     };
 
-    let cost_result = DimensionResult {
-        dimension: SimulationDimension::Cost,
-        passed: amount <= remaining,
-        confidence: 0.95,
-        findings: vec![
-            format!("Budget remaining: ${remaining:.0}"),
-            format!("After approval: {:.0}% utilized", utilization_after * 100.0),
-        ],
-        samples: vec![Sample {
+    let cost_result = DimensionResult::new(SimulationDimension::Cost, amount <= remaining, 0.95)
+        .with_finding(format!("Budget remaining: ${remaining:.0}"))
+        .with_finding(format!(
+            "After approval: {:.0}% utilized",
+            utilization_after * 100.0
+        ))
+        .with_sample(Sample {
             value: utilization_after,
             probability: 0.95,
-        }],
-    };
-    let policy_result = DimensionResult {
-        dimension: SimulationDimension::Policy,
-        passed: true,
-        confidence: 0.9,
-        findings: vec![format!(
-            "Policy {ACTIVE_POLICY_VERSION} compliance verified"
-        )],
-        samples: vec![],
-    };
-    let operational_result = DimensionResult {
-        dimension: SimulationDimension::Operational,
-        passed: true,
-        confidence: 0.85,
-        findings: vec!["Approval chain is reachable within SLA".into()],
-        samples: vec![],
-    };
+        });
+    let policy_result = DimensionResult::new(SimulationDimension::Policy, true, 0.9).with_finding(
+        format!("Policy {ACTIVE_POLICY_VERSION} compliance verified"),
+    );
+    let operational_result = DimensionResult::new(SimulationDimension::Operational, true, 0.85)
+        .with_finding("Approval chain is reachable within SLA");
 
     let recommendation = budget_recommendation(cost_result.passed, utilization_after);
     let decision = match recommendation {

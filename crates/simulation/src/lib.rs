@@ -90,6 +90,46 @@ pub struct DimensionResult {
 }
 
 impl DimensionResult {
+    /// New dimension result with empty findings and samples.
+    #[must_use]
+    pub fn new(dimension: SimulationDimension, passed: bool, confidence: f64) -> Self {
+        Self {
+            dimension,
+            passed,
+            confidence,
+            findings: vec![],
+            samples: vec![],
+        }
+    }
+
+    /// Append a finding line.
+    #[must_use]
+    pub fn with_finding(mut self, finding: impl Into<String>) -> Self {
+        self.findings.push(finding.into());
+        self
+    }
+
+    /// Replace findings.
+    #[must_use]
+    pub fn with_findings(mut self, findings: Vec<String>) -> Self {
+        self.findings = findings;
+        self
+    }
+
+    /// Append a sample.
+    #[must_use]
+    pub fn with_sample(mut self, sample: Sample) -> Self {
+        self.samples.push(sample);
+        self
+    }
+
+    /// Replace samples.
+    #[must_use]
+    pub fn with_samples(mut self, samples: Vec<Sample>) -> Self {
+        self.samples = samples;
+        self
+    }
+
     /// Mean confidence across `dimensions`, or `0.0` for an empty slice.
     #[must_use]
     pub fn mean_confidence(dimensions: &[Self]) -> f64 {
@@ -369,6 +409,40 @@ mod tests {
     #[test]
     fn all_passed_vacuously_true_for_empty() {
         assert!(DimensionResult::all_passed(&[]));
+    }
+
+    #[test]
+    fn dimension_result_new_has_empty_findings_and_samples() {
+        let dr = DimensionResult::new(SimulationDimension::Cost, true, 0.85);
+        assert_eq!(dr.dimension, SimulationDimension::Cost);
+        assert!(dr.passed);
+        assert!((dr.confidence - 0.85).abs() < f64::EPSILON);
+        assert!(dr.findings.is_empty());
+        assert!(dr.samples.is_empty());
+    }
+
+    #[test]
+    fn dimension_result_with_finding_appends() {
+        let dr = DimensionResult::new(SimulationDimension::Policy, true, 0.9)
+            .with_finding("rule a passed")
+            .with_finding("rule b passed");
+        assert_eq!(dr.findings.len(), 2);
+        assert_eq!(dr.findings[1], "rule b passed");
+    }
+
+    #[test]
+    fn dimension_result_with_samples_replaces() {
+        let dr = DimensionResult::new(SimulationDimension::Outcome, true, 0.7)
+            .with_sample(Sample {
+                value: 1.0,
+                probability: 0.5,
+            })
+            .with_samples(vec![Sample {
+                value: 2.0,
+                probability: 0.9,
+            }]);
+        assert_eq!(dr.samples.len(), 1);
+        assert!((dr.samples[0].value - 2.0).abs() < f64::EPSILON);
     }
 
     #[test]
