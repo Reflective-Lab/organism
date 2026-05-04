@@ -95,10 +95,3 @@ unused_async = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
-
-# During platform development, resolve Converge from the sibling checkout while
-# keeping the published dependency floor aligned with crates.io.
-[patch.crates-io]
-converge-pack         = { path = "../converge/crates/pack" }
-converge-kernel       = { path = "../converge/crates/kernel" }
-converge-provider-api = { path = "../converge/crates/provider-api" }

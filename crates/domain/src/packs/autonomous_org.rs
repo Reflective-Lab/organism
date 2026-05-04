@@ -214,8 +214,7 @@ impl converge_pack::Suggestor for SpendAdmissionSuggestor {
             ),
         ]);
 
-        let mut effect = converge_pack::AgentEffect::default();
-        effect.push(
+        let mut facts = vec![
             converge_pack::ProposedFact::new(
                 converge_pack::ContextKey::Signals,
                 "admission:result",
@@ -223,10 +222,10 @@ impl converge_pack::Suggestor for SpendAdmissionSuggestor {
                 self.name(),
             )
             .with_confidence(1.0),
-        );
+        ];
 
         if admission.feasible {
-            effect.push(
+            facts.push(
                 converge_pack::ProposedFact::new(
                     converge_pack::ContextKey::Signals,
                     "expense:parsed",
@@ -237,7 +236,7 @@ impl converge_pack::Suggestor for SpendAdmissionSuggestor {
             );
         }
 
-        effect
+        converge_pack::AgentEffect::with_proposals(facts)
     }
 }
 

@@ -24,9 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and simulation dimensions/summaries.
 
 ### Changed
-- Converge dependencies now target published `3.7.6` crates while local
-  platform development continues to resolve through the sibling Converge
-  checkout via `[patch.crates-io]`.
+- Converge dependencies now target published `3.7.6` crates without local
+  `[patch.crates-io]` overrides, so release CI resolves the same published
+  contract as downstream consumers.
 - Vendor-selection and spend-approval Suggestors moved into reusable domain
   packs; the examples now consume pack-level Suggestors instead of owning the
   reusable business mechanics.

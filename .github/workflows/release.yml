@@ -10,7 +10,6 @@ env:
   EXCLUDES: >-
     --exclude example-vendor-selection
     --exclude example-expense-approval
-    --exclude example-loan-application
     --exclude example-debate-loop
 
 jobs:

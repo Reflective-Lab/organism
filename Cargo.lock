@@ -278,6 +278,8 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 [[package]]
 name = "converge-core"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "603d4742ae1b50f0b003b3047b9a8c9abfca164589ebefa7eee2cc3b7cf7be6b"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -295,6 +297,8 @@ dependencies = [
 [[package]]
 name = "converge-kernel"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0f0dda75a27613b7c91ee19cc3dd11c41ef45f4f16bf883fd6078993f59047e"
 dependencies = [
  "converge-core",
  "converge-model",
@@ -307,6 +311,8 @@ dependencies = [
 [[package]]
 name = "converge-model"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab39741859fff96dbce319be138fe2faacbe035d90f632e9e8876a513cb9cae3"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -317,6 +323,8 @@ dependencies = [
 [[package]]
 name = "converge-optimization"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84938129410a2ce8050f66adc58125a76cd9362db82bf7586c76781de7c5b214"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -338,6 +346,8 @@ dependencies = [
 [[package]]
 name = "converge-pack"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "400d2a617d9284af1a9b55d2305183464f26826ee4d376c37d0e4aa0f1a73328"
 dependencies = [
  "async-trait",
  "hex",
@@ -350,6 +360,8 @@ dependencies = [
 [[package]]
 name = "converge-provider"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4654bdddeae3dcff90663dd7952fc5fd1020889bffd87199c348156ff179c60b"
 dependencies = [
  "async-trait",
  "base64",
@@ -376,6 +388,8 @@ dependencies = [
 [[package]]
 name = "converge-provider-api"
 version = "3.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b5062dec89ded4aa246a96866b28ae62380a36c6ccd93d3fcfc287942826dc6"
 dependencies = [
  "serde",
  "serde_json",
