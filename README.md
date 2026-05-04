@@ -258,7 +258,6 @@ Important Converge changes:
 |---|---|
 | [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, reusable partnerships pack Suggestors |
 | [`expense-approval`](examples/expense-approval) | Full pipeline with reusable autonomous_org spend approval Suggestors |
-| [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
 | [`collab-huddle`](examples/collab-huddle) | Strict huddle with done-gate voting and validation failures |
@@ -268,6 +267,11 @@ Important Converge changes:
 | [`charter-from-intent`](examples/charter-from-intent) | Dynamic charter derivation from intent properties |
 | [`topology-transition`](examples/topology-transition) | Mid-run shape changes over a simulated convergence loop |
 | [`shape-competition`](examples/shape-competition) | Competing shapes, scoring, winner selection, prior calibration |
+
+The former loan-application example graduated to
+`~/dev/apps/loan-application` because lending vocabulary, underwriting
+assumptions, fixture data, and product workflow belong in concrete apps rather
+than reusable Organism examples.
 
 Golden path for apps above Organism:
 
