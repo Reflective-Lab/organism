@@ -9,6 +9,13 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Re-export the canonical decision rule from `converge-pack`.
+///
+/// `ConsensusRule` is a governance primitive at the pack contract layer; this
+/// crate keeps the existing import path stable while sourcing the type from
+/// upstream so there is exactly one definition in the tree.
+pub use converge_pack::ConsensusRule;
+
 /// The overall collaboration shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -149,41 +156,6 @@ impl TurnCadence {
             Self::ModeratorThenRoundRobin => "moderator_then_round_robin",
             Self::SynthesisOnly => "synthesis_only",
             Self::FigureItOut => "figure_it_out",
-        }
-    }
-}
-
-/// Decision rule used to decide when a team is done or aligned.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ConsensusRule {
-    Majority,
-    Supermajority,
-    Unanimous,
-    LeadDecides,
-    AdvisoryOnly,
-}
-
-impl ConsensusRule {
-    #[must_use]
-    pub fn passes(self, yes_votes: usize, total_voters: usize) -> bool {
-        match self {
-            Self::Majority => yes_votes * 2 > total_voters,
-            Self::Supermajority => yes_votes * 3 >= total_voters * 2,
-            Self::Unanimous => yes_votes == total_voters,
-            Self::LeadDecides => yes_votes >= 1,
-            Self::AdvisoryOnly => true,
-        }
-    }
-
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Majority => "majority",
-            Self::Supermajority => "supermajority",
-            Self::Unanimous => "unanimous",
-            Self::LeadDecides => "lead_decides",
-            Self::AdvisoryOnly => "advisory_only",
         }
     }
 }
