@@ -5,9 +5,9 @@
 
 use crate::pack::{AgentMeta, ContextKey, InvariantClass, InvariantMeta};
 use organism_pack::{
-    AdmissionResult, Challenge, DimensionResult, FeasibilityAssessment, FeasibilityDimension,
-    FeasibilityKind, Sample, Severity, SimulationDimension, SimulationRecommendation,
-    SimulationResult, SkepticismKind,
+    AdmissionResult, AdversarialReview, Challenge, DimensionResult, FeasibilityAssessment,
+    FeasibilityDimension, FeasibilityKind, Sample, Severity, SimulationDimension,
+    SimulationRecommendation, SimulationResult, SkepticismKind,
 };
 
 pub const AGENTS: &[AgentMeta] = &[
@@ -352,10 +352,10 @@ impl converge_pack::Suggestor for ApprovalPolicySkepticSuggestor {
             .and_then(serde_json::Value::as_array)
             .map_or(0, Vec::len);
 
-        let mut challenges: Vec<Challenge> = Vec::new();
+        let mut review = AdversarialReview::new();
 
         if amount > 5_000.0 && category == "entertainment" {
-            challenges.push(Challenge::new(
+            review.push(Challenge::new(
                 SkepticismKind::EconomicSkepticism,
                 uuid::Uuid::nil(),
                 format!("${amount:.0} entertainment expense is high - requires justification"),
@@ -364,7 +364,7 @@ impl converge_pack::Suggestor for ApprovalPolicySkepticSuggestor {
         }
 
         if amount > EXECUTIVE_REVIEW_THRESHOLD && approver_count < 3 {
-            challenges.push(Challenge::new(
+            review.push(Challenge::new(
                 SkepticismKind::ConstraintChecking,
                 uuid::Uuid::nil(),
                 format!("${amount:.0} requires 3+ approvers but only {approver_count} routed"),
@@ -373,7 +373,7 @@ impl converge_pack::Suggestor for ApprovalPolicySkepticSuggestor {
         }
 
         if approver_count > 3 {
-            challenges.push(Challenge::new(
+            review.push(Challenge::new(
                 SkepticismKind::OperationalSkepticism,
                 uuid::Uuid::nil(),
                 format!("{approver_count} approvers may delay approval - add escalation path"),
@@ -382,7 +382,7 @@ impl converge_pack::Suggestor for ApprovalPolicySkepticSuggestor {
         }
 
         if string_field(&plan, "policy_version") != Some(ACTIVE_POLICY_VERSION) {
-            challenges.push(Challenge::new(
+            review.push(Challenge::new(
                 SkepticismKind::AssumptionBreaking,
                 uuid::Uuid::nil(),
                 "approval plan uses outdated policy version",
@@ -390,40 +390,14 @@ impl converge_pack::Suggestor for ApprovalPolicySkepticSuggestor {
             ));
         }
 
-        let blocker_count = challenges
-            .iter()
-            .filter(|challenge| challenge.severity == Severity::Blocker)
-            .count();
-        let review = serde_json::json!({
-            "challenges": challenges.len(),
-            "blockers": blocker_count,
-            "warnings": challenges
-                .iter()
-                .filter(|challenge| challenge.severity == Severity::Warning)
-                .count(),
-            "advisories": challenges
-                .iter()
-                .filter(|challenge| challenge.severity == Severity::Advisory)
-                .count(),
-            "details": challenges
-                .iter()
-                .map(|challenge| serde_json::json!({
-                    "kind": format!("{:?}", challenge.kind),
-                    "severity": format!("{:?}", challenge.severity),
-                    "description": challenge.description,
-                }))
-                .collect::<Vec<_>>(),
-            "verdict": if blocker_count > 0 { "blocked" } else { "cleared" },
-        });
-
         converge_pack::AgentEffect::with_proposal(
             converge_pack::ProposedFact::new(
                 converge_pack::ContextKey::Evaluations,
                 "adversarial:review",
-                review.to_string(),
+                review.summary().to_string(),
                 self.name(),
             )
-            .with_confidence(if blocker_count > 0 { 0.3 } else { 0.9 }),
+            .with_confidence(review.confidence()),
         )
     }
 }

@@ -95,6 +95,95 @@ pub struct AdversarialSignal {
     pub revision_summary: Option<String>,
 }
 
+// ── Adversarial Review (canonical skeptic-pass output) ─────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Verdict {
+    Cleared,
+    Blocked,
+}
+
+/// Aggregated outcome of an adversarial review pass.
+///
+/// Skeptic Suggestors collect challenges and call `summary()` to produce the
+/// canonical JSON shape downstream consumers read under the
+/// `adversarial:review` fact id.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AdversarialReview {
+    pub challenges: Vec<Challenge>,
+}
+
+impl AdversarialReview {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push(&mut self, challenge: Challenge) {
+        self.challenges.push(challenge);
+    }
+
+    #[must_use]
+    pub fn count_by(&self, severity: Severity) -> usize {
+        self.challenges
+            .iter()
+            .filter(|c| c.severity == severity)
+            .count()
+    }
+
+    #[must_use]
+    pub fn blocker_count(&self) -> usize {
+        self.count_by(Severity::Blocker)
+    }
+
+    #[must_use]
+    pub fn is_blocked(&self) -> bool {
+        self.blocker_count() > 0
+    }
+
+    #[must_use]
+    pub fn verdict(&self) -> Verdict {
+        if self.is_blocked() {
+            Verdict::Blocked
+        } else {
+            Verdict::Cleared
+        }
+    }
+
+    /// Recommended Suggestor confidence for the review fact: 0.3 when blocked,
+    /// 0.9 when cleared. Consumers can override per their tolerance.
+    #[must_use]
+    pub fn confidence(&self) -> f64 {
+        if self.is_blocked() { 0.3 } else { 0.9 }
+    }
+
+    /// Canonical JSON summary suitable for emitting under the
+    /// `adversarial:review` fact id.
+    #[must_use]
+    pub fn summary(&self) -> serde_json::Value {
+        serde_json::json!({
+            "challenges": self.challenges.len(),
+            "blockers": self.blocker_count(),
+            "warnings": self.count_by(Severity::Warning),
+            "advisories": self.count_by(Severity::Advisory),
+            "details": self
+                .challenges
+                .iter()
+                .map(|c| serde_json::json!({
+                    "kind": format!("{:?}", c.kind),
+                    "severity": format!("{:?}", c.severity),
+                    "description": c.description,
+                }))
+                .collect::<Vec<_>>(),
+            "verdict": match self.verdict() {
+                Verdict::Cleared => "cleared",
+                Verdict::Blocked => "blocked",
+            },
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,6 +383,96 @@ mod tests {
         assert_eq!(json, "\"blocker\"");
         let json = serde_json::to_string(&Severity::Advisory).unwrap();
         assert_eq!(json, "\"advisory\"");
+    }
+
+    #[test]
+    fn empty_review_is_cleared_with_high_confidence() {
+        let review = AdversarialReview::new();
+        assert!(!review.is_blocked());
+        assert_eq!(review.verdict(), Verdict::Cleared);
+        assert!((review.confidence() - 0.9).abs() < f64::EPSILON);
+        assert_eq!(review.blocker_count(), 0);
+    }
+
+    #[test]
+    fn review_with_blocker_is_blocked_with_low_confidence() {
+        let mut review = AdversarialReview::new();
+        review.push(Challenge::new(
+            SkepticismKind::ConstraintChecking,
+            plan_id(),
+            "stop",
+            Severity::Blocker,
+        ));
+        review.push(Challenge::new(
+            SkepticismKind::EconomicSkepticism,
+            plan_id(),
+            "spendy",
+            Severity::Warning,
+        ));
+        assert!(review.is_blocked());
+        assert_eq!(review.verdict(), Verdict::Blocked);
+        assert!((review.confidence() - 0.3).abs() < f64::EPSILON);
+        assert_eq!(review.blocker_count(), 1);
+        assert_eq!(review.count_by(Severity::Warning), 1);
+    }
+
+    #[test]
+    fn review_summary_has_canonical_shape() {
+        let mut review = AdversarialReview::new();
+        review.push(Challenge::new(
+            SkepticismKind::ConstraintChecking,
+            plan_id(),
+            "missing approver",
+            Severity::Blocker,
+        ));
+        review.push(Challenge::new(
+            SkepticismKind::OperationalSkepticism,
+            plan_id(),
+            "may delay",
+            Severity::Advisory,
+        ));
+
+        let summary = review.summary();
+        assert_eq!(summary["challenges"], 2);
+        assert_eq!(summary["blockers"], 1);
+        assert_eq!(summary["warnings"], 0);
+        assert_eq!(summary["advisories"], 1);
+        assert_eq!(summary["verdict"], "blocked");
+        let details = summary["details"].as_array().expect("details array");
+        assert_eq!(details.len(), 2);
+        assert_eq!(details[0]["description"], "missing approver");
+        assert_eq!(details[0]["kind"], "ConstraintChecking");
+        assert_eq!(details[0]["severity"], "Blocker");
+    }
+
+    #[test]
+    fn review_summary_cleared_when_no_blocker() {
+        let mut review = AdversarialReview::new();
+        review.push(Challenge::new(
+            SkepticismKind::AssumptionBreaking,
+            plan_id(),
+            "fyi",
+            Severity::Warning,
+        ));
+        let summary = review.summary();
+        assert_eq!(summary["verdict"], "cleared");
+        assert_eq!(summary["blockers"], 0);
+        assert_eq!(summary["warnings"], 1);
+    }
+
+    #[test]
+    fn review_serde_roundtrip() {
+        let mut review = AdversarialReview::new();
+        review.push(Challenge::new(
+            SkepticismKind::CausalSkepticism,
+            plan_id(),
+            "uncertain causality",
+            Severity::Warning,
+        ));
+        let json = serde_json::to_string(&review).unwrap();
+        let back: AdversarialReview = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.challenges.len(), 1);
+        assert_eq!(back.challenges[0].description, "uncertain causality");
     }
 
     proptest! {

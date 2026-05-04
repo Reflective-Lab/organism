@@ -119,8 +119,8 @@ pub use organism_planning::{
 // These types are the vocabulary for what adversarial agents produce.
 
 pub use organism_adversarial::{
-    AdversarialSignal, AdversarialVerdict, AgentId, Challenge, Complexity, Finding, Severity,
-    SkepticismKind,
+    AdversarialReview, AdversarialSignal, AdversarialVerdict, AgentId, Challenge, Complexity,
+    Finding, Severity, SkepticismKind, Verdict,
 };
 
 // ── Simulation ─────────────────────────────────────────────────────
