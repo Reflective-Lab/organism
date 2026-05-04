@@ -185,3 +185,20 @@ The compiler must support:
 
 The first implementation fixture should prove F1 through F3 shape, even if F4 is
 initially represented as typed output rather than live monitoring.
+
+## Implementation Status
+
+As of 2026-05-04, the `partnerships` pack contains the first reusable
+vendor-selection Suggestors:
+
+- `VendorDataSuggestor`
+- `VendorPriceEvaluatorSuggestor`
+- `VendorComplianceEvaluatorSuggestor`
+- `VendorRiskEvaluatorSuggestor`
+- `VendorTimelineEvaluatorSuggestor`
+- `VendorConsensusSuggestor`
+
+These cover a compact F3 Decide fixture: candidate normalization, four
+evaluation dimensions, and consensus ranking. The
+`examples/vendor-selection` crate now consumes those pack Suggestors instead of
+defining local demo-only agents. F1/F2/F4 remain lifecycle design targets.

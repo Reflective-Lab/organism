@@ -634,16 +634,12 @@ dependencies = [
 name = "example-expense-approval"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "chrono",
  "converge-kernel",
- "converge-pack",
  "organism-domain",
  "organism-pack",
- "serde",
  "serde_json",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1649,8 +1645,14 @@ dependencies = [
 name = "organism-domain"
 version = "1.4.0"
 dependencies = [
+ "async-trait",
+ "converge-kernel",
+ "converge-pack",
+ "organism-pack",
  "serde",
  "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

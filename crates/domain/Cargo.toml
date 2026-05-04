@@ -8,8 +8,16 @@ repository.workspace = true
 description = "Organizational domain packs — reusable workflow patterns for autonomous organizations"
 
 [dependencies]
+async-trait.workspace = true
+converge-pack.workspace = true
+organism-pack.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+uuid.workspace = true
+
+[dev-dependencies]
+converge-kernel.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

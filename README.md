@@ -256,8 +256,8 @@ Important Converge changes:
 
 | Example | What it demonstrates |
 |---|---|
-| [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, domain pack metadata |
-| [`expense-approval`](examples/expense-approval) | Full pipeline: admission → planning → adversarial → simulation |
+| [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, reusable partnerships pack Suggestors |
+| [`expense-approval`](examples/expense-approval) | Full pipeline with reusable autonomous_org spend approval Suggestors |
 | [`loan-application`](examples/loan-application) | Parallel eval, all 5 skepticism kinds, 5D simulation, learning capture |
 | [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
 | [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
