@@ -78,7 +78,7 @@ pub fn write_dd_to_vault(
     let mut seen_urls = HashSet::new();
     let mut deduped_signals = Vec::new();
     for signal in signals {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&signal.content) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(signal.content()) {
             let url = v["url"].as_str().unwrap_or("").to_string();
             if seen_urls.insert(url) {
                 deduped_signals.push(signal);
@@ -87,7 +87,7 @@ pub fn write_dd_to_vault(
     }
 
     for (i, signal) in deduped_signals.iter().enumerate() {
-        let v: serde_json::Value = serde_json::from_str(&signal.content).unwrap_or_default();
+        let v: serde_json::Value = serde_json::from_str(signal.content()).unwrap_or_default();
         let title_raw = v["title"].as_str().unwrap_or("Untitled");
         let url = v["url"].as_str().unwrap_or("");
         let content = v["content"].as_str().unwrap_or("");
@@ -166,7 +166,7 @@ pub fn write_dd_to_vault(
 
     let synthesis: Option<serde_json::Value> = proposals
         .iter()
-        .find_map(|p| serde_json::from_str(&p.content).ok());
+        .find_map(|p| serde_json::from_str(p.content()).ok());
 
     let analysis_sections = [
         ("Market", "market_analysis", "market"),
@@ -275,12 +275,12 @@ pub fn write_dd_to_vault(
             .iter()
             .enumerate()
             .filter_map(|(i, eval)| {
-                let v: serde_json::Value = serde_json::from_str(&eval.content).ok()?;
+                let v: serde_json::Value = serde_json::from_str(eval.content()).ok()?;
                 if v["type"].as_str() != Some("contradiction") {
                     return None;
                 }
                 let cat = v["category"].as_str().unwrap_or("unknown");
-                let desc = v["description"].as_str().unwrap_or(&eval.content);
+                let desc = v["description"].as_str().unwrap_or(eval.content());
                 let needs_review = v["needs_human_review"].as_bool().unwrap_or(false);
                 let review_tag = if needs_review {
                     " **NEEDS REVIEW**"

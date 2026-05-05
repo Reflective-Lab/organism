@@ -447,6 +447,16 @@ pub enum CollaborationValidationError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use converge_pack::{EligibleVoters, VoteTally};
+
+    /// Test helper: tally `yes` yes-votes against `total` voters, no abstains.
+    /// Panics if `total` is zero — the 3.8 type system disallows zero eligible voters.
+    fn passes(rule: ConsensusRule, yes: usize, total: usize) -> bool {
+        let no = total.saturating_sub(yes);
+        let tally = VoteTally::new(yes, no, 0);
+        let voters = EligibleVoters::new(total).expect("at least one voter");
+        rule.passes(tally, voters)
+    }
 
     fn sample_panel_team() -> TeamFormation {
         TeamFormation::curated(vec![
@@ -629,44 +639,37 @@ mod tests {
 
     #[test]
     fn majority_needs_strict_majority() {
-        assert!(!ConsensusRule::Majority.passes(2, 4));
-        assert!(ConsensusRule::Majority.passes(3, 4));
-        assert!(!ConsensusRule::Majority.passes(0, 1));
-        assert!(ConsensusRule::Majority.passes(1, 1));
+        assert!(!passes(ConsensusRule::Majority, 2, 4));
+        assert!(passes(ConsensusRule::Majority, 3, 4));
+        assert!(!passes(ConsensusRule::Majority, 0, 1));
+        assert!(passes(ConsensusRule::Majority, 1, 1));
     }
 
     #[test]
     fn supermajority_threshold() {
-        assert!(!ConsensusRule::Supermajority.passes(1, 3));
-        assert!(ConsensusRule::Supermajority.passes(2, 3));
-        assert!(ConsensusRule::Supermajority.passes(4, 6));
-        assert!(!ConsensusRule::Supermajority.passes(3, 6));
+        assert!(!passes(ConsensusRule::Supermajority, 1, 3));
+        assert!(passes(ConsensusRule::Supermajority, 2, 3));
+        assert!(passes(ConsensusRule::Supermajority, 4, 6));
+        assert!(!passes(ConsensusRule::Supermajority, 3, 6));
     }
 
     #[test]
     fn unanimous_requires_all() {
-        assert!(ConsensusRule::Unanimous.passes(5, 5));
-        assert!(!ConsensusRule::Unanimous.passes(4, 5));
-        assert!(!ConsensusRule::Unanimous.passes(0, 1));
+        assert!(passes(ConsensusRule::Unanimous, 5, 5));
+        assert!(!passes(ConsensusRule::Unanimous, 4, 5));
+        assert!(!passes(ConsensusRule::Unanimous, 0, 1));
     }
 
     #[test]
     fn lead_decides_needs_one_yes() {
-        assert!(ConsensusRule::LeadDecides.passes(1, 100));
-        assert!(!ConsensusRule::LeadDecides.passes(0, 100));
+        assert!(passes(ConsensusRule::LeadDecides, 1, 100));
+        assert!(!passes(ConsensusRule::LeadDecides, 0, 100));
     }
 
     #[test]
     fn advisory_always_passes() {
-        assert!(ConsensusRule::AdvisoryOnly.passes(0, 0));
-        assert!(ConsensusRule::AdvisoryOnly.passes(0, 100));
-    }
-
-    #[test]
-    fn consensus_with_zero_voters() {
-        assert!(!ConsensusRule::Majority.passes(0, 0));
-        assert!(ConsensusRule::Unanimous.passes(0, 0));
-        assert!(!ConsensusRule::LeadDecides.passes(0, 0));
+        assert!(passes(ConsensusRule::AdvisoryOnly, 0, 1));
+        assert!(passes(ConsensusRule::AdvisoryOnly, 0, 100));
     }
 
     // ── Role capability matrix ────────────────────────────────────
@@ -792,30 +795,31 @@ mod tests {
             #[test]
             fn consensus_yes_votes_never_exceed_total(
                 rule in arb_consensus_rule(),
-                total in 0_usize..100,
+                total in 1_usize..100,
                 yes in 0_usize..100,
             ) {
                 if yes <= total {
-                    let _ = rule.passes(yes, total);
+                    let _ = passes(rule, yes, total);
                 }
             }
 
             #[test]
             fn unanimous_passes_iff_all_vote_yes(
-                total in 0_usize..50,
+                total in 1_usize..50,
                 yes in 0_usize..50,
             ) {
                 prop_assume!(yes <= total);
-                let result = ConsensusRule::Unanimous.passes(yes, total);
+                let result = passes(ConsensusRule::Unanimous, yes, total);
                 prop_assert_eq!(result, yes == total);
             }
 
             #[test]
             fn advisory_always_passes_regardless_of_votes(
-                total in 0_usize..100,
+                total in 1_usize..100,
                 yes in 0_usize..100,
             ) {
-                prop_assert!(ConsensusRule::AdvisoryOnly.passes(yes, total));
+                prop_assume!(yes <= total);
+                prop_assert!(passes(ConsensusRule::AdvisoryOnly, yes, total));
             }
 
             #[test]
@@ -833,8 +837,8 @@ mod tests {
                 let yes1 = (lo * total as f64) as usize;
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
                 let yes2 = (hi * total as f64) as usize;
-                if ConsensusRule::Majority.passes(yes1, total) {
-                    prop_assert!(ConsensusRule::Majority.passes(yes2, total));
+                if passes(ConsensusRule::Majority, yes1, total) {
+                    prop_assert!(passes(ConsensusRule::Majority, yes2, total));
                 }
             }
 
@@ -844,8 +848,8 @@ mod tests {
                 yes in 0_usize..50,
             ) {
                 prop_assume!(yes <= total);
-                if ConsensusRule::Supermajority.passes(yes, total) {
-                    prop_assert!(ConsensusRule::Majority.passes(yes, total));
+                if passes(ConsensusRule::Supermajority, yes, total) {
+                    prop_assert!(passes(ConsensusRule::Majority, yes, total));
                 }
             }
         }

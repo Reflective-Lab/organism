@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Removed
+- `organism-intelligence::linkedin` module and `linkedin` feature. The
+  LinkedIn port has been extracted to `embassy-linkedin`
+  (`~/dev/extensions/embassy/crates/linkedin/`) — ports belong in embassy,
+  not buried in intelligence. No internal callers; safe extraction.
+
 ## [1.4.1] - 2026-05-05
 
 ### Added

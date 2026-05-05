@@ -110,11 +110,11 @@ impl Suggestor for AssumptionBreakerAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let findings = Self::analyze_assumptions(&plan_json);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
@@ -123,11 +123,11 @@ impl Suggestor for AssumptionBreakerAgent {
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Constraints,
-                    format!("assumption-block-{}", fact.id),
+                    format!("assumption-block-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "assumption-breaker",
                         "kind": "assumption_breaking",
                         "severity": "blocker",
@@ -137,11 +137,11 @@ impl Suggestor for AssumptionBreakerAgent {
                     "assumption-breaker",
                 ));
             } else if has_warnings {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Evaluations,
-                    format!("assumption-warn-{}", fact.id),
+                    format!("assumption-warn-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "assumption-breaker",
                         "kind": "assumption_breaking",
                         "passed": true,
@@ -151,11 +151,11 @@ impl Suggestor for AssumptionBreakerAgent {
                     "assumption-breaker",
                 ));
             } else {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Evaluations,
-                    format!("assumption-pass-{}", fact.id),
+                    format!("assumption-pass-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "assumption-breaker",
                         "kind": "assumption_breaking",
                         "passed": true,
@@ -167,7 +167,7 @@ impl Suggestor for AssumptionBreakerAgent {
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -328,22 +328,22 @@ impl Suggestor for ConstraintCheckerAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let findings = self.check_plan(&plan_json);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Constraints,
-                    format!("constraint-block-{}", fact.id),
+                    format!("constraint-block-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "constraint-checker",
                         "kind": "constraint_checking",
                         "severity": "blocker",
@@ -353,11 +353,11 @@ impl Suggestor for ConstraintCheckerAgent {
                     "constraint-checker",
                 ));
             } else {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Evaluations,
-                    format!("constraint-pass-{}", fact.id),
+                    format!("constraint-pass-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "constraint-checker",
                         "kind": "constraint_checking",
                         "passed": true,
@@ -369,7 +369,7 @@ impl Suggestor for ConstraintCheckerAgent {
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -502,22 +502,22 @@ impl Suggestor for EconomicSkepticAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let findings = Self::analyze_economics(&plan_json, self.skepticism_threshold);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Constraints,
-                    format!("econ-block-{}", fact.id),
+                    format!("econ-block-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "economic-skeptic",
                         "kind": "economic_skepticism",
                         "severity": "blocker",
@@ -527,11 +527,11 @@ impl Suggestor for EconomicSkepticAgent {
                     "economic-skeptic",
                 ));
             } else {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Evaluations,
-                    format!("econ-eval-{}", fact.id),
+                    format!("econ-eval-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "economic-skeptic",
                         "kind": "economic_skepticism",
                         "passed": true,
@@ -543,7 +543,7 @@ impl Suggestor for EconomicSkepticAgent {
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -691,22 +691,22 @@ impl Suggestor for OperationalSkepticAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let findings = Self::analyze_operations(&plan_json, self.max_parallel_initiatives);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Constraints,
-                    format!("ops-skeptic-block-{}", fact.id),
+                    format!("ops-skeptic-block-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "operational-skeptic",
                         "kind": "operational_skepticism",
                         "severity": "blocker",
@@ -716,11 +716,11 @@ impl Suggestor for OperationalSkepticAgent {
                     "operational-skeptic",
                 ));
             } else {
-                proposals.push(ProposedFact::new(
+                effect.push(ProposedFact::new(
                     ContextKey::Evaluations,
-                    format!("ops-skeptic-eval-{}", fact.id),
+                    format!("ops-skeptic-eval-{}", fact.id()),
                     serde_json::json!({
-                        "strategy_id": fact.id,
+                        "strategy_id": fact.id(),
                         "agent": "operational-skeptic",
                         "kind": "operational_skepticism",
                         "passed": true,
@@ -732,7 +732,7 @@ impl Suggestor for OperationalSkepticAgent {
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 

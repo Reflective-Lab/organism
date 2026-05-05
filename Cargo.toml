@@ -8,39 +8,15 @@ members = [
     "crates/learning",
     "crates/runtime",
     "crates/intelligence",
-    "crates/domain",
     "crates/pack",
     "crates/notes",
-    "examples/vendor-selection",
-    "examples/formation-compiler",
-    "examples/expense-approval",
-    "examples/resolution-showcase",
-    "examples/debate-loop",
-    "examples/collab-huddle",
-    "examples/collab-panel",
-    "examples/collab-self-organizing",
-    "examples/collab-discussion",
-    "examples/charter-from-intent",
-    "examples/topology-transition",
-    "examples/shape-competition",
 ]
-# Default members exclude heavier live Converge execution examples; the
-# formation-compiler example is pure planning/compilation.
 default-members = [
     "crates/*",
-    "examples/resolution-showcase",
-    "examples/formation-compiler",
-    "examples/collab-huddle",
-    "examples/collab-panel",
-    "examples/collab-self-organizing",
-    "examples/collab-discussion",
-    "examples/charter-from-intent",
-    "examples/topology-transition",
-    "examples/shape-competition",
 ]
 
 [workspace.package]
-version = "1.4.1"
+version = "1.5.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -48,21 +24,21 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.4.1" }
-organism-planning = { path = "crates/planning", version = "1.4.1" }
-organism-adversarial = { path = "crates/adversarial", version = "1.4.1" }
-organism-simulation = { path = "crates/simulation", version = "1.4.1" }
-organism-learning = { path = "crates/learning", version = "1.4.1" }
-organism-runtime = { path = "crates/runtime", version = "1.4.1" }
-organism-pack = { path = "crates/pack", version = "1.4.1" }
-organism-intelligence = { path = "crates/intelligence", version = "1.4.1" }
-organism-domain = { path = "crates/domain", version = "1.4.1" }
-organism-notes = { path = "crates/notes", version = "1.4.1" }
+organism-intent = { path = "crates/intent", version = "1.5.0" }
+organism-planning = { path = "crates/planning", version = "1.5.0" }
+organism-adversarial = { path = "crates/adversarial", version = "1.5.0" }
+organism-simulation = { path = "crates/simulation", version = "1.5.0" }
+organism-learning = { path = "crates/learning", version = "1.5.0" }
+organism-runtime = { path = "crates/runtime", version = "1.5.0" }
+organism-pack = { path = "crates/pack", version = "1.5.0" }
+organism-intelligence = { path = "crates/intelligence", version = "1.5.0" }
+organism-domain = { path = "../../atelier/crates/organism-domain", version = "1.5.0" }
+organism-notes = { path = "crates/notes", version = "1.5.0" }
 
 # Converge contract
-converge-pack = "3.7.6"
-converge-kernel = "3.7.6"
-converge-provider-api = "3.7.6"
+converge-pack = "3.8.0"
+converge-kernel = "3.8.0"
+converge-provider-api = "3.8.0"
 
 # Shared deps
 anyhow = "1"
@@ -91,7 +67,18 @@ new_without_default = "allow"
 return_self_not_must_use = "allow"
 should_implement_trait = "allow"
 unused_async = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
 
 [profile.release]
 codegen-units = 1
 lto = true
+
+# Sync development window with Converge 3.8.0 (cut 2026-05-05).
+[patch.crates-io]
+converge-pack         = { path = "../converge/crates/pack" }
+converge-kernel       = { path = "../converge/crates/kernel" }
+converge-provider-api = { path = "../converge/crates/provider-api" }

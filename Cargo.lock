@@ -277,9 +277,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "converge-core"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "603d4742ae1b50f0b003b3047b9a8c9abfca164589ebefa7eee2cc3b7cf7be6b"
+version = "3.8.0"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -296,9 +294,7 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0f0dda75a27613b7c91ee19cc3dd11c41ef45f4f16bf883fd6078993f59047e"
+version = "3.8.0"
 dependencies = [
  "converge-core",
  "converge-model",
@@ -310,9 +306,7 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab39741859fff96dbce319be138fe2faacbe035d90f632e9e8876a513cb9cae3"
+version = "3.8.0"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -322,9 +316,7 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84938129410a2ce8050f66adc58125a76cd9362db82bf7586c76781de7c5b214"
+version = "3.8.0"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -345,9 +337,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "400d2a617d9284af1a9b55d2305183464f26826ee4d376c37d0e4aa0f1a73328"
+version = "3.8.0"
 dependencies = [
  "async-trait",
  "hex",
@@ -359,9 +349,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4654bdddeae3dcff90663dd7952fc5fd1020889bffd87199c348156ff179c60b"
+version = "3.8.0"
 dependencies = [
  "async-trait",
  "base64",
@@ -387,9 +375,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider-api"
-version = "3.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b5062dec89ded4aa246a96866b28ae62380a36c6ccd93d3fcfc287942826dc6"
+version = "3.8.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -584,133 +570,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bb7ef65b3777a325d1eeefefab5b6d4959da54747e33bd6258e789640f307ad"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "example-charter-from-intent"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "organism-intent",
- "organism-pack",
-]
-
-[[package]]
-name = "example-collab-discussion"
-version = "0.0.0"
-dependencies = [
- "organism-pack",
- "organism-runtime",
-]
-
-[[package]]
-name = "example-collab-huddle"
-version = "0.0.0"
-dependencies = [
- "organism-pack",
- "organism-runtime",
-]
-
-[[package]]
-name = "example-collab-panel"
-version = "0.0.0"
-dependencies = [
- "organism-pack",
- "organism-runtime",
-]
-
-[[package]]
-name = "example-collab-self-organizing"
-version = "0.0.0"
-dependencies = [
- "organism-pack",
- "organism-runtime",
-]
-
-[[package]]
-name = "example-debate-loop"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "chrono",
- "converge-kernel",
- "converge-pack",
- "organism-domain",
- "organism-pack",
- "reqwest 0.13.2",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "example-expense-approval"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "converge-kernel",
- "organism-domain",
- "organism-pack",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "example-formation-compiler"
-version = "1.4.1"
-dependencies = [
- "async-trait",
- "chrono",
- "converge-kernel",
- "converge-provider-api",
- "organism-pack",
- "organism-runtime",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "example-resolution-showcase"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "organism-domain",
- "organism-pack",
- "organism-runtime",
- "serde_json",
-]
-
-[[package]]
-name = "example-shape-competition"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "organism-intent",
- "organism-pack",
- "uuid",
-]
-
-[[package]]
-name = "example-topology-transition"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "organism-intent",
- "organism-pack",
-]
-
-[[package]]
-name = "example-vendor-selection"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "converge-kernel",
- "converge-pack",
- "organism-domain",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -1627,7 +1486,7 @@ dependencies = [
 
 [[package]]
 name = "organism-adversarial"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1641,21 +1500,19 @@ dependencies = [
 
 [[package]]
 name = "organism-domain"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "async-trait",
- "converge-kernel",
  "converge-pack",
  "organism-pack",
  "serde",
  "serde_json",
- "tokio",
  "uuid",
 ]
 
 [[package]]
 name = "organism-intelligence"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "base64",
  "pdf-extract",
@@ -1669,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intent"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "chrono",
  "serde",
@@ -1680,7 +1537,7 @@ dependencies = [
 
 [[package]]
 name = "organism-learning"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1696,7 +1553,7 @@ dependencies = [
 
 [[package]]
 name = "organism-notes"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "base64",
  "chrono",
@@ -1709,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "organism-pack"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "chrono",
  "converge-pack",
@@ -1725,7 +1582,7 @@ dependencies = [
 
 [[package]]
 name = "organism-planning"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1742,7 +1599,7 @@ dependencies = [
 
 [[package]]
 name = "organism-runtime"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1767,7 +1624,7 @@ dependencies = [
 
 [[package]]
 name = "organism-simulation"
-version = "1.4.1"
+version = "1.5.0"
 dependencies = [
  "async-trait",
  "converge-pack",

@@ -78,13 +78,11 @@ impl Suggestor for PlanningPriorAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let seeds = ctx.get(ContextKey::Seeds);
-        let mut proposals = Vec::new();
 
-        // Look for prior calibration seeds
         let priors: Vec<PriorCalibration> = seeds
             .iter()
             .filter_map(|fact| {
-                let v: serde_json::Value = serde_json::from_str(&fact.content).ok()?;
+                let v: serde_json::Value = serde_json::from_str(fact.content()).ok()?;
                 if v.get("type").and_then(|t| t.as_str()) == Some("prior_calibration") {
                     serde_json::from_value(v.get("calibration")?.clone()).ok()
                 } else {
@@ -100,10 +98,8 @@ impl Suggestor for PlanningPriorAgent {
         }
 
         let recall_signal = recall.as_ref().map(RecallSummary::avg_confidence);
+        let mut effect = AgentEffect::builder();
 
-        // Publish each prior as a hypothesis, blended toward the recall signal
-        // when one is available. Blend ratio = 0.3 (recall pulls posterior 30%
-        // toward recent experience).
         for prior in &priors {
             let blended = recall_signal
                 .map_or(prior.posterior_confidence, |signal| {
@@ -113,7 +109,7 @@ impl Suggestor for PlanningPriorAgent {
             let adjustment = blended - prior.prior_confidence;
             let direction = if adjustment > 0.0 { "up" } else { "down" };
 
-            proposals.push(ProposedFact::new(
+            effect.push(ProposedFact::new(
                 ContextKey::Hypotheses,
                 format!("prior-{}", prior.assumption_type),
                 serde_json::json!({
@@ -137,7 +133,7 @@ impl Suggestor for PlanningPriorAgent {
             let avg_confidence: f64 = priors.iter().map(|p| p.posterior_confidence).sum::<f64>()
                 / f64::from(u32::try_from(priors.len()).unwrap_or(1));
 
-            proposals.push(ProposedFact::new(
+            effect.push(ProposedFact::new(
                 ContextKey::Hypotheses,
                 String::from("prior-summary"),
                 serde_json::json!({
@@ -157,7 +153,7 @@ impl Suggestor for PlanningPriorAgent {
         }
 
         if let Some(summary) = recall {
-            proposals.push(ProposedFact::new(
+            effect.push(ProposedFact::new(
                 ContextKey::Hypotheses,
                 String::from("recall-summary"),
                 serde_json::json!({
@@ -171,7 +167,7 @@ impl Suggestor for PlanningPriorAgent {
             ));
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -202,7 +198,7 @@ impl PlanningPriorAgent {
         if candidates.is_empty() {
             return None;
         }
-        let total_confidence = candidates.iter().map(|c| c.confidence).sum();
+        let total_confidence: f64 = candidates.iter().map(|c| c.confidence.as_f64()).sum();
         let candidate_summaries = candidates
             .iter()
             .map(|c| {
@@ -270,7 +266,7 @@ mod tests {
         assert!(
             hypotheses
                 .iter()
-                .any(|f| f.content.contains("cost_accuracy"))
+                .any(|f| f.content().contains("cost_accuracy"))
         );
     }
 
@@ -309,6 +305,6 @@ mod tests {
         // Should only have the pre-existing hypothesis, not generate new ones
         let hypotheses = result.context.get(ContextKey::Hypotheses);
         assert_eq!(hypotheses.len(), 1);
-        assert_eq!(hypotheses[0].content, "already here");
+        assert_eq!(hypotheses[0].content(), "already here");
     }
 }

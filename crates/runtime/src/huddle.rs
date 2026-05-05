@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 use converge_pack::{
-    AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextKey, Disagreement, Fact,
+    AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextFact, ContextKey, Disagreement,
     ProposedFact, Suggestor, Vote, VoteTopicId,
 };
 use serde::{Deserialize, Serialize};
@@ -89,7 +89,7 @@ fn never_terminal() -> TerminalPredicate {
 }
 
 fn has_fact(ctx: &dyn Context, key: ContextKey, id: &str) -> bool {
-    ctx.get(key).iter().any(|fact| fact.id.as_str() == id)
+    ctx.get(key).iter().any(|fact| fact.id().as_str() == id)
 }
 
 /// Drives round-by-round deliberation by emitting `round:start:N` signals.
@@ -212,7 +212,7 @@ pub trait SynthesisProducer: Send + Sync {
     async fn synthesize(
         &self,
         round: u8,
-        notes: &[Fact],
+        notes: &[ContextFact],
         ctx: &dyn Context,
     ) -> Result<String, String>;
 }
@@ -268,7 +268,7 @@ impl<P: SynthesisProducer> RoundSynthesizer<P> {
         ctx.get(self.conventions.round_signal_key)
             .iter()
             .filter_map(|fact| {
-                fact.id
+                fact.id()
                     .as_str()
                     .strip_prefix(self.conventions.round_signal_prefix)
                     .and_then(|n| n.parse::<u8>().ok())
@@ -279,14 +279,14 @@ impl<P: SynthesisProducer> RoundSynthesizer<P> {
     fn count_notes_for_round(&self, ctx: &dyn Context, round: u8) -> usize {
         ctx.get(self.conventions.note_key)
             .iter()
-            .filter(|fact| RoundConventions::note_belongs_to_round(fact.id.as_str(), round))
+            .filter(|fact| RoundConventions::note_belongs_to_round(fact.id().as_str(), round))
             .count()
     }
 
-    fn notes_for_round<'a>(&self, ctx: &'a dyn Context, round: u8) -> Vec<&'a Fact> {
+    fn notes_for_round<'a>(&self, ctx: &'a dyn Context, round: u8) -> Vec<&'a ContextFact> {
         ctx.get(self.conventions.note_key)
             .iter()
-            .filter(|fact| RoundConventions::note_belongs_to_round(fact.id.as_str(), round))
+            .filter(|fact| RoundConventions::note_belongs_to_round(fact.id().as_str(), round))
             .collect()
     }
 
@@ -327,7 +327,7 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
             return AgentEffect::empty();
         };
 
-        let notes: Vec<Fact> = self
+        let notes: Vec<ContextFact> = self
             .notes_for_round(ctx, round)
             .into_iter()
             .cloned()
@@ -417,7 +417,7 @@ impl Suggestor for DisagreementMapper {
         let mapped = self.mapped_topics.lock().unwrap();
         ctx.get(ContextKey::Disagreements)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Disagreement>(&fact.content).ok())
+            .filter_map(|fact| serde_json::from_str::<Disagreement>(fact.content()).ok())
             .any(|d| !mapped.contains(&d.topic))
     }
 
@@ -426,7 +426,7 @@ impl Suggestor for DisagreementMapper {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Disagreement>> = HashMap::new();
         for fact in ctx.get(ContextKey::Disagreements) {
-            let Ok(d) = serde_json::from_str::<Disagreement>(&fact.content) else {
+            let Ok(d) = serde_json::from_str::<Disagreement>(fact.content()) else {
                 continue;
             };
             if mapped.contains(&d.topic) {
@@ -514,7 +514,7 @@ impl Suggestor for ConsensusEvaluator {
         let decided = self.decided_topics.lock().unwrap();
         ctx.get(ContextKey::Votes)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Vote>(&fact.content).ok())
+            .filter_map(|fact| serde_json::from_str::<Vote>(fact.content()).ok())
             .any(|vote| !decided.contains(&vote.topic))
     }
 
@@ -523,7 +523,7 @@ impl Suggestor for ConsensusEvaluator {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Vote>> = HashMap::new();
         for fact in ctx.get(ContextKey::Votes) {
-            let Ok(vote) = serde_json::from_str::<Vote>(&fact.content) else {
+            let Ok(vote) = serde_json::from_str::<Vote>(fact.content()) else {
                 continue;
             };
             if decided.contains(&vote.topic) {
@@ -536,10 +536,16 @@ impl Suggestor for ConsensusEvaluator {
         topics.sort();
 
         let mut proposals = Vec::with_capacity(topics.len());
+        let Ok(eligible) = converge_pack::EligibleVoters::new(self.total_voters) else {
+            return AgentEffect::with_proposals(proposals);
+        };
         for topic in topics {
             let votes = by_topic.remove(&topic).unwrap_or_default();
-            let outcome =
-                ConsensusOutcome::evaluate(topic.clone(), self.rule, &votes, self.total_voters);
+            let Ok(outcome) =
+                ConsensusOutcome::evaluate(topic.clone(), self.rule, &votes, eligible)
+            else {
+                continue;
+            };
             let Ok(content) = serde_json::to_string(&outcome) else {
                 continue;
             };
@@ -608,13 +614,13 @@ mod tests {
             .context
             .get(ContextKey::ConsensusOutcomes);
         assert_eq!(outcomes.len(), 1);
-        assert_eq!(outcomes[0].id.as_str(), "outcome:done-r1");
+        assert_eq!(outcomes[0].id().as_str(), "outcome:done-r1");
 
-        let outcome: ConsensusOutcome = serde_json::from_str(&outcomes[0].content).unwrap();
-        assert_eq!(outcome.yes_votes, 2);
-        assert_eq!(outcome.no_votes, 1);
-        assert_eq!(outcome.total_voters, 3);
-        assert!(outcome.passes);
+        let outcome: ConsensusOutcome = serde_json::from_str(outcomes[0].content()).unwrap();
+        assert_eq!(outcome.tally().yes_votes(), 2);
+        assert_eq!(outcome.tally().no_votes(), 1);
+        assert_eq!(outcome.total_voters().get(), 3);
+        assert!(outcome.passes());
     }
 
     #[tokio::test]
@@ -640,12 +646,12 @@ mod tests {
             std::collections::HashMap::new();
         for fact in outcomes {
             decisions.insert(
-                fact.id.as_str().to_string(),
-                serde_json::from_str(&fact.content).unwrap(),
+                fact.id().as_str().to_string(),
+                serde_json::from_str(fact.content()).unwrap(),
             );
         }
-        assert!(decisions["outcome:a"].passes);
-        assert!(!decisions["outcome:b"].passes);
+        assert!(decisions["outcome:a"].passes());
+        assert!(!decisions["outcome:b"].passes());
     }
 
     #[tokio::test]
@@ -664,8 +670,8 @@ mod tests {
             .context
             .get(ContextKey::ConsensusOutcomes);
         assert_eq!(outcomes.len(), 1);
-        let outcome: ConsensusOutcome = serde_json::from_str(&outcomes[0].content).unwrap();
-        assert!(!outcome.passes);
+        let outcome: ConsensusOutcome = serde_json::from_str(outcomes[0].content()).unwrap();
+        assert!(!outcome.passes());
     }
 
     #[tokio::test]
@@ -696,7 +702,7 @@ mod tests {
 
         let signals = result.converge_result.context.get(ContextKey::Signals);
         assert_eq!(signals.len(), 1);
-        assert_eq!(signals[0].id.as_str(), "round:start:1");
+        assert_eq!(signals[0].id().as_str(), "round:start:1");
     }
 
     #[tokio::test]
@@ -718,7 +724,7 @@ mod tests {
             .context
             .get(ContextKey::Signals)
             .iter()
-            .map(|f| f.id.as_str())
+            .map(|f| f.id().as_str())
             .collect();
         signal_ids.sort_unstable();
         assert_eq!(signal_ids, vec!["round:start:1", "round:start:2"]);
@@ -739,7 +745,7 @@ mod tests {
 
         let signals = result.converge_result.context.get(ContextKey::Signals);
         assert_eq!(signals.len(), 2);
-        assert!(!signals.iter().any(|f| f.id.as_str() == "round:start:3"));
+        assert!(!signals.iter().any(|f| f.id().as_str() == "round:start:3"));
     }
 
     #[tokio::test]
@@ -749,7 +755,7 @@ mod tests {
             .agent(RoundStarter::new(3).with_terminal_predicate(|ctx| {
                 ctx.get(ContextKey::Strategies)
                     .iter()
-                    .any(|f| f.id.as_str() == TERMINAL_ID)
+                    .any(|f| f.id().as_str() == TERMINAL_ID)
             }))
             .seed(
                 ContextKey::Strategies,
@@ -792,7 +798,7 @@ mod tests {
             .context
             .get(ContextKey::Hypotheses)
             .iter()
-            .map(|f| f.id.as_str())
+            .map(|f| f.id().as_str())
             .collect();
         ids.sort_unstable();
         assert_eq!(ids, vec!["phase:1", "phase:2"]);
@@ -807,7 +813,7 @@ mod tests {
         async fn synthesize(
             &self,
             _round: u8,
-            _notes: &[Fact],
+            _notes: &[ContextFact],
             _ctx: &dyn Context,
         ) -> Result<String, String> {
             Ok(self.0.to_string())
@@ -821,7 +827,7 @@ mod tests {
         async fn synthesize(
             &self,
             round: u8,
-            notes: &[Fact],
+            notes: &[ContextFact],
             _ctx: &dyn Context,
         ) -> Result<String, String> {
             Ok(format!("round {round} from {} notes", notes.len()))
@@ -835,7 +841,7 @@ mod tests {
         async fn synthesize(
             &self,
             _round: u8,
-            _notes: &[Fact],
+            _notes: &[ContextFact],
             _ctx: &dyn Context,
         ) -> Result<String, String> {
             Err(self.0.to_string())
@@ -873,8 +879,8 @@ mod tests {
 
         let strategies = result.converge_result.context.get(ContextKey::Strategies);
         assert_eq!(strategies.len(), 1);
-        assert_eq!(strategies[0].id.as_str(), "synthesis:1");
-        assert_eq!(strategies[0].content, "round 1 from 2 notes");
+        assert_eq!(strategies[0].id().as_str(), "synthesis:1");
+        assert_eq!(strategies[0].content(), "round 1 from 2 notes");
     }
 
     #[tokio::test]
@@ -923,8 +929,8 @@ mod tests {
         assert!(!result.converge_result.context.has(ContextKey::Strategies));
         let diagnostic = result.converge_result.context.get(ContextKey::Diagnostic);
         assert_eq!(diagnostic.len(), 1);
-        assert_eq!(diagnostic[0].id.as_str(), "runtime:error:synthesis:1");
-        assert_eq!(diagnostic[0].content, "upstream timeout");
+        assert_eq!(diagnostic[0].id().as_str(), "runtime:error:synthesis:1");
+        assert_eq!(diagnostic[0].content(), "upstream timeout");
     }
 
     #[tokio::test]
@@ -959,7 +965,7 @@ mod tests {
                     .with_terminal_predicate(|ctx| {
                         ctx.get(ContextKey::Strategies)
                             .iter()
-                            .any(|f| f.id.as_str() == TERMINAL_ID)
+                            .any(|f| f.id().as_str() == TERMINAL_ID)
                     }),
             )
             .seed(
@@ -980,7 +986,7 @@ mod tests {
 
         let strategies = result.converge_result.context.get(ContextKey::Strategies);
         assert_eq!(strategies.len(), 1);
-        assert_eq!(strategies[0].id.as_str(), TERMINAL_ID);
+        assert_eq!(strategies[0].id().as_str(), TERMINAL_ID);
     }
 
     #[tokio::test]
@@ -1005,7 +1011,7 @@ mod tests {
 
         let strategies = result.converge_result.context.get(ContextKey::Strategies);
         assert_eq!(strategies.len(), 1);
-        assert_eq!(strategies[0].id.as_str(), "synthesis:1");
+        assert_eq!(strategies[0].id().as_str(), "synthesis:1");
     }
 
     // ── DisagreementMapper ────────────────────────────────────────
@@ -1047,8 +1053,8 @@ mod tests {
         let mut by_id: std::collections::HashMap<String, DisagreementMap> =
             std::collections::HashMap::new();
         for fact in maps {
-            let parsed: DisagreementMap = serde_json::from_str(&fact.content).unwrap();
-            by_id.insert(fact.id.as_str().to_string(), parsed);
+            let parsed: DisagreementMap = serde_json::from_str(fact.content()).unwrap();
+            by_id.insert(fact.id().as_str().to_string(), parsed);
         }
         let map_a = &by_id["disagreement_map:topic-a"];
         assert_eq!(map_a.entries.len(), 2);
@@ -1080,6 +1086,6 @@ mod tests {
         assert!(!result.converge_result.context.has(ContextKey::Diagnostic));
         let strategies = result.converge_result.context.get(ContextKey::Strategies);
         assert_eq!(strategies.len(), 1);
-        assert_eq!(strategies[0].id.as_str(), "disagreement_map:topic-x");
+        assert_eq!(strategies[0].id().as_str(), "disagreement_map:topic-x");
     }
 }

@@ -92,17 +92,15 @@ impl Suggestor for HuddleSeedSuggestor {
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
         *self.seeded.lock().unwrap() = true;
 
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
-        // Seed the intent description
-        proposals.push(ProposedFact::new(
+        effect.push(ProposedFact::new(
             ContextKey::Seeds,
             "intent",
             &self.intent.outcome,
             "organism-huddle-seed",
         ));
 
-        // Each plan becomes strategy facts
         for named in &self.plans {
             let content = named
                 .plan
@@ -119,7 +117,7 @@ impl Suggestor for HuddleSeedSuggestor {
                 named.plan.rationale,
             );
 
-            proposals.push(ProposedFact::new(
+            effect.push(ProposedFact::new(
                 ContextKey::Strategies,
                 named.id.as_str(),
                 strategy_content,
@@ -127,7 +125,7 @@ impl Suggestor for HuddleSeedSuggestor {
             ));
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -233,7 +231,7 @@ pub struct GapDetectorSuggestor<F> {
 
 impl<F> GapDetectorSuggestor<F>
 where
-    F: Fn(&[converge_pack::Fact]) -> Vec<(String, String)> + Send + Sync,
+    F: Fn(&[converge_pack::ContextFact]) -> Vec<(String, String)> + Send + Sync,
 {
     pub fn new(
         name: impl Into<String>,
@@ -267,7 +265,7 @@ where
 #[async_trait::async_trait]
 impl<F> Suggestor for GapDetectorSuggestor<F>
 where
-    F: Fn(&[converge_pack::Fact]) -> Vec<(String, String)> + Send + Sync,
+    F: Fn(&[converge_pack::ContextFact]) -> Vec<(String, String)> + Send + Sync,
 {
     fn name(&self) -> &str {
         &self.name
@@ -304,7 +302,7 @@ where
             .map(|(id, content)| ProposedFact::new(ContextKey::Strategies, id, content, &self.name))
             .collect();
 
-        AgentEffect::with_proposals(proposals)
+        AgentEffect::builder().proposals(proposals).build()
     }
 }
 
@@ -329,7 +327,7 @@ pub struct StabilitySuggestor<F> {
 
 impl<F> StabilitySuggestor<F>
 where
-    F: Fn(&[converge_pack::Fact]) -> Vec<(String, String, f64)> + Send + Sync,
+    F: Fn(&[converge_pack::ContextFact]) -> Vec<(String, String, f64)> + Send + Sync,
 {
     pub fn new(
         name: impl Into<String>,
@@ -361,7 +359,7 @@ where
 #[async_trait::async_trait]
 impl<F> Suggestor for StabilitySuggestor<F>
 where
-    F: Fn(&[converge_pack::Fact]) -> Vec<(String, String, f64)> + Send + Sync,
+    F: Fn(&[converge_pack::ContextFact]) -> Vec<(String, String, f64)> + Send + Sync,
 {
     fn name(&self) -> &str {
         &self.name
@@ -407,7 +405,7 @@ where
             })
             .collect();
 
-        AgentEffect::with_proposals(proposals)
+        AgentEffect::builder().proposals(proposals).build()
     }
 }
 
@@ -500,7 +498,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
         // ContradictionFinderSuggestor).
         let contradiction_targets: Vec<(FactId, String)> = evaluation_facts
             .iter()
-            .map(|f| (f.id.clone(), f.content.clone()))
+            .map(|f| (f.id().clone(), f.content().to_string()))
             .collect();
 
         let mut roster = self.hypotheses.lock().unwrap();
@@ -510,25 +508,25 @@ impl Suggestor for HypothesisTrackerSuggestor {
             roster.iter().map(|h| h.fact_id.clone()).collect();
 
         for fact in hypothesis_facts {
-            if known_ids.contains(&fact.id) {
+            if known_ids.contains(fact.id()) {
                 continue;
             }
 
             let confidence: f64 = fact
-                .content
+                .content()
                 .parse()
                 .ok()
                 .or_else(|| {
-                    serde_json::from_str::<serde_json::Value>(&fact.content)
+                    serde_json::from_str::<serde_json::Value>(fact.content())
                         .ok()
                         .and_then(|v| v.get("confidence")?.as_f64())
                 })
                 .unwrap_or(0.5);
 
             roster.push(crate::TrackedHypothesis {
-                fact_id: fact.id.clone(),
+                fact_id: fact.id().clone(),
                 domain: self.domain.clone(),
-                claim: fact.content.clone(),
+                claim: fact.content().to_string(),
                 confidence,
                 formed_cycle: cycle,
                 resolved_cycle: None,

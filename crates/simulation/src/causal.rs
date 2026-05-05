@@ -238,13 +238,13 @@ impl Suggestor for CausalSimulationAgent {
         let mut proposals = Vec::new();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let result = self.simulator.simulate(&plan_json);
 
             let verdict = SimulationVerdict {
-                strategy_id: fact.id.clone(),
+                strategy_id: fact.id().clone(),
                 dimension: crate::SimulationDimension::Causal,
                 passed: result.passed,
                 confidence: result.confidence,

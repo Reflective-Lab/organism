@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Business intelligence providers for Organism — OCR, Vision, LinkedIn, Patent, Billing, Web, Social"
+description = "Business intelligence providers for Organism — OCR, Vision, Patent, Billing, Web, Social. (LinkedIn extracted to embassy-linkedin.)"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -21,7 +21,6 @@ pdf-extract = { version = "0.10", optional = true }
 default = []
 ocr = ["dep:sha2", "dep:base64", "dep:reqwest"]
 vision = ["dep:reqwest", "dep:base64"]
-linkedin = []
 patent = ["dep:reqwest", "dep:base64"]
 billing = ["dep:reqwest"]
 web = ["dep:reqwest", "dep:url"]

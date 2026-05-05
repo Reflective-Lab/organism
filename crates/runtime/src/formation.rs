@@ -298,12 +298,14 @@ mod tests {
 
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seed = &ctx.get(ContextKey::Seeds)[0];
-            AgentEffect::with_proposal(converge_kernel::ProposedFact::new(
-                ContextKey::Hypotheses,
-                format!("observed-{}", seed.id),
-                format!("observed {}", seed.content),
-                self.name(),
-            ))
+            AgentEffect::builder()
+                .proposal(converge_kernel::ProposedFact::new(
+                    ContextKey::Hypotheses,
+                    format!("observed-{}", seed.id()),
+                    format!("observed {}", seed.content()),
+                    self.name(),
+                ))
+                .build()
         }
     }
 
@@ -328,11 +330,11 @@ mod tests {
         let hypotheses = result.converge_result.context.get(ContextKey::Hypotheses);
 
         assert_eq!(seeds.len(), 1);
-        assert_eq!(seeds[0].id, "seed-1");
-        assert_eq!(seeds[0].content, "seed content");
+        assert_eq!(seeds[0].id().as_str(), "seed-1");
+        assert_eq!(seeds[0].content(), "seed content");
         assert_eq!(hypotheses.len(), 1);
-        assert_eq!(hypotheses[0].id, "observed-seed-1");
-        assert_eq!(hypotheses[0].content, "observed seed content");
+        assert_eq!(hypotheses[0].id().as_str(), "observed-seed-1");
+        assert_eq!(hypotheses[0].content(), "observed seed content");
     }
 
     #[tokio::test]
@@ -387,10 +389,10 @@ mod tests {
             let hypotheses = result.converge_result.context.get(ContextKey::Hypotheses);
 
             prop_assert_eq!(seeds.len(), 1);
-            prop_assert_eq!(&seeds[0].id, &id);
-            prop_assert_eq!(&seeds[0].content, &content);
+            prop_assert_eq!(seeds[0].id().as_str(), id.as_str());
+            prop_assert_eq!(seeds[0].content(), content.as_str());
             prop_assert_eq!(hypotheses.len(), 1);
-            prop_assert_eq!(&hypotheses[0].content, &format!("observed {content}"));
+            prop_assert_eq!(hypotheses[0].content(), format!("observed {content}"));
             prop_assert!(!result.converge_result.context.has_pending_proposals());
         }
 

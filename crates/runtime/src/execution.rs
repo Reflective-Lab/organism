@@ -200,12 +200,14 @@ mod tests {
 
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seed = &ctx.get(ContextKey::Seeds)[0];
-            AgentEffect::with_proposal(ProposedFact::new(
-                ContextKey::Hypotheses,
-                format!("{}-{}", self.name, seed.id),
-                "instantiated suggestor ran",
-                self.name,
-            ))
+            AgentEffect::builder()
+                .proposal(ProposedFact::new(
+                    ContextKey::Hypotheses,
+                    format!("{}-{}", self.name, seed.id()),
+                    "instantiated suggestor ran",
+                    self.name,
+                ))
+                .build()
         }
     }
 

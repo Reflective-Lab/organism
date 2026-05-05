@@ -11,12 +11,14 @@
 //! # Available Modules
 //!
 //! - [`ocr`] — Document understanding (Tesseract, Mistral, DeepSeek, LightOn)
-//! - [`linkedin`] — Professional network research
 //! - [`patent`] — IP landscape, competitive intelligence
 //! - [`vision`] — Scene understanding and object detection (Claude, GPT-4o, Gemini, Pixtral)
 //! - [`billing`] — Stripe ACP integration for SaaS products
 //! - [`web`] — URL capture and metadata extraction for public pages
 //! - [`social`] — Normalized social profile/page extraction via web capture
+//!
+//! LinkedIn has moved to [`embassy-linkedin`](https://github.com/Reflective-Lab/embassy)
+//! — see `~/dev/extensions/embassy/crates/linkedin/`.
 
 pub mod provenance;
 pub mod secret;
@@ -29,9 +31,6 @@ pub mod pdf;
 
 #[cfg(feature = "vision")]
 pub mod vision;
-
-#[cfg(feature = "linkedin")]
-pub mod linkedin;
 
 #[cfg(feature = "patent")]
 pub mod patent;

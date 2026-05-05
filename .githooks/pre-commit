@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "pre-commit: checking formatting..."
-if ! cargo fmt --check 2>/dev/null; then
-    echo ""
-    echo "Formatting errors found. Run 'cargo fmt' and re-commit."
+echo "──────────────────────────────────────────────"
+echo "Pre-commit hook: Running lint..."
+echo "──────────────────────────────────────────────"
+
+# Ensure just is installed
+if ! command -v just &> /dev/null; then
+    echo "Error: 'just' is not installed. Please install it to run pre-commit hooks."
     exit 1
 fi
 
-echo "pre-commit: running clippy..."
-if ! cargo clippy --workspace --all-targets -- -D warnings 2>/dev/null; then
-    echo ""
-    echo "Clippy warnings found. Fix them and re-commit."
-    exit 1
-fi
+# Run just lint
+just lint
 
-echo "pre-commit: ok"
+echo "──────────────────────────────────────────────"
+echo "✓ Pre-commit checks passed"
+echo "──────────────────────────────────────────────"

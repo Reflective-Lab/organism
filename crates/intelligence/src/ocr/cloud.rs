@@ -401,7 +401,7 @@ pub trait OcrProvider: Send + Sync {
 /// # Example
 ///
 /// ```ignore
-/// use converge_provider::ocr::{MistralOcrProvider, OcrRequest};
+/// use organism_intelligence::ocr::{MistralOcrProvider, OcrRequest};
 ///
 /// let provider = MistralOcrProvider::from_env()?;
 /// let result = provider.extract(&OcrRequest::from_pdf_bytes(pdf_bytes))?;
@@ -625,7 +625,7 @@ struct MistralOcrImage {
 /// # Example
 ///
 /// ```ignore
-/// use converge_provider::ocr::{DeepSeekOcrProvider, OcrRequest};
+/// use organism_intelligence::ocr::{DeepSeekOcrProvider, OcrRequest};
 ///
 /// let provider = DeepSeekOcrProvider::from_env()?;
 /// let result = provider.extract(&OcrRequest::from_image_bytes(image_bytes))?;
@@ -807,7 +807,7 @@ struct DeepSeekOcrMessage {
 /// # Example
 ///
 /// ```ignore
-/// use converge_provider::ocr::{LightOnOcrProvider, OcrRequest};
+/// use organism_intelligence::ocr::{LightOnOcrProvider, OcrRequest};
 ///
 /// let provider = LightOnOcrProvider::from_env()?;
 /// let result = provider.extract(&OcrRequest::from_pdf_bytes(pdf_bytes))?;
@@ -1162,7 +1162,7 @@ impl OcrProvider for LightOnOcrProvider {
 /// # Example (Future)
 ///
 /// ```ignore
-/// use converge_provider::ocr::{TesseractOcrProvider, TesseractConfig, TesseractOutputFormat, OcrRequest};
+/// use organism_intelligence::ocr::{TesseractOcrProvider, TesseractConfig, TesseractOutputFormat, OcrRequest};
 ///
 /// let config = TesseractConfig::new()
 ///     .with_languages(vec!["eng", "deu"])

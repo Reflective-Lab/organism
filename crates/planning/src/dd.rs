@@ -17,7 +17,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-use converge_pack::{AgentEffect, Context, ContextKey, Fact, FactId, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, Suggestor,
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -277,9 +279,9 @@ impl BreadthResearchSuggestor {
         let processed = self.processed.lock().unwrap();
         ctx.get(ContextKey::Strategies)
             .iter()
-            .filter(|f| f.content.contains(&self.tag))
-            .filter(|f| !processed.contains(&f.id))
-            .map(|f| f.content.clone())
+            .filter(|f| f.content().contains(&self.tag))
+            .filter(|f| !processed.contains(f.id()))
+            .map(|f| f.content().to_string())
             .collect()
     }
 }
@@ -300,7 +302,7 @@ impl Suggestor for BreadthResearchSuggestor {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = self.unprocessed_strategies(ctx);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for strategy in strategies {
             if !self.budget.try_use("searches") {
@@ -323,7 +325,7 @@ impl Suggestor for BreadthResearchSuggestor {
                             "query": query,
                         })
                         .to_string();
-                        proposals.push(
+                        effect.push(
                             ProposedFact::new(
                                 ContextKey::Signals,
                                 id,
@@ -335,7 +337,7 @@ impl Suggestor for BreadthResearchSuggestor {
                     }
                 }
                 Err(e) => {
-                    proposals.push(error_to_constraint(&e, "dd-breadth-research"));
+                    effect.push(error_to_constraint(&e, "dd-breadth-research"));
                     if e.is_fatal() {
                         break;
                     }
@@ -345,12 +347,12 @@ impl Suggestor for BreadthResearchSuggestor {
             self.processed.lock().unwrap().insert(
                 ctx.get(ContextKey::Strategies)
                     .iter()
-                    .find(|f| f.content == strategy)
-                    .map_or_else(|| FactId::new(""), |f| f.id.clone()),
+                    .find(|f| f.content() == strategy)
+                    .map_or_else(|| FactId::new(""), |f| f.id().clone()),
             );
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -390,9 +392,9 @@ impl DepthResearchSuggestor {
         let processed = self.processed.lock().unwrap();
         ctx.get(ContextKey::Strategies)
             .iter()
-            .filter(|f| f.content.contains(&self.tag))
-            .filter(|f| !processed.contains(&f.id))
-            .map(|f| f.content.clone())
+            .filter(|f| f.content().contains(&self.tag))
+            .filter(|f| !processed.contains(f.id()))
+            .map(|f| f.content().to_string())
             .collect()
     }
 }
@@ -413,7 +415,7 @@ impl Suggestor for DepthResearchSuggestor {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = self.unprocessed_strategies(ctx);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for strategy in strategies {
             if !self.budget.try_use("searches") {
@@ -436,7 +438,7 @@ impl Suggestor for DepthResearchSuggestor {
                             "query": query,
                         })
                         .to_string();
-                        proposals.push(
+                        effect.push(
                             ProposedFact::new(
                                 ContextKey::Signals,
                                 id,
@@ -448,7 +450,7 @@ impl Suggestor for DepthResearchSuggestor {
                     }
                 }
                 Err(e) => {
-                    proposals.push(error_to_constraint(&e, "dd-depth-research"));
+                    effect.push(error_to_constraint(&e, "dd-depth-research"));
                     if e.is_fatal() {
                         break;
                     }
@@ -458,12 +460,12 @@ impl Suggestor for DepthResearchSuggestor {
             self.processed.lock().unwrap().insert(
                 ctx.get(ContextKey::Strategies)
                     .iter()
-                    .find(|f| f.content == strategy)
-                    .map_or_else(|| FactId::new(""), |f| f.id.clone()),
+                    .find(|f| f.content() == strategy)
+                    .map_or_else(|| FactId::new(""), |f| f.id().clone()),
             );
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -528,10 +530,10 @@ impl Suggestor for FactExtractorSuggestor {
         let mut seen_fact_keys: HashSet<String> = ctx
             .get(ContextKey::Hypotheses)
             .iter()
-            .filter_map(|fact| existing_fact_signature(&fact.content))
+            .filter_map(|fact| existing_fact_signature(fact.content()))
             .collect();
 
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
         match self.llm.complete(&prompt).await {
             Ok(raw) => match parse_json_array_response(&raw, "facts") {
                 Ok(facts) => {
@@ -544,7 +546,7 @@ impl Suggestor for FactExtractorSuggestor {
                             continue;
                         }
                         let id = format!("hypothesis-{}-{i}", Uuid::new_v4());
-                        proposals.push(
+                        effect.push(
                             ProposedFact::new(
                                 ContextKey::Hypotheses,
                                 id,
@@ -563,15 +565,15 @@ impl Suggestor for FactExtractorSuggestor {
                             &raw[..raw.len().min(200)]
                         ),
                     };
-                    proposals.push(error_to_constraint(&parse_err, "dd-fact-extractor"));
+                    effect.push(error_to_constraint(&parse_err, "dd-fact-extractor"));
                 }
             },
             Err(e) => {
-                proposals.push(error_to_constraint(&e, "dd-fact-extractor"));
+                effect.push(error_to_constraint(&e, "dd-fact-extractor"));
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -649,11 +651,11 @@ impl Suggestor for GapDetectorSuggestor {
 
         let prompt =
             prompts::gap_detection(&self.subject, hypotheses, generation, self.max_generations);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
         let mut seen_strategy_contents: HashSet<String> = ctx
             .get(ContextKey::Strategies)
             .iter()
-            .map(|fact| fact.content.clone())
+            .map(|fact| fact.content().to_string())
             .collect();
 
         match self.llm.complete(&prompt).await {
@@ -671,7 +673,7 @@ impl Suggestor for GapDetectorSuggestor {
                         }
                         let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
 
-                        proposals.push(ProposedFact::new(
+                        effect.push(ProposedFact::new(
                             ContextKey::Strategies,
                             id,
                             content,
@@ -687,15 +689,15 @@ impl Suggestor for GapDetectorSuggestor {
                             &raw[..raw.len().min(200)]
                         ),
                     };
-                    proposals.push(error_to_constraint(&parse_err, "dd-gap-detector"));
+                    effect.push(error_to_constraint(&parse_err, "dd-gap-detector"));
                 }
             },
             Err(e) => {
-                proposals.push(error_to_constraint(&e, "dd-gap-detector"));
+                effect.push(error_to_constraint(&e, "dd-gap-detector"));
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -738,23 +740,23 @@ impl Suggestor for ContradictionFinderSuggestor {
         // Group hypotheses by topic (from JSON "category" field)
         let mut by_category: HashMap<String, Vec<(FactId, String)>> = HashMap::new();
         for fact in hypotheses {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&fact.content) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(fact.content()) {
                 let category = v["category"].as_str().unwrap_or("unknown").to_string();
                 let claim = v["claim"].as_str().unwrap_or("").to_string();
                 if !claim.is_empty() {
                     by_category
                         .entry(category)
                         .or_default()
-                        .push((fact.id.clone(), claim));
+                        .push((fact.id().clone(), claim));
                 }
             }
         }
 
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
         let existing_evaluations: HashSet<FactId> = ctx
             .get(ContextKey::Evaluations)
             .iter()
-            .map(|f| f.id.clone())
+            .map(|f| f.id().clone())
             .collect();
 
         // Flag categories where claims contain contradictory signals
@@ -787,7 +789,7 @@ impl Suggestor for ContradictionFinderSuggestor {
                 })
                 .to_string();
 
-                proposals.push(
+                effect.push(
                     ProposedFact::new(
                         ContextKey::Evaluations,
                         id,
@@ -799,7 +801,7 @@ impl Suggestor for ContradictionFinderSuggestor {
             }
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 
@@ -875,12 +877,16 @@ impl Suggestor for SynthesisSuggestor {
         match self.llm.complete(&prompt).await {
             Ok(raw) => {
                 let id = format!("synthesis-{}", Uuid::new_v4());
-                AgentEffect::with_proposal(
-                    ProposedFact::new(ContextKey::Proposals, id, raw, "dd-synthesis")
-                        .with_confidence(0.8),
-                )
+                AgentEffect::builder()
+                    .proposal(
+                        ProposedFact::new(ContextKey::Proposals, id, raw, "dd-synthesis")
+                            .with_confidence(0.8),
+                    )
+                    .build()
             }
-            Err(e) => AgentEffect::with_proposal(error_to_constraint(&e, "dd-synthesis")),
+            Err(e) => AgentEffect::builder()
+                .proposal(error_to_constraint(&e, "dd-synthesis"))
+                .build(),
         }
     }
 }
@@ -908,14 +914,14 @@ struct ConsolidationCandidate {
 
 pub mod prompts {
     use super::{DdFactSummary, covered_dd_categories, missing_expected_dd_categories};
-    use converge_pack::Fact;
+    use converge_pack::ContextFact;
 
-    pub fn fact_extraction(subject: &str, signals: &[Fact]) -> String {
+    pub fn fact_extraction(subject: &str, signals: &[ContextFact]) -> String {
         let sources_text: String = signals
             .iter()
             .enumerate()
             .filter_map(|(i, f)| {
-                let v: serde_json::Value = serde_json::from_str(&f.content).ok()?;
+                let v: serde_json::Value = serde_json::from_str(f.content()).ok()?;
                 Some(format!(
                     "[Source {i}] ({}) {}\n  URL: {}\n  {}",
                     v["provider"].as_str().unwrap_or("?"),
@@ -960,13 +966,13 @@ Rules:
 
     pub fn gap_detection(
         subject: &str,
-        hypotheses: &[Fact],
+        hypotheses: &[ContextFact],
         generation: usize,
         max_generations: usize,
     ) -> String {
         let facts_text: String = hypotheses
             .iter()
-            .map(|f| f.content.as_str())
+            .map(converge_pack::ContextFact::content)
             .collect::<Vec<_>>()
             .join("\n");
         let covered_categories = covered_dd_categories(hypotheses);
@@ -1067,11 +1073,11 @@ fn strip_fences(raw: &str) -> &str {
     s.strip_suffix("```").unwrap_or(s).trim()
 }
 
-pub fn consolidate_dd_hypotheses(hypotheses: &[Fact]) -> Vec<DdFactSummary> {
+pub fn consolidate_dd_hypotheses(hypotheses: &[ContextFact]) -> Vec<DdFactSummary> {
     consolidate_dd_fact_values(
         hypotheses
             .iter()
-            .filter_map(|fact| serde_json::from_str::<serde_json::Value>(&fact.content).ok())
+            .filter_map(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok())
             .collect::<Vec<_>>(),
     )
 }
@@ -1752,11 +1758,11 @@ fn canonicalize_claim(claim: &str) -> String {
         .join(" ")
 }
 
-fn covered_dd_categories(hypotheses: &[Fact]) -> Vec<String> {
+fn covered_dd_categories(hypotheses: &[ContextFact]) -> Vec<String> {
     let mut categories: Vec<String> = hypotheses
         .iter()
         .filter_map(|fact| {
-            let value = serde_json::from_str::<serde_json::Value>(&fact.content).ok()?;
+            let value = serde_json::from_str::<serde_json::Value>(fact.content()).ok()?;
             let normalized = normalize_dd_fact(&value)?;
             normalized["category"].as_str().map(ToOwned::to_owned)
         })
@@ -1767,7 +1773,7 @@ fn covered_dd_categories(hypotheses: &[Fact]) -> Vec<String> {
     categories
 }
 
-fn missing_expected_dd_categories(hypotheses: &[Fact]) -> Vec<&'static str> {
+fn missing_expected_dd_categories(hypotheses: &[ContextFact]) -> Vec<&'static str> {
     let covered: HashSet<String> = covered_dd_categories(hypotheses).into_iter().collect();
     expected_dd_categories()
         .into_iter()
@@ -1873,7 +1879,7 @@ fn is_relevant(title: &str, content: &str, url: &str, subject: &str) -> bool {
 mod tests {
     use std::sync::Arc;
 
-    use converge_pack::{Context, ContextKey, Fact, ProposedFact, Suggestor};
+    use converge_pack::{Context, ContextFact, ContextKey, ProposedFact, Suggestor};
 
     use super::{
         DdError, DdLlm, SharedBudget, SynthesisSuggestor, canonicalize_claim,
@@ -1905,7 +1911,7 @@ mod tests {
             }
         }
 
-        fn get(&self, _key: ContextKey) -> &[Fact] {
+        fn get(&self, _key: ContextKey) -> &[ContextFact] {
             &[]
         }
 

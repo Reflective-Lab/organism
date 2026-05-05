@@ -222,16 +222,16 @@ impl Suggestor for OutcomeSimulationAgent {
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let strategies = ctx.get(ContextKey::Strategies);
-        let mut proposals = Vec::new();
+        let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(&fact.content)
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content}));
+            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
+                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
 
             let result = self.simulator.simulate(&plan_json);
 
             let verdict = SimulationVerdict {
-                strategy_id: fact.id.clone(),
+                strategy_id: fact.id().clone(),
                 dimension: SimulationDimension::Outcome,
                 passed: result.passed,
                 confidence: result.confidence,
@@ -249,7 +249,7 @@ impl Suggestor for OutcomeSimulationAgent {
                 ContextKey::Constraints
             };
 
-            proposals.push(ProposedFact::new(
+            effect.push(ProposedFact::new(
                 key,
                 verdict.fact_id(),
                 verdict.to_json(),
@@ -257,7 +257,7 @@ impl Suggestor for OutcomeSimulationAgent {
             ));
         }
 
-        AgentEffect::with_proposals(proposals)
+        effect.build()
     }
 }
 

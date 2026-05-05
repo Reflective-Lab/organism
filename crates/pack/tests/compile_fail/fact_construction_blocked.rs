@@ -1,11 +1,11 @@
-/// Proves that direct `Fact` construction is impossible from organism code.
-/// The `Fact` type has private fields — only Converge's kernel can create facts
-/// through the promotion gate.
-use converge_pack::{ContextKey, Fact, FactPromotionRecord};
+/// Proves that direct `ContextFact` construction is impossible from organism code.
+/// `ContextFact` has private fields — only Converge's kernel can create context
+/// facts through the admission/promotion path.
+use converge_pack::{ContextFact, ContextKey, FactPromotionRecord};
 
 fn main() {
-    // This must NOT compile: `key` field is private.
-    let _fact = Fact {
+    // This must NOT compile: every field is private.
+    let _fact = ContextFact {
         key: ContextKey::Seeds,
         id: "forged-fact".into(),
         content: "bypassed governance".into(),

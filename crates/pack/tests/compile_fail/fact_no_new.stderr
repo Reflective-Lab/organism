@@ -1,5 +1,17 @@
-error[E0599]: no function or associated item named `construct_unchecked` found for struct `Fact` in the current scope
- --> tests/compile_fail/fact_no_new.rs:7:23
-  |
-7 |     let _fact = Fact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
-  |                       ^^^^^^^^^^^^^^^^^^^ function or associated item not found in `Fact`
+error[E0599]: no function or associated item named `construct_unchecked` found for struct `ContextFact` in the current scope
+   --> tests/compile_fail/fact_no_new.rs:8:22
+    |
+  8 |         ContextFact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
+    |                      ^^^^^^^^^^^^^^^^^^^ function or associated item not found in `ContextFact`
+    |
+note: if you're trying to build a new `ContextFact`, consider using `ContextFact::new_projection` which returns `ContextFact`
+   --> /Users/kpernyer/dev/work/converge/crates/pack/src/fact.rs:339:5
+    |
+339 | /     pub fn new_projection(
+340 | |         key: ContextKey,
+341 | |         id: impl Into<FactId>,
+342 | |         content: impl Into<String>,
+343 | |         promotion_record: FactPromotionRecord,
+344 | |         created_at: impl Into<Timestamp>,
+345 | |     ) -> Self {
+    | |_____________^

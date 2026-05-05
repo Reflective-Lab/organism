@@ -241,12 +241,14 @@ mod tests {
 
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seeds = ctx.get(ContextKey::Seeds);
-            AgentEffect::with_proposal(ProposedFact::new(
-                ContextKey::Hypotheses,
-                format!("hyp-{}", seeds[0].id),
-                "converged hypothesis",
-                self.name(),
-            ))
+            AgentEffect::builder()
+                .proposal(ProposedFact::new(
+                    ContextKey::Hypotheses,
+                    format!("hyp-{}", seeds[0].id()),
+                    "converged hypothesis",
+                    self.name(),
+                ))
+                .build()
         }
     }
 
