@@ -142,11 +142,13 @@ impl CredentialProbe {
     }
 
     /// Standard credential checks for organism-intelligence providers.
+    /// LinkedIn moved to `embassy-linkedin`; consumers that want a LinkedIn
+    /// probe should add it explicitly via `.require("linkedin", "...")` from
+    /// the embassy crate.
     #[must_use]
     pub fn with_standard_checks(self) -> Self {
         self.require("vision", "ANTHROPIC_API_KEY")
             .require("ocr", "MISTRAL_API_KEY")
-            .require("linkedin", "LINKEDIN_API_KEY")
             .require("patent", "USPTO_API_KEY")
             .require("social", "ANTHROPIC_API_KEY")
     }
@@ -227,7 +229,7 @@ impl ReadinessProbe for PackProbe<'_> {
                     detail: "registered in runtime".into(),
                 }));
             } else {
-                let severity = if pack_req.confidence >= 0.8 {
+                let severity = if pack_req.confidence.as_f64() >= 0.8 {
                     GapSeverity::Blocking
                 } else {
                     GapSeverity::Degraded
@@ -240,7 +242,7 @@ impl ReadinessProbe for PackProbe<'_> {
                         "pack '{}' needed ({:?}, confidence {:.0}%) but not registered",
                         pack_req.pack_name,
                         pack_req.source,
-                        pack_req.confidence * 100.0
+                        pack_req.confidence.as_f64() * 100.0
                     ),
                     suggestion: Some(format!(
                         "registry.register_pack(\"{}\", ...)",

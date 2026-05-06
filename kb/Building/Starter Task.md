@@ -56,6 +56,6 @@ let result = formation.run().await?;
 ## Reference Points
 
 Use `crates/runtime/src/formation.rs` for the current Formation contract and
-`examples/expense-approval` for the intended end-to-end wiring pattern.
+`examples/expense-approval` (in `atelier-showcase`) for the intended end-to-end wiring pattern.
 
 See also: [[Architecture/Converge Contract]], [[Philosophy/Relationship to Converge]]

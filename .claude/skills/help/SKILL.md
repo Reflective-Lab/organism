@@ -7,23 +7,27 @@ allowed-tools: Read
 ---
 # Skills
 
+Single-developer workflow. `main` plus one in-flight branch (`next` or `release/<version>`). No worktrees. No per-task topic branches. Full policy: `~/dev/CLAUDE.md` § "Git Workflow".
+
 ```
 Morning:    /focus → /sync → /next
-Work:       /fix, /check, /pr
+Work:       /fix, /check
+Ship:       /pr → /merge-cleanup
 Evening:    /done
 Monday:     /audit
 
 ── Developer ──────────────────────────────────────
 /dev            Start local dev environment
 /check          Lint + test. Am I clean?
-/fix <issue>    Fix GitHub issue → branch → PR
-/pr [title]     Push and create PR
-/wip            Save WIP, push, switch devices
+/fix <issue>    Fix GitHub issue on current branch
+/wip            Save WIP, push, switch devices (current branch)
 /test [crate]   Expand test coverage
 
 ── Git ────────────────────────────────────────────
-/branch <type/slug>    Start topic branch + worktree
-/merge-cleanup <branch> Post-merge: delete branch + worktree
+/branch [release/<version>]   Switch to (or create) the in-flight branch.
+                              Defaults to `next`. No worktrees.
+/pr [title]                   PR the in-flight branch → main
+/merge-cleanup [branch]       After merge: delete spent branch, rotate `next`
 
 ── Product Owner ──────────────────────────────────
 /focus          Session opener. Where are we?
@@ -40,7 +44,5 @@ Monday:     /audit
 /sync           Pull, PRs, issues, build health
 /deploy [target] Deploy to production
 ```
-
-Justfile equivalents: `just git-hygiene`, `just worktree <branch>`, `just worktree-rm <branch>`, `just worktrees`
 
 For the full reference: `~/dev/work/kb/Workflow/Cheat Sheet.md`

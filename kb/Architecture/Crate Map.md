@@ -16,7 +16,7 @@ organism-pack          → intent, planning, adversarial,   Curated planning con
 organism-runtime       → pack, domain                      Curated embedding API
 organism-intelligence  (no internal deps)                  Provider-shaped capabilities
 organism-notes         → intelligence                      Note lifecycle capabilities
-organism-domain        (no internal deps)                  Organizational pack library
+organism-domain        (no internal deps)                  Organizational pack library (external: `atelier-showcase`)
 ```
 
 Default downstream rule:
@@ -55,13 +55,13 @@ No dependency on `converge-core`, `converge-runtime`, or other internal Converge
 | Layer | Packs | Nature |
 |---|---|---|
 | converge-domain | trust, money, delivery, data_metrics | Foundational state machines — any system needs these |
-| organism-domain | customers, people, legal, procurement, ... | Organizational workflows — build on top of foundational packs |
-| organism-domain | knowledge lifecycle | Moved from converge-domain — organizational learning, not kernel infra |
+| organism-domain | customers, people, legal, procurement, ... | Organizational workflows — build on top of foundational packs (external) |
+| organism-domain | knowledge lifecycle | Moved from converge-domain — organizational learning, not kernel infra (external) |
 
 Blueprints (lead-to-cash, hire-to-retire, etc.) compose organism-domain packs with converge-domain foundational packs.
 
 ## Legacy
 
-The pre-restructure monolith has been retired. Current crates and examples are canonical.
+The pre-restructure monolith has been retired. Current crates and the [`atelier-showcase`](../../extensions/atelier-showcase) repository are canonical.
 
 See also: [[Architecture/Converge Contract]], [[Architecture/Pipeline Flow]]

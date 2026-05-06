@@ -8,7 +8,7 @@ use converge_kernel::formation::{
     FormationCatalog, FormationKind, FormationTemplateQuery, ProfileSnapshot, SuggestorCapability,
     SuggestorRole,
 };
-use converge_provider_api::{BackendRequirements, ComplianceLevel, DataSovereignty};
+use converge_provider::{BackendRequirements, ComplianceLevel, DataSovereignty};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -566,7 +566,7 @@ fn remove_capabilities(
 mod tests {
     use super::*;
     use crate::vendor_selection::vendor_selection_formation_catalog;
-    use converge_provider_api::{BackendKind, Capability, CostClass, LatencyClass};
+    use converge_provider::{BackendKind, Capability, CostClass, LatencyClass};
 
     fn id(n: u128) -> Uuid {
         Uuid::from_u128(n)

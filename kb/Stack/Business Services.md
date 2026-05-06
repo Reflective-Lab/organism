@@ -10,8 +10,8 @@ Organism uses external business data services for planning intelligence. These a
 | Service | Purpose | Current Home |
 |---|---|---|
 | OCR | Document understanding, invoice parsing | `crates/intelligence/src/ocr/` |
-| LinkedIn | Professional network research, company intel | `crates/intelligence/src/linkedin.rs` and `crates/domain/src/packs/linkedin_research.rs` |
-| Patent Search | IP landscape, competitive intelligence | `crates/intelligence/src/patent.rs` and `crates/domain/src/blueprints/patent_research.rs` |
+| LinkedIn | Professional network research, company intel | `crates/intelligence/src/linkedin.rs` and `organism-domain` (external) |
+| Patent Search | IP landscape, competitive intelligence | `crates/intelligence/src/patent.rs` and `organism-domain` (external) |
 | Brave Search | Web search with citations | Converge provider surfaces; injected into Organism planning as a dependency |
 
 ## Architecture

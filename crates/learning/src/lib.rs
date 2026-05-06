@@ -19,6 +19,7 @@
 pub mod adapter;
 pub mod prior_agent;
 
+use converge_pack::UnitInterval;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -64,7 +65,7 @@ pub struct ErrorDimension {
 pub struct Lesson {
     pub insight: String,
     pub context: String,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub planning_adjustment: String,
 }
 
@@ -74,8 +75,8 @@ pub struct Lesson {
 pub struct PriorCalibration {
     pub assumption_type: String,
     pub context: String,
-    pub prior_confidence: f64,
-    pub posterior_confidence: f64,
+    pub prior_confidence: UnitInterval,
+    pub posterior_confidence: UnitInterval,
     pub evidence_count: u32,
 }
 
@@ -93,7 +94,7 @@ pub struct AdversarialContext {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningSignal {
     pub kind: SignalKind,
-    pub weight: f32,
+    pub weight: UnitInterval,
     pub note: String,
 }
 

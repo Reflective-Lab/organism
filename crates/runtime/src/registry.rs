@@ -592,7 +592,7 @@ impl IntentResolver for StructuralResolver<'_> {
             binding.packs.push(PackRequirement {
                 pack_name,
                 reason,
-                confidence,
+                confidence: converge_pack::UnitInterval::clamped(confidence),
                 source: ResolutionLevel::Structural,
             });
         }
@@ -601,7 +601,7 @@ impl IntentResolver for StructuralResolver<'_> {
             binding.capabilities.push(CapabilityRequirement {
                 capability: cap,
                 reason,
-                confidence: 0.85,
+                confidence: converge_pack::UnitInterval::clamped(0.85),
                 source: ResolutionLevel::Structural,
             });
         }
@@ -1025,7 +1025,7 @@ mod tests {
             .collect();
         assert_eq!(customer_matches.len(), 1, "should deduplicate to one entry");
         assert!(
-            customer_matches[0].confidence >= 0.75,
+            customer_matches[0].confidence.as_f64() >= 0.75,
             "should keep highest confidence match"
         );
     }

@@ -5,6 +5,7 @@
 //! and approval gates.
 
 use crate::{DimensionResult, Sample, SimulationDimension};
+use converge_pack::UnitInterval;
 
 #[derive(Debug, Clone)]
 pub struct PolicySimulatorConfig {
@@ -151,7 +152,7 @@ impl PolicySimulator {
         DimensionResult {
             dimension: SimulationDimension::Policy,
             passed,
-            confidence,
+            confidence: UnitInterval::clamped(confidence),
             findings,
             samples,
         }

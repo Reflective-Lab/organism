@@ -6,6 +6,7 @@
 //! circular reasoning.
 
 use crate::{DimensionResult, Sample, SimulationDimension};
+use converge_pack::UnitInterval;
 
 #[derive(Debug, Clone)]
 pub struct CausalSimulatorConfig {
@@ -115,7 +116,7 @@ impl CausalSimulator {
             return DimensionResult {
                 dimension: SimulationDimension::Causal,
                 passed: true, // no claims = nothing to challenge
-                confidence: 0.5,
+                confidence: UnitInterval::clamped(0.5),
                 findings,
                 samples: Self::sample(0.5),
             };
@@ -179,7 +180,7 @@ impl CausalSimulator {
         DimensionResult {
             dimension: SimulationDimension::Causal,
             passed,
-            confidence,
+            confidence: UnitInterval::clamped(confidence),
             findings,
             samples,
         }
@@ -299,7 +300,7 @@ mod tests {
         let result = sim.simulate(&plan);
         assert_eq!(result.dimension, SimulationDimension::Causal);
         assert!(result.passed);
-        assert!(result.confidence > 0.8);
+        assert!(result.confidence.as_f64() > 0.8);
     }
 
     #[test]
@@ -372,7 +373,7 @@ mod tests {
         let plan = json!({});
         let result = sim.simulate(&plan);
         assert!(result.passed);
-        assert!((result.confidence - 0.5).abs() < f64::EPSILON);
+        assert!((result.confidence.as_f64() - 0.5).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -417,7 +417,7 @@ impl Suggestor for DisagreementMapper {
         let mapped = self.mapped_topics.lock().unwrap();
         ctx.get(ContextKey::Disagreements)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Disagreement>(fact.content()).ok())
+            .filter_map(|fact| fact.parse_json_content::<Disagreement>().ok())
             .any(|d| !mapped.contains(&d.topic))
     }
 
@@ -426,7 +426,7 @@ impl Suggestor for DisagreementMapper {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Disagreement>> = HashMap::new();
         for fact in ctx.get(ContextKey::Disagreements) {
-            let Ok(d) = serde_json::from_str::<Disagreement>(fact.content()) else {
+            let Ok(d) = fact.parse_json_content::<Disagreement>() else {
                 continue;
             };
             if mapped.contains(&d.topic) {
@@ -514,7 +514,7 @@ impl Suggestor for ConsensusEvaluator {
         let decided = self.decided_topics.lock().unwrap();
         ctx.get(ContextKey::Votes)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Vote>(fact.content()).ok())
+            .filter_map(|fact| fact.parse_json_content::<Vote>().ok())
             .any(|vote| !decided.contains(&vote.topic))
     }
 
@@ -523,7 +523,7 @@ impl Suggestor for ConsensusEvaluator {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Vote>> = HashMap::new();
         for fact in ctx.get(ContextKey::Votes) {
-            let Ok(vote) = serde_json::from_str::<Vote>(fact.content()) else {
+            let Ok(vote) = fact.parse_json_content::<Vote>() else {
                 continue;
             };
             if decided.contains(&vote.topic) {
@@ -616,7 +616,7 @@ mod tests {
         assert_eq!(outcomes.len(), 1);
         assert_eq!(outcomes[0].id().as_str(), "outcome:done-r1");
 
-        let outcome: ConsensusOutcome = serde_json::from_str(outcomes[0].content()).unwrap();
+        let outcome: ConsensusOutcome = outcomes[0].parse_json_content().unwrap();
         assert_eq!(outcome.tally().yes_votes(), 2);
         assert_eq!(outcome.tally().no_votes(), 1);
         assert_eq!(outcome.total_voters().get(), 3);
@@ -647,7 +647,7 @@ mod tests {
         for fact in outcomes {
             decisions.insert(
                 fact.id().as_str().to_string(),
-                serde_json::from_str(fact.content()).unwrap(),
+                fact.parse_json_content().unwrap(),
             );
         }
         assert!(decisions["outcome:a"].passes());
@@ -670,7 +670,7 @@ mod tests {
             .context
             .get(ContextKey::ConsensusOutcomes);
         assert_eq!(outcomes.len(), 1);
-        let outcome: ConsensusOutcome = serde_json::from_str(outcomes[0].content()).unwrap();
+        let outcome: ConsensusOutcome = outcomes[0].parse_json_content().unwrap();
         assert!(!outcome.passes());
     }
 
@@ -1053,7 +1053,7 @@ mod tests {
         let mut by_id: std::collections::HashMap<String, DisagreementMap> =
             std::collections::HashMap::new();
         for fact in maps {
-            let parsed: DisagreementMap = serde_json::from_str(fact.content()).unwrap();
+            let parsed: DisagreementMap = fact.parse_json_content().unwrap();
             by_id.insert(fact.id().as_str().to_string(), parsed);
         }
         let map_a = &by_id["disagreement_map:topic-a"];

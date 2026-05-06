@@ -4,6 +4,7 @@
 //! system load, timeline realism, and dependency availability.
 
 use crate::{DimensionResult, Sample, SimulationDimension};
+use converge_pack::UnitInterval;
 
 #[derive(Debug, Clone)]
 pub struct OperationalSimulatorConfig {
@@ -186,7 +187,7 @@ impl OperationalSimulator {
         DimensionResult {
             dimension: SimulationDimension::Operational,
             passed,
-            confidence,
+            confidence: UnitInterval::clamped(confidence),
             findings,
             samples,
         }
@@ -314,7 +315,7 @@ mod tests {
         });
         let result = sim.simulate(&plan);
         assert!(result.findings.iter().any(|f| f.contains("overloaded")));
-        assert!(result.confidence < 1.0);
+        assert!(result.confidence.as_f64() < 1.0);
     }
 
     #[test]

@@ -39,7 +39,7 @@ Human intent → Organism (form, reason, debate, simulate) → Converge (run, pr
 | `runtime` | Formation assembly, runtime wiring, readiness, Converge execution |
 | `intelligence` | OCR, vision, web, social, patent, linkedin, billing |
 | `notes` | Vault management, source adapters, cleanup, enrichment |
-| `domain` | 13 org packs + knowledge lifecycle + 8 blueprints |
+| `domain` | 13 org packs + knowledge lifecycle + 8 blueprints (lives in `atelier-showcase`) |
 
 ## Converge v3.7.3 contract
 
@@ -81,10 +81,18 @@ See `~/dev/work/converge/kb/Architecture/API Surfaces.md` for the full public co
 - No feature flags or backwards-compat shims unless asked.
 - No mocking Converge in integration tests; use a real instance.
 
+## Git workflow (single developer)
+
+- **No worktrees.** Single working tree. Do not invoke `git worktree` or skills that wrap it.
+- **No feature branches.** `main` plus one in-flight `next` (or `release/<version>`) branch. All work lands on that one branch; merge to `main` at release; cut a fresh `next` afterward.
+- See `~/dev/CLAUDE.md` § "Git Workflow" for the workspace-wide statement.
+
 ## Source of strategy truth
 
 `~/dev/brand-kb/organism-business/strategy/STRATEGY.md` is canonical. When in doubt about scope or framing, read it.
 
 ## Legacy
 
-The pre-restructure crates have been retired. Use the current `crates/` and `examples/` trees as the only supported implementation surface.
+The pre-restructure crates have been retired. Use the current `crates/`
+tree and the [`atelier-showcase`](../../extensions/atelier-showcase)
+repository as the only supported implementation surface.

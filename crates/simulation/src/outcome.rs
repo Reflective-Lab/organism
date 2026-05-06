@@ -6,6 +6,7 @@
 
 use crate::types::RiskLikelihood;
 use crate::{DimensionResult, Sample, SimulationDimension};
+use converge_pack::UnitInterval;
 
 /// Configuration for the outcome simulator.
 #[derive(Debug, Clone)]
@@ -167,7 +168,7 @@ impl OutcomeSimulator {
         DimensionResult {
             dimension: SimulationDimension::Outcome,
             passed,
-            confidence: effective_confidence,
+            confidence: UnitInterval::clamped(effective_confidence),
             findings,
             samples,
         }
@@ -286,7 +287,7 @@ mod tests {
         let result = sim.simulate(&plan);
         assert_eq!(result.dimension, SimulationDimension::Outcome);
         assert!(result.passed);
-        assert!(result.confidence > 0.8);
+        assert!(result.confidence.as_f64() > 0.8);
     }
 
     #[test]
@@ -305,7 +306,7 @@ mod tests {
 
         let result = sim.simulate(&plan);
         assert!(!result.passed);
-        assert!(result.confidence < 0.6);
+        assert!(result.confidence.as_f64() < 0.6);
     }
 
     #[test]
@@ -315,7 +316,7 @@ mod tests {
 
         let result = sim.simulate(&plan);
         assert!(!result.passed); // 0.5 < 0.6 threshold
-        assert!((result.confidence - 0.5).abs() < f64::EPSILON);
+        assert!((result.confidence.as_f64() - 0.5).abs() < f64::EPSILON);
         assert!(result.findings[0].contains("neutral prior"));
     }
 

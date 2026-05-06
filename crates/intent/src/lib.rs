@@ -7,6 +7,7 @@
 //! - [`decomposition`] — breaks intents into governed intent trees
 
 pub mod admission;
+pub mod bridge;
 pub mod decomposition;
 pub mod resolution;
 

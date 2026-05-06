@@ -11,6 +11,7 @@ description = "Planning layer for Organism — huddle, debate loop, plan annotat
 organism-intent.workspace = true
 converge-pack.workspace = true
 converge-kernel.workspace = true
+converge-provider.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true

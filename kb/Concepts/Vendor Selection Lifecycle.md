@@ -200,5 +200,5 @@ vendor-selection Suggestors:
 
 These cover a compact F3 Decide fixture: candidate normalization, four
 evaluation dimensions, and consensus ranking. The
-`examples/vendor-selection` crate now consumes those pack Suggestors instead of
+`examples/vendor-selection` crate (in `atelier-showcase`) now consumes those pack Suggestors instead of
 defining local demo-only agents. F1/F2/F4 remain lifecycle design targets.

@@ -95,9 +95,9 @@ pub use organism_planning::{
     },
     dd::{
         BreadthResearchSuggestor, ContradictionFinderSuggestor, DdError, DdFactSummary, DdHooks,
-        DdLlm, DdSearch, DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdLlm,
-        FailoverDdSearch, GapDetectorSuggestor, HookPatterns, SearchHit, SynthesisSuggestor,
-        consolidate_dd_hypotheses, extract_hooks_from_facts,
+        DdSearch, DepthResearchSuggestor, FactExtractorSuggestor, FailoverDdSearch,
+        GapDetectorSuggestor, HookPatterns, SearchHit, SynthesisSuggestor,
+        consolidate_dd_hypotheses, dd_complete, extract_hooks_from_facts,
     },
     kb::{
         HubCategory, KbConfig, RootPageDef, sanitize_filename, slugify, update_root_pages,
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(binding.packs.len(), 2);
         assert_eq!(binding.capabilities.len(), 2);
         assert_eq!(binding.invariants.len(), 2);
-        assert!((binding.packs[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.packs[0].confidence.as_f64() - 1.0).abs() < f64::EPSILON);
         assert_eq!(binding.packs[1].pack_name, "knowledge");
         assert_eq!(binding.capabilities[0].capability, "web");
     }
@@ -252,7 +252,7 @@ mod tests {
         assert!(binding.capabilities.is_empty());
         assert!(binding.invariants.is_empty());
         assert_eq!(binding.resolution.prior_episodes_consulted, 0);
-        assert!((binding.resolution.completeness_confidence - 0.0).abs() < f64::EPSILON);
+        assert!((binding.resolution.completeness_confidence.as_f64() - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -426,12 +426,12 @@ mod tests {
         let result = DimensionResult {
             dimension: SimulationDimension::Cost,
             passed: true,
-            confidence: 0.95,
+            confidence: converge_pack::UnitInterval::clamped(0.95),
             findings: vec!["within budget".into()],
             samples: vec![],
         };
         assert!(result.passed);
-        assert!((result.confidence - 0.95).abs() < f64::EPSILON);
+        assert!((result.confidence.as_f64() - 0.95).abs() < f64::EPSILON);
         assert_eq!(result.findings.len(), 1);
     }
 
@@ -440,10 +440,10 @@ mod tests {
         let lesson = Lesson {
             insight: "score 0.88 → approved".into(),
             context: "expense approval".into(),
-            confidence: 0.9,
+            confidence: converge_pack::UnitInterval::clamped(0.9),
             planning_adjustment: "none".into(),
         };
         assert_eq!(lesson.insight, "score 0.88 → approved");
-        assert!((lesson.confidence - 0.9).abs() < f64::EPSILON);
+        assert!((lesson.confidence.as_f64() - 0.9).abs() < f64::EPSILON);
     }
 }

@@ -42,15 +42,16 @@ loop can't learn from operator judgment.
 | Variant | Status | Source confidence (in `recall.rs`) | Source type |
 |---|---|---|---|
 | `UserApprovalGranted` | ✓ landed | `0.7` | `SimilarSuccess` |
+| `UserApprovalRejected` | ✓ landed | `0.7` | `AntiPattern` |
 | `UserOverrideIssued` | ✓ landed | `0.9` | `AntiPattern` |
-| `UserApprovalRejected` | pending | proposed: `0.7` | proposed: `AntiPattern` |
-| `UserCorrection` | pending | proposed: `0.85` | proposed: `Runbook` |
-| `UserBoundaryAdjusted` | pending | proposed: `0.8` | proposed: `Runbook` |
+| `UserCorrection` | ✓ landed | `0.85` | `Runbook` |
+| `UserBoundaryAdjusted` | ✓ landed | `0.8` | `Runbook` |
 
-The two landed variants are exercised end-to-end in
-`crates/runtime/tests/recall_biases_synthesis.rs`. The three pending variants
-need Converge implementation; the spec below is the contract Organism asks
-Converge to fulfill.
+All five variants ship in 3.8.0 and are exercised end-to-end:
+- `crates/runtime/tests/recall_biases_synthesis.rs` — the two pre-3.8 variants flow through `RoundSynthesizer`.
+- `crates/learning/tests/bidirectional_variants.rs` — all five variants flow through `PlanningPriorAgent::consult_recall` and produce typed `RecallCandidate` summaries with the (source_type, confidence) mapping above.
+
+The three new variants required additional kernel re-exports for `FactContent`, `FactContentKind`, `CorrectionTarget`, `BoundaryKind`, `BoundaryTarget`, `TypesIntentId`. All present in `converge_kernel` as of 3.8.0.
 
 ## Variant specs
 
