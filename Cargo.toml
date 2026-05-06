@@ -32,13 +32,28 @@ organism-learning = { path = "crates/learning", version = "1.5.0" }
 organism-runtime = { path = "crates/runtime", version = "1.5.0" }
 organism-pack = { path = "crates/pack", version = "1.5.0" }
 organism-intelligence = { path = "crates/intelligence", version = "1.5.0" }
-organism-domain = { path = "../../atelier/crates/organism-domain", version = "1.5.0" }
+organism-domain = { path = "../../extensions/atelier-showcase/crates/organism-domain", version = "1.5.0" }
 organism-notes = { path = "crates/notes", version = "1.5.0" }
 
-# Converge contract
-converge-pack = "3.8.0"
-converge-kernel = "3.8.0"
-converge-provider-api = "3.8.0"
+# Converge contract (3.8.1 floor — published to crates.io)
+converge-pack     = "3.8.1"
+converge-kernel   = "3.8.1"
+converge-provider = "3.8.1"
+
+# Converge extensions — all target Converge 3.8.1.
+# Aliased to their `[lib] name` for ergonomic `use <alias>::...`.
+arbiter          = { package = "converge-arbiter-policy",   version = "1.0" }
+atelier-domain   = { package = "converge-atelier-domain",   version = "1.0" }
+embassy-pack     = { package = "converge-embassy-pack",     version = "1.0" }
+embassy-linkedin = { package = "converge-embassy-linkedin", version = "1.0" }
+ferrox           = { package = "converge-ferrox-solver",    version = "0.4.1" }
+ferrox-server    = { package = "converge-ferrox-server",    version = "0.4.1" }
+manifold         = { package = "converge-manifold-adapters", version = "1.0" }
+mnemos           = { package = "converge-mnemos-knowledge", version = "1.0" }
+prism            = { package = "converge-prism-analytics",  version = "1.0" }
+
+# Axiom contract
+axiom-truth = "0.7"
 
 # Shared deps
 anyhow = "1"
@@ -77,8 +92,19 @@ cast_lossless = "allow"
 codegen-units = 1
 lto = true
 
-# Sync development window with Converge 3.8.0 (cut 2026-05-05).
+# Converge 3.8.1 foundation crates publish to crates.io directly; no patches
+# needed for them. Extension crates (`publish = false`) and the local axiom
+# checkout resolve through these path entries.
 [patch.crates-io]
-converge-pack         = { path = "../converge/crates/pack" }
-converge-kernel       = { path = "../converge/crates/kernel" }
-converge-provider-api = { path = "../converge/crates/provider-api" }
+converge-arbiter-policy     = { path = "../../extensions/arbiter-policy/crates/arbiter" }
+converge-atelier-domain     = { path = "../../extensions/atelier-showcase/crates/atelier-domain" }
+converge-embassy-pack       = { path = "../../extensions/embassy-ports/crates/pack" }
+converge-embassy-linkedin   = { path = "../../extensions/embassy-ports/crates/linkedin" }
+converge-ferrox-solver      = { path = "../../extensions/ferrox-solvers/crates/ferrox" }
+converge-ferrox-server      = { path = "../../extensions/ferrox-solvers/crates/ferrox-server" }
+converge-ferrox-ortools-sys = { path = "../../extensions/ferrox-solvers/crates/ortools-sys" }
+converge-ferrox-highs-sys   = { path = "../../extensions/ferrox-solvers/crates/highs-sys" }
+converge-manifold-adapters  = { path = "../../extensions/manifold-adapters/crates/manifold" }
+converge-mnemos-knowledge   = { path = "../../extensions/mnemos-knowledge/crates/mnemos" }
+converge-prism-analytics    = { path = "../../extensions/prism-analytics/crates/prism" }
+axiom-truth                 = { path = "../axiom" }

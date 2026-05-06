@@ -31,7 +31,7 @@ good chance it belongs in Organism.
 
 ## Organism Owns These Packs
 
-Organism owns the organizational workflow packs in `organism-domain`:
+Organism owns the organizational workflow packs in `organism-domain` (now maintained in the `atelier-showcase` repository):
 
 - `knowledge`
 - `customers`
@@ -134,7 +134,7 @@ Monterro's convergent due diligence flow was built app-first:
    - `StabilitySuggestor` — fires when a context key stabilizes for N cycles
    - `SharedBudget` — cross-suggestor resource tracking with named limits
 4. **Next step:** The five DD suggestors themselves (search, extract, detect, synthesize)
-   move into `organism-domain/src/packs/due_diligence.rs` as a proper domain pack
+   move into `organism-domain` (external) as a proper domain pack
    with generic callbacks for search and LLM. Monterro and hackathon become thin
    wiring layers that inject their backends.
 
@@ -156,7 +156,7 @@ If the answer is mostly yes, move it into Organism.
 
 - reusable planning semantics: `organism-pack`
 - reusable runtime embedding, resolution, readiness: `organism-runtime`
-- reusable organizational workflows: `organism-domain`
+- reusable organizational workflows: `organism-domain` (external)
 - reusable world-facing capability adapters: `organism-intelligence`
 - reusable vault and note lifecycle capability: `organism-notes`
 - product experience and app-specific orchestration: app repo

@@ -3,7 +3,7 @@
 //! Replaces string-based likelihood parsing and untyped JSON payloads
 //! with compile-time checked types.
 
-use converge_pack::FactId;
+use converge_pack::{FactId, UnitInterval};
 use serde::{Deserialize, Serialize};
 
 use crate::SimulationDimension;
@@ -58,7 +58,7 @@ pub struct SimulationVerdict {
     pub strategy_id: FactId,
     pub dimension: SimulationDimension,
     pub passed: bool,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub findings: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recommendation: Option<SimulationRecommendation>,
@@ -130,7 +130,7 @@ mod tests {
             strategy_id: "strat-1".into(),
             dimension: SimulationDimension::Cost,
             passed: true,
-            confidence: 0.85,
+            confidence: UnitInterval::clamped(0.85),
             findings: vec!["within budget".into()],
             recommendation: None,
         };
@@ -139,7 +139,7 @@ mod tests {
         let back: SimulationVerdict = serde_json::from_str(&json).unwrap();
         assert_eq!(back.dimension, SimulationDimension::Cost);
         assert!(back.passed);
-        assert!((back.confidence - 0.85).abs() < f64::EPSILON);
+        assert!((back.confidence.as_f64() - 0.85).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -148,7 +148,7 @@ mod tests {
             strategy_id: "s1".into(),
             dimension: SimulationDimension::Outcome,
             passed: false,
-            confidence: 0.3,
+            confidence: UnitInterval::clamped(0.3),
             findings: vec![],
             recommendation: Some(SimulationRecommendation::DoNotProceed),
         };
@@ -163,7 +163,7 @@ mod tests {
             strategy_id: "abc".into(),
             dimension: SimulationDimension::Cost,
             passed: true,
-            confidence: 0.9,
+            confidence: UnitInterval::clamped(0.9),
             findings: vec![],
             recommendation: None,
         };
@@ -173,7 +173,7 @@ mod tests {
             strategy_id: "xyz".into(),
             dimension: SimulationDimension::Operational,
             passed: false,
-            confidence: 0.2,
+            confidence: UnitInterval::clamped(0.2),
             findings: vec![],
             recommendation: Some(SimulationRecommendation::DoNotProceed),
         };

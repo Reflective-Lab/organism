@@ -6,11 +6,136 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-05-07
+
+Phase B contract closure. Organism is Helms's typed front door: Truth Documents
+become governed proposals through `Runtime::resolve_and_admit_truth`, the
+resolver ladder traces every binding decision, and `PlanningPriorAgent` learns
+from operator approvals, rejections, overrides, corrections, and boundary
+adjustments end-to-end. Aligned to Converge 3.8.1 and the new extension
+topology (manifold, mnemos, prism, arbiter, atelier-domain, embassy, ferrox).
+
+### Added
+- **Truth Document → IntentPacket bridge** —
+  `organism_intent::bridge::compile_truth_document` (and `compile_truth_source`
+  for raw `.truths` text). Maps `axiom_truth::TruthDocument` into a typed
+  `IntentPacket`. 17 unit tests including a real-Truth round-trip.
+- **Public admission adapter** —
+  `Runtime::resolve_and_admit_truth(truth, actor, source, ctx)` calls
+  `converge_kernel::admission::admit_observation` and returns the compiled
+  `IntentPacket` plus the `AdmissionReceipt`. Replaces the hand-rolled
+  `IntentPacket` construction in `helms/truth-catalog/src/organism.rs`. 4
+  integration tests in `crates/runtime/tests/truth_admission.rs`.
+- **IntentResolver Levels 3 and 4** in `organism-intent`:
+  - `SemanticResolver` + `SemanticMatcher` trait (Level 3, constructor-injected
+    matcher per the Plug Boundary doctrine — no vendor adapter imports).
+  - `LearnedResolver` + `EpisodeRecall` trait + `EpisodeSummary` projection
+    (Level 4, biases pack confidence by historical success).
+  - `LadderResolver` composes `Vec<Box<dyn IntentResolver>>` and recomputes
+    `ResolutionTrace.completeness_confidence` from levels attempted vs
+    contributed.
+- **Bidirectional ExperienceStore consumption** — `PlanningPriorAgent`
+  consumes all 5 user-event variants from Converge 3.8.1
+  (`UserApprovalGranted`, `UserApprovalRejected`, `UserOverrideIssued`,
+  `UserCorrection`, `UserBoundaryAdjusted`) through `consult_recall`. Each
+  variant produces a typed `RecallCandidate` with the spec'd
+  `(source_type, confidence)` mapping. 6 integration tests in
+  `crates/learning/tests/bidirectional_variants.rs`.
+- **Recall biases synthesis proposals** —
+  `crates/runtime/tests/recall_biases_synthesis.rs` pairs `PlanningPriorAgent`
+  with `RoundSynthesizer` and asserts the synthesis `ProposedFact` content
+  reflects recall avg confidence (or falls back to `no_recall` when the store
+  is empty).
+- **`dd_complete()` helper** in `organism-planning::dd` — bridges DD
+  Suggestor prompts to `converge_provider::DynChatBackend`, mapping `LlmError`
+  variants into `DdError` (RateLimited / CreditsExhausted / ProviderUnavailable
+  / PromptTooLarge / BadResponse). Single typed boundary for all DD LLM access.
+- **Concept docs** — `kb/Concepts/Formation.md` (the
+  `SuggestorId + CapabilityRequirement + InvariantId` contract;
+  PackProfile-vs-CapabilityRequirement layering),
+  `kb/Concepts/Bidirectional ExperienceStore.md` (all 5 user-event variants
+  with confidence/source-type table).
+- **Audit + handoff docs** — `kb/Audits/2026-05-06 parse_content.md`
+  (categorises typed-vs-untyped JSON parses across the workspace);
+  `kb/Handoffs/2026-05-06 Converge — Three UserExperienceEvent variants.md`
+  (the brief that drove Converge 3.8.1's three new variants).
+- **Converge extension declarations** — workspace `Cargo.toml` now declares
+  aliased deps for all 7 extensions targeting Converge 3.8.1: `arbiter`,
+  `atelier-domain`, `embassy-pack`, `embassy-linkedin`, `ferrox`,
+  `ferrox-server`, `manifold`, `mnemos`, `prism`. Aliases match each crate's
+  `[lib] name`; package names are the canonical `converge-*` prefix.
+
+### Changed
+- **Converge floor bumped to 3.8.1.** Foundation crates resolve from
+  crates.io 3.8.1 directly. Foundation `[patch.crates-io]` entries dropped;
+  patches retained only for unreleased extension crates and the local axiom
+  checkout.
+- **`converge-provider-api` → `converge-provider`** — contract crate renamed
+  per ADR-007. All Organism imports migrated.
+- **`Fact` → `ContextFact`** — Organism's references to `converge_pack::Fact`
+  migrated to `ContextFact` (the type Converge 3.8 actually exports).
+- **ContextFact field access** — `.content`, `.id`, `.key` are now accessor
+  methods, not public fields. Migrated across `learning`, `adversarial`,
+  `simulation`, `planning`, `runtime`, `pack` (~30 files, ~80 sites).
+- **AgentEffect construction** — every Suggestor's `execute()` returns
+  `AgentEffect::builder()…build()` instead of `with_proposal[s]`. Mechanical
+  migration across all 32 sites in adversarial / learning / planning /
+  simulation / runtime.
+- **`ConsensusRule::passes` typed args** — 27 call sites in
+  `planning::collaboration` migrated from raw `(yes, total)` to
+  `VoteTally::new(...)` + `EligibleVoters::new(...)`. The
+  `consensus_with_zero_voters` test was deleted because `EligibleVoters` is
+  `NonZeroUsize` — the type system now enforces what the test was checking.
+- **`UnitInterval` adoption** — every Organism field with `[0,1]` semantics
+  now uses `converge_pack::UnitInterval`:
+  `PackRequirement.confidence`, `CapabilityRequirement.confidence`,
+  `ResolutionTrace.completeness_confidence`, `Lesson.confidence`,
+  `LearningSignal.weight`, `PriorCalibration.{prior,posterior}_confidence`,
+  `DimensionResult.confidence`, `SimulationResult.overall_confidence`,
+  `SimulationVerdict.confidence`. Wire format unchanged
+  (`#[serde(transparent)]`).
+- **Typed JSON deserialization at the convergence boundary** — 5 parse sites
+  in `runtime::huddle` migrated from `serde_json::from_str::<T>(fact.content())`
+  to `fact.parse_json_content::<T>()` (`Disagreement`, `Vote`,
+  `ConsensusOutcome`, `DisagreementMap`).
+- **Compile-fail proofs** in `crates/pack/tests/compile_fail/` updated for
+  the 3.8 surface: `ContextFact` (was `Fact`), no `construct_unchecked`
+  constructor reachable, no field-by-field construction of authoritative
+  facts.
+- **`organism-domain` path** — moved to
+  `~/dev/extensions/atelier-showcase/crates/organism-domain` (workspace
+  directory rename). Crate name unchanged.
+
 ### Removed
-- `organism-intelligence::linkedin` module and `linkedin` feature. The
-  LinkedIn port has been extracted to `embassy-linkedin`
-  (`~/dev/extensions/embassy/crates/linkedin/`) — ports belong in embassy,
-  not buried in intelligence. No internal callers; safe extraction.
+- **`pub trait DdLlm`** and **`pub struct FailoverDdLlm`** —
+  per the Plug Boundary doctrine, DD Suggestors take
+  `Arc<dyn converge_provider::DynChatBackend>` directly. Engagements
+  (e.g. `monterro-core`) need to migrate their `DdLlm` impls to
+  `DynChatBackend` when picking up 1.5.0.
+- **`organism-intelligence::linkedin`** module — extracted to
+  `embassy-linkedin` (`~/dev/extensions/embassy-ports/crates/linkedin`).
+  Embassy owns source-specific connector ports.
+- **LinkedIn readiness probe** — `CredentialProbe::with_standard_checks` no
+  longer requires `LINKEDIN_API_KEY`. Consumers that want a LinkedIn probe
+  add it explicitly via the embassy crate.
+- **Zero `kernel-authority` feature usage** verified across Organism. ADR-006
+  drift no longer present.
+
+### Known issues / planned for 1.6.0
+
+These are pre-existing leaks in `organism-runtime` that the audit on
+2026-05-07 surfaced. They don't block 1.5.0 (Helms can adopt today) but are
+queued for a focused cleanup release.
+
+- **`runtime::vendor_selection`** (~214 lines) is domain-shaped content
+  sitting in the runtime crate. Will move to `atelier-showcase` in 1.6.0.
+- **`runtime::registry::with_standard_packs`** hardcodes 13 specific business
+  pack names from `organism-domain`. The generic `Registry` machinery stays;
+  the standard-pack roster will move into `organism-domain` so callers
+  register their pack catalog explicitly.
+- **`FormationGuru`** (auto-selection from a catalog given a problem class)
+  and named templates (`Decision`, `Research`, `Evaluation`, `Diligence`)
+  ship in 1.6.0.
 
 ## [1.4.1] - 2026-05-05
 

@@ -15,6 +15,7 @@ pub mod outcome;
 pub mod policy;
 pub mod types;
 
+use converge_pack::UnitInterval;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -34,7 +35,7 @@ pub struct SimulationResult {
     pub plan_id: Uuid,
     pub runs: u32,
     pub dimensions: Vec<DimensionResult>,
-    pub overall_confidence: f64,
+    pub overall_confidence: UnitInterval,
     pub recommendation: SimulationRecommendation,
 }
 
@@ -49,7 +50,8 @@ impl SimulationResult {
         dimensions: Vec<DimensionResult>,
         recommendation: SimulationRecommendation,
     ) -> Self {
-        let overall_confidence = DimensionResult::mean_confidence(&dimensions);
+        let overall_confidence =
+            UnitInterval::clamped(DimensionResult::mean_confidence(&dimensions));
         Self {
             plan_id,
             runs,
@@ -84,19 +86,20 @@ impl SimulationResult {
 pub struct DimensionResult {
     pub dimension: SimulationDimension,
     pub passed: bool,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub findings: Vec<String>,
     pub samples: Vec<Sample>,
 }
 
 impl DimensionResult {
-    /// New dimension result with empty findings and samples.
+    /// New dimension result with empty findings and samples. The `confidence`
+    /// f64 is clamped into a [`UnitInterval`] at the type boundary.
     #[must_use]
     pub fn new(dimension: SimulationDimension, passed: bool, confidence: f64) -> Self {
         Self {
             dimension,
             passed,
-            confidence,
+            confidence: UnitInterval::clamped(confidence),
             findings: vec![],
             samples: vec![],
         }
@@ -136,7 +139,7 @@ impl DimensionResult {
         if dimensions.is_empty() {
             0.0
         } else {
-            let sum: f64 = dimensions.iter().map(|d| d.confidence).sum();
+            let sum: f64 = dimensions.iter().map(|d| d.confidence.as_f64()).sum();
             sum / f64::from(u32::try_from(dimensions.len()).unwrap_or(1))
         }
     }
@@ -198,7 +201,7 @@ mod tests {
         DimensionResult {
             dimension: dim,
             passed,
-            confidence: 0.85,
+            confidence: UnitInterval::clamped(0.85),
             findings: vec!["ok".into()],
             samples: vec![Sample {
                 value: 1.0,
@@ -283,7 +286,7 @@ mod tests {
         let dr = DimensionResult {
             dimension: SimulationDimension::Policy,
             passed: false,
-            confidence: 0.0,
+            confidence: UnitInterval::ZERO,
             findings: vec![],
             samples: vec![],
         };
@@ -302,7 +305,7 @@ mod tests {
                 sample_dimension_result(SimulationDimension::Outcome, true),
                 sample_dimension_result(SimulationDimension::Cost, false),
             ],
-            overall_confidence: 0.72,
+            overall_confidence: UnitInterval::clamped(0.72),
             recommendation: SimulationRecommendation::ProceedWithCaution,
         };
         let json = serde_json::to_string(&sr).unwrap();
@@ -322,7 +325,7 @@ mod tests {
             plan_id: plan_id(),
             runs: 0,
             dimensions: vec![],
-            overall_confidence: 0.0,
+            overall_confidence: UnitInterval::ZERO,
             recommendation: SimulationRecommendation::DoNotProceed,
         };
         let json = serde_json::to_string(&sr).unwrap();
@@ -344,7 +347,7 @@ mod tests {
                 plan_id: plan_id(),
                 runs: 50,
                 dimensions: vec![],
-                overall_confidence: 0.5,
+                overall_confidence: UnitInterval::clamped(0.5),
                 recommendation: SimulationRecommendation::Proceed,
             }],
         };
@@ -365,21 +368,21 @@ mod tests {
             DimensionResult {
                 dimension: SimulationDimension::Outcome,
                 passed: true,
-                confidence: 0.6,
+                confidence: UnitInterval::clamped(0.6),
                 findings: vec![],
                 samples: vec![],
             },
             DimensionResult {
                 dimension: SimulationDimension::Cost,
                 passed: true,
-                confidence: 0.8,
+                confidence: UnitInterval::clamped(0.8),
                 findings: vec![],
                 samples: vec![],
             },
             DimensionResult {
                 dimension: SimulationDimension::Policy,
                 passed: false,
-                confidence: 0.4,
+                confidence: UnitInterval::clamped(0.4),
                 findings: vec![],
                 samples: vec![],
             },
@@ -416,7 +419,7 @@ mod tests {
         let dr = DimensionResult::new(SimulationDimension::Cost, true, 0.85);
         assert_eq!(dr.dimension, SimulationDimension::Cost);
         assert!(dr.passed);
-        assert!((dr.confidence - 0.85).abs() < f64::EPSILON);
+        assert!((dr.confidence.as_f64() - 0.85).abs() < f64::EPSILON);
         assert!(dr.findings.is_empty());
         assert!(dr.samples.is_empty());
     }
@@ -457,7 +460,7 @@ mod tests {
             dims,
             SimulationRecommendation::Proceed,
         );
-        assert!((result.overall_confidence - 0.85).abs() < f64::EPSILON);
+        assert!((result.overall_confidence.as_f64() - 0.85).abs() < f64::EPSILON);
         assert_eq!(result.runs, 10);
         assert_eq!(result.recommendation, SimulationRecommendation::Proceed);
     }
@@ -468,14 +471,14 @@ mod tests {
             DimensionResult {
                 dimension: SimulationDimension::Cost,
                 passed: true,
-                confidence: 0.9,
+                confidence: UnitInterval::clamped(0.9),
                 findings: vec!["within budget".into()],
                 samples: vec![],
             },
             DimensionResult {
                 dimension: SimulationDimension::Policy,
                 passed: false,
-                confidence: 0.4,
+                confidence: UnitInterval::clamped(0.4),
                 findings: vec![],
                 samples: vec![],
             },
@@ -516,12 +519,12 @@ mod tests {
                 plan_id: plan_id(),
                 runs: 1,
                 dimensions: vec![],
-                overall_confidence: conf,
+                overall_confidence: UnitInterval::clamped(conf),
                 recommendation: SimulationRecommendation::Proceed,
             };
             let json = serde_json::to_string(&sr).unwrap();
             let back: SimulationResult = serde_json::from_str(&json).unwrap();
-            prop_assert!((back.overall_confidence - conf).abs() < f64::EPSILON);
+            prop_assert!((back.overall_confidence.as_f64() - conf).abs() < f64::EPSILON);
         }
     }
 }

@@ -131,11 +131,11 @@ doc:
 # Generate local test coverage JSON
 coverage:
     mkdir -p target/coverage
-    cargo llvm-cov --workspace --lib --tests --ignore-filename-regex '(^|/)(tests|benches|examples)/' --json --summary-only --output-path target/coverage/organism-coverage.json
+    cargo llvm-cov --workspace --lib --tests --ignore-filename-regex '(^|/)(tests|benches)/' --json --summary-only --output-path target/coverage/organism-coverage.json
 
 # Generate CI coverage JSON at repo root
 coverage-ci:
-    cargo llvm-cov --workspace --lib --tests --ignore-filename-regex '(^|/)(tests|benches|examples)/' --json --summary-only --output-path coverage.json
+    cargo llvm-cov --workspace --lib --tests --ignore-filename-regex '(^|/)(tests|benches)/' --json --summary-only --output-path coverage.json
 
 # Run Criterion benchmarks
 perf-baseline:

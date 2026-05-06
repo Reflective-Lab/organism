@@ -14,7 +14,7 @@
 //! Learning signals NEVER feed into authority — only into planning priors.
 
 use converge_kernel::{BackendId, ExperienceEvent, ExperienceEventEnvelope};
-use converge_pack::{Context, ContextFact, ContextKey};
+use converge_pack::{Context, ContextFact, ContextKey, UnitInterval};
 use uuid::Uuid;
 
 use crate::{
@@ -126,7 +126,7 @@ pub fn build_episode_from_run(
                 missing.iter().map(|c| **c).collect::<Vec<_>>().join(", ")
             ),
             context: subject.to_string(),
-            confidence: 0.9,
+            confidence: UnitInterval::clamped(0.9),
             planning_adjustment: "Add targeted strategies for missing categories in initial seed"
                 .into(),
         });
@@ -138,7 +138,7 @@ pub fn build_episode_from_run(
                 "{contradiction_count} contradictions detected — sources disagree on key claims"
             ),
             context: subject.to_string(),
-            confidence: 0.8,
+            confidence: UnitInterval::clamped(0.8),
             planning_adjustment: "Increase depth searches on contradicted topics in follow-up runs"
                 .into(),
         });
@@ -153,7 +153,7 @@ pub fn build_episode_from_run(
                 strategy_count - initial_strategies
             ),
             context: subject.to_string(),
-            confidence: 0.7,
+            confidence: UnitInterval::clamped(0.7),
             planning_adjustment: "Consider broader initial strategy seed for this domain".into(),
         });
     }
@@ -170,7 +170,7 @@ pub fn build_episode_from_run(
                     .map_or(String::new(), |reason| format!(" ({reason})"))
             ),
             context: subject.to_string(),
-            confidence: 0.75,
+            confidence: UnitInterval::clamped(0.75),
             planning_adjustment:
                 "Tighten the initial plan or widen search budget before re-running".into(),
         });
@@ -183,7 +183,7 @@ pub fn build_episode_from_run(
                 "{budget_blocks} budget guard(s) fired during the run — the search loop hit engine limits"
             ),
             context: subject.to_string(),
-            confidence: 0.85,
+            confidence: UnitInterval::clamped(0.85),
             planning_adjustment:
                 "Seed fewer low-value branches or raise the explicit engine budget for this domain"
                     .into(),
@@ -245,19 +245,19 @@ pub fn extract_signals_from_run(
             } else {
                 SignalKind::OutcomeMissedExpectation
             },
-            weight: if outcome.passed { 1.0 } else { 0.9 },
+            weight: UnitInterval::clamped(if outcome.passed { 1.0 } else { 0.9 }),
             note: outcome_signal_note(&outcome),
         });
     } else if !proposals.is_empty() {
         signals.push(LearningSignal {
             kind: SignalKind::OutcomeMatchedExpectation,
-            weight: 1.0,
+            weight: UnitInterval::ONE,
             note: "Synthesis produced — convergence loop completed".into(),
         });
     } else {
         signals.push(LearningSignal {
             kind: SignalKind::OutcomeMissedExpectation,
-            weight: 0.8,
+            weight: UnitInterval::clamped(0.8),
             note: "No synthesis produced — hypotheses may not have stabilized".into(),
         });
     }
@@ -270,7 +270,7 @@ pub fn extract_signals_from_run(
     if contradictions > 0 {
         signals.push(LearningSignal {
             kind: SignalKind::AdversarialWarning,
-            weight: 0.6,
+            weight: UnitInterval::clamped(0.6),
             note: format!("{contradictions} contradictions detected"),
         });
     }
@@ -278,7 +278,7 @@ pub fn extract_signals_from_run(
     if hypotheses.len() > 50 {
         signals.push(LearningSignal {
             kind: SignalKind::OutcomeBeatExpectation,
-            weight: 0.5,
+            weight: UnitInterval::clamped(0.5),
             note: format!(
                 "Rich evidence base: {} hypotheses extracted",
                 hypotheses.len()
@@ -289,7 +289,7 @@ pub fn extract_signals_from_run(
     if budget_exceeded_count(events) > 0 {
         signals.push(LearningSignal {
             kind: SignalKind::AdversarialBlocker,
-            weight: 1.0,
+            weight: UnitInterval::ONE,
             note: format!(
                 "{} budget guard(s) fired during the run",
                 budget_exceeded_count(events)
@@ -307,7 +307,7 @@ pub fn extract_signals_from_run(
     if adversarial_block_count > 0 {
         signals.push(LearningSignal {
             kind: SignalKind::AdversarialBlocker,
-            weight: 0.9,
+            weight: UnitInterval::clamped(0.9),
             note: format!("{adversarial_block_count} adversarial agent(s) blocked the plan"),
         });
     }
@@ -324,7 +324,7 @@ pub fn extract_signals_from_run(
     if adversarial_warnings > 0 {
         signals.push(LearningSignal {
             kind: SignalKind::AdversarialWarning,
-            weight: 0.5,
+            weight: UnitInterval::clamped(0.5),
             note: format!("{adversarial_warnings} adversarial warning(s) on approved plans"),
         });
     }
@@ -364,7 +364,7 @@ pub fn calibrate_priors(
                 .find(|p| p.assumption_type == dim.name);
 
             let (prior_conf, evidence) = match existing {
-                Some(p) => (p.posterior_confidence, p.evidence_count),
+                Some(p) => (p.posterior_confidence.as_f64(), p.evidence_count),
                 None => (0.5, 0),
             };
 
@@ -380,8 +380,8 @@ pub fn calibrate_priors(
                     .first()
                     .map(|l| l.context.clone())
                     .unwrap_or_default(),
-                prior_confidence: prior_conf,
-                posterior_confidence: posterior,
+                prior_confidence: UnitInterval::clamped(prior_conf),
+                posterior_confidence: UnitInterval::clamped(posterior),
                 evidence_count: evidence + 1,
             });
         }
@@ -547,7 +547,7 @@ mod tests {
             lessons: vec![Lesson {
                 insight: "test".into(),
                 context: "test-company".into(),
-                confidence: 0.8,
+                confidence: UnitInterval::clamped(0.8),
                 planning_adjustment: "adjust".into(),
             }],
         };
@@ -557,8 +557,8 @@ mod tests {
         assert_eq!(priors[0].assumption_type, "coverage");
         assert_eq!(priors[0].evidence_count, 1);
         // First observation: blends 0.5 prior with 0.7 actual
-        assert!(priors[0].posterior_confidence > 0.5);
-        assert!(priors[0].posterior_confidence < 0.7);
+        assert!(priors[0].posterior_confidence.as_f64() > 0.5);
+        assert!(priors[0].posterior_confidence.as_f64() < 0.7);
     }
 
     #[test]
@@ -591,7 +591,7 @@ mod tests {
         }
 
         // Should converge toward 0.8 (the actual)
-        assert!(priors[0].posterior_confidence > 0.65);
+        assert!(priors[0].posterior_confidence.as_f64() > 0.65);
         assert_eq!(priors[0].evidence_count, 5);
     }
 
@@ -791,8 +791,8 @@ mod tests {
         let existing = vec![PriorCalibration {
             assumption_type: "coverage".into(),
             context: "test".into(),
-            prior_confidence: 0.5,
-            posterior_confidence: 0.6,
+            prior_confidence: UnitInterval::clamped(0.5),
+            posterior_confidence: UnitInterval::clamped(0.6),
             evidence_count: 3,
         }];
 
@@ -818,7 +818,7 @@ mod tests {
         let priors = calibrate_priors(&episode, &existing);
         assert_eq!(priors.len(), 1);
         assert_eq!(priors[0].evidence_count, 4);
-        assert!((priors[0].prior_confidence - 0.6).abs() < f64::EPSILON);
+        assert!((priors[0].prior_confidence.as_f64() - 0.6).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -892,14 +892,14 @@ mod tests {
                 let existing = vec![PriorCalibration {
                     assumption_type: "dim".into(),
                     context: "test".into(),
-                    prior_confidence: prior_conf,
-                    posterior_confidence: prior_conf,
+                    prior_confidence: UnitInterval::clamped(prior_conf),
+                    posterior_confidence: UnitInterval::clamped(prior_conf),
                     evidence_count: evidence,
                 }];
 
                 let priors = calibrate_priors(&episode, &existing);
                 prop_assert_eq!(priors.len(), 1);
-                let posterior = priors[0].posterior_confidence;
+                let posterior = priors[0].posterior_confidence.as_f64();
                 prop_assert!(posterior >= 0.0, "posterior {} < 0", posterior);
                 prop_assert!(posterior <= 1.0, "posterior {} > 1", posterior);
             }
@@ -958,7 +958,7 @@ mod tests {
                     priors = calibrate_priors(&episode, &priors);
                 }
 
-                let posterior = priors[0].posterior_confidence;
+                let posterior = priors[0].posterior_confidence.as_f64();
                 let distance = (posterior - actual).abs();
                 let initial_distance = (0.5 - actual).abs();
                 if rounds >= 3 && initial_distance > 0.05 {

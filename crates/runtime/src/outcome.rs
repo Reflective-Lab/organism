@@ -222,7 +222,7 @@ mod tests {
                 suggestor_id: "decision-synthesis".to_string(),
                 role: SuggestorRole::Synthesis,
                 provider_id: "reasoning-llm".to_string(),
-                requirements: converge_provider_api::BackendRequirements::reasoning_llm(),
+                requirements: converge_provider::BackendRequirements::reasoning_llm(),
             }],
             trace: Vec::new(),
         };

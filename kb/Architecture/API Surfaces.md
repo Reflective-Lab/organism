@@ -107,7 +107,7 @@ What downstream code should use it for:
 - built-in pack metadata and organizational workflow library
 
 Status:
-- optional pack library
+- optional pack library (lives in extension repo `atelier-showcase`)
 - commonly paired with `organism-runtime::Registry::with_standard_packs()`
 
 ## Building-Block Crates
@@ -123,8 +123,9 @@ should not depend on them directly:
 
 They are the internal building blocks re-exported by `organism-pack` and, for
 resolution/readiness concerns, selectively surfaced by `organism-runtime`.
-Direct dependencies are reasonable when extending Organism itself, adding new
-examples inside this repo, or working on the planning loop implementation.
+Direct dependencies are reasonable when extending Organism itself or
+working on the planning loop implementation. Examples have graduated to the
+[`atelier-showcase`](../../extensions/atelier-showcase) repository.
 
 ## Who Uses What
 

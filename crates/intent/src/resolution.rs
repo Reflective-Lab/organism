@@ -12,6 +12,7 @@
 //! `IntentBinding` that tells the runtime which agents to register
 //! with the Converge engine.
 
+use converge_pack::UnitInterval;
 use serde::{Deserialize, Serialize};
 
 // ── Intent Binding ─────────────────────────────────────────────────
@@ -34,7 +35,7 @@ pub struct IntentBinding {
 pub struct PackRequirement {
     pub pack_name: String,
     pub reason: String,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub source: ResolutionLevel,
 }
 
@@ -43,7 +44,7 @@ pub struct PackRequirement {
 pub struct CapabilityRequirement {
     pub capability: String,
     pub reason: String,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub source: ResolutionLevel,
 }
 
@@ -69,7 +70,7 @@ pub struct ResolutionTrace {
     /// Number of prior episodes consulted (level 4).
     pub prior_episodes_consulted: usize,
     /// Confidence that the binding is complete.
-    pub completeness_confidence: f64,
+    pub completeness_confidence: UnitInterval,
 }
 
 // ── Declarative Binding (Level 1) ──────────────────────────────────
@@ -103,7 +104,7 @@ impl DeclarativeBinding {
         self.packs.push(PackRequirement {
             pack_name: name.into(),
             reason: reason.into(),
-            confidence: 1.0,
+            confidence: UnitInterval::ONE,
             source: ResolutionLevel::Declarative,
         });
         self
@@ -114,7 +115,7 @@ impl DeclarativeBinding {
         self.capabilities.push(CapabilityRequirement {
             capability: name.into(),
             reason: reason.into(),
-            confidence: 1.0,
+            confidence: UnitInterval::ONE,
             source: ResolutionLevel::Declarative,
         });
         self
@@ -136,7 +137,7 @@ impl DeclarativeBinding {
                 levels_attempted: vec![ResolutionLevel::Declarative],
                 levels_contributed: vec![ResolutionLevel::Declarative],
                 prior_episodes_consulted: 0,
-                completeness_confidence: 1.0,
+                completeness_confidence: UnitInterval::ONE,
             },
         }
     }
@@ -203,7 +204,7 @@ impl<M: SemanticMatcher> IntentResolver for SemanticResolver<M> {
             binding.packs.push(PackRequirement {
                 pack_name,
                 reason,
-                confidence: confidence.clamp(0.0, 1.0),
+                confidence: UnitInterval::clamped(confidence),
                 source: ResolutionLevel::Semantic,
             });
             contributed = true;
@@ -303,7 +304,7 @@ impl<R: EpisodeRecall> IntentResolver for LearnedResolver<R> {
             let weight = (count as f64 / total).clamp(0.0, 1.0);
             if let Some(existing) = binding.packs.iter_mut().find(|p| p.pack_name == pack_name) {
                 let bump = self.confidence_bump * weight * (count as f64);
-                existing.confidence = (existing.confidence + bump).clamp(0.0, 1.0);
+                existing.confidence = UnitInterval::clamped(existing.confidence.as_f64() + bump);
                 contributed = true;
             } else {
                 binding.packs.push(PackRequirement {
@@ -311,7 +312,7 @@ impl<R: EpisodeRecall> IntentResolver for LearnedResolver<R> {
                     reason: format!(
                         "{count} passing episode(s) used pack '{pack_name}' (success rate {success_rate:.2})",
                     ),
-                    confidence: weight,
+                    confidence: UnitInterval::clamped(weight),
                     source: ResolutionLevel::Learned,
                 });
                 contributed = true;
@@ -384,12 +385,12 @@ fn update_trace(trace: &mut ResolutionTrace, level: ResolutionLevel, contributed
 
 fn recompute_completeness(trace: &mut ResolutionTrace) {
     if trace.levels_attempted.is_empty() {
-        trace.completeness_confidence = 0.0;
+        trace.completeness_confidence = UnitInterval::ZERO;
         return;
     }
     let attempted = trace.levels_attempted.len() as f64;
     let contributed = trace.levels_contributed.len() as f64;
-    trace.completeness_confidence = (contributed / attempted).clamp(0.0, 1.0);
+    trace.completeness_confidence = UnitInterval::clamped(contributed / attempted);
 }
 
 #[cfg(test)]
@@ -410,7 +411,7 @@ mod tests {
         assert_eq!(binding.invariants.len(), 1);
         assert_eq!(binding.packs[0].pack_name, "customers");
         assert_eq!(binding.packs[0].source, ResolutionLevel::Declarative);
-        assert!((binding.resolution.completeness_confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.resolution.completeness_confidence.as_f64() - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -433,7 +434,7 @@ mod tests {
     #[test]
     fn declarative_binding_pack_confidence_is_one() {
         let binding = DeclarativeBinding::new().pack("test", "reason").build();
-        assert!((binding.packs[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.packs[0].confidence.as_f64() - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -441,7 +442,7 @@ mod tests {
         let binding = DeclarativeBinding::new()
             .capability("ocr", "doc processing")
             .build();
-        assert!((binding.capabilities[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.capabilities[0].confidence.as_f64() - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -471,7 +472,7 @@ mod tests {
         assert!(binding.resolution.levels_attempted.is_empty());
         assert!(binding.resolution.levels_contributed.is_empty());
         assert_eq!(binding.resolution.prior_episodes_consulted, 0);
-        assert!((binding.resolution.completeness_confidence - 0.0).abs() < f64::EPSILON);
+        assert!((binding.resolution.completeness_confidence.as_f64() - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -480,7 +481,7 @@ mod tests {
         assert!(trace.levels_attempted.is_empty());
         assert!(trace.levels_contributed.is_empty());
         assert_eq!(trace.prior_episodes_consulted, 0);
-        assert!((trace.completeness_confidence - 0.0).abs() < f64::EPSILON);
+        assert!((trace.completeness_confidence.as_f64() - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -537,14 +538,14 @@ mod tests {
         let req = PackRequirement {
             pack_name: "customers".into(),
             reason: "lead workflow".into(),
-            confidence: 0.85,
+            confidence: UnitInterval::clamped(0.85),
             source: ResolutionLevel::Structural,
         };
         let json = serde_json::to_string(&req).unwrap();
         let back: PackRequirement = serde_json::from_str(&json).unwrap();
         assert_eq!(back.pack_name, "customers");
         assert_eq!(back.reason, "lead workflow");
-        assert!((back.confidence - 0.85).abs() < f64::EPSILON);
+        assert!((back.confidence.as_f64() - 0.85).abs() < f64::EPSILON);
         assert_eq!(back.source, ResolutionLevel::Structural);
     }
 
@@ -553,7 +554,7 @@ mod tests {
         let req = CapabilityRequirement {
             capability: "vision".into(),
             reason: "document scanning".into(),
-            confidence: 0.7,
+            confidence: UnitInterval::clamped(0.7),
             source: ResolutionLevel::Semantic,
         };
         let json = serde_json::to_string(&req).unwrap();
@@ -587,14 +588,14 @@ mod tests {
             levels_attempted: vec![ResolutionLevel::Declarative, ResolutionLevel::Structural],
             levels_contributed: vec![ResolutionLevel::Declarative],
             prior_episodes_consulted: 42,
-            completeness_confidence: 0.95,
+            completeness_confidence: UnitInterval::clamped(0.95),
         };
         let json = serde_json::to_string(&trace).unwrap();
         let back: ResolutionTrace = serde_json::from_str(&json).unwrap();
         assert_eq!(back.levels_attempted.len(), 2);
         assert_eq!(back.levels_contributed.len(), 1);
         assert_eq!(back.prior_episodes_consulted, 42);
-        assert!((back.completeness_confidence - 0.95).abs() < f64::EPSILON);
+        assert!((back.completeness_confidence.as_f64() - 0.95).abs() < f64::EPSILON);
     }
 
     // ── Level 3: Semantic ──────────────────────────────────────────
@@ -669,7 +670,7 @@ mod tests {
         let matcher = StubMatcher(vec![("customers", 1.7, "out-of-range stub")]);
         let binding =
             SemanticResolver::new(matcher).resolve(&intent("anything"), &IntentBinding::default());
-        assert!((binding.packs[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.packs[0].confidence.as_f64() - 1.0).abs() < f64::EPSILON);
     }
 
     // ── Level 4: Learned ───────────────────────────────────────────
@@ -817,7 +818,7 @@ mod tests {
                 binding.packs.push(PackRequirement {
                     pack_name: "procurement".into(),
                     reason: "outcome mentions 'vendor'".into(),
-                    confidence: 0.9,
+                    confidence: UnitInterval::clamped(0.9),
                     source: ResolutionLevel::Structural,
                 });
                 contributed = true;
@@ -902,7 +903,7 @@ mod tests {
         assert_eq!(binding.resolution.prior_episodes_consulted, 1);
 
         // All-attempted, all-contributing → completeness = 1.0.
-        assert!((binding.resolution.completeness_confidence - 1.0).abs() < f64::EPSILON);
+        assert!((binding.resolution.completeness_confidence.as_f64() - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -922,9 +923,9 @@ mod tests {
         assert_eq!(binding.resolution.levels_contributed.len(), 1);
         let expected = 1.0 / 3.0;
         assert!(
-            (binding.resolution.completeness_confidence - expected).abs() < f64::EPSILON,
+            (binding.resolution.completeness_confidence.as_f64() - expected).abs() < f64::EPSILON,
             "completeness should reflect 1 of 3 levels contributing; got {}",
-            binding.resolution.completeness_confidence
+            binding.resolution.completeness_confidence.as_f64()
         );
     }
 }

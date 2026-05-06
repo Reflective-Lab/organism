@@ -19,7 +19,7 @@ workflow semantics.
 | Policy challenge | `ApprovalPolicySkepticSuggestor` | `Strategies` -> `Evaluations` |
 | Budget simulation | `BudgetSimulationSuggestor` | `Strategies` + `Evaluations` -> `Proposals` |
 
-The `examples/expense-approval` crate is now a thin consumer of these
+The `examples/expense-approval` crate (in `atelier-showcase`) is now a thin consumer of these
 Suggestors. The reusable behavior lives in
 `organism_domain::packs::autonomous_org`, where concrete apps can compose it
 with procurement, people, legal, or finance-specific context.

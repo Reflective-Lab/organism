@@ -5,6 +5,7 @@
 //! Monte Carlo sampling.
 
 use crate::{DimensionResult, Sample, SimulationDimension};
+use converge_pack::UnitInterval;
 
 #[derive(Debug, Clone)]
 pub struct CostSimulatorConfig {
@@ -136,7 +137,7 @@ impl CostSimulator {
         DimensionResult {
             dimension: SimulationDimension::Cost,
             passed,
-            confidence,
+            confidence: UnitInterval::clamped(confidence),
             findings,
             samples,
         }

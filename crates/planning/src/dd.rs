@@ -1,16 +1,17 @@
 //! Due Diligence suggestor implementations.
 //!
 //! Generic, reusable suggestors for the DD convergence loop. Apps inject
-//! their search and LLM backends via the [`DdSearch`] and [`DdLlm`] traits.
-//! Organism owns the prompts, parsing, and convergence patterns.
+//! their search backend via the [`DdSearch`] trait and their LLM through
+//! Converge's [`DynChatBackend`]. Organism owns the prompts, parsing, and
+//! convergence patterns.
 //!
 //! # Layer responsibilities
 //!
 //! | Layer | Owns |
 //! |-------|------|
 //! | **Organism** | DD suggestors, prompts, fact parsing, convergence patterns |
-//! | **App** | `DdSearch` + `DdLlm` implementations |
-//! | **Converge** | Engine, context, axioms, promotion gates |
+//! | **App** | `DdSearch` impls + a `DynChatBackend` (typically from `manifold`) |
+//! | **Converge** | Engine, context, axioms, promotion gates, `DynChatBackend` contract |
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -19,6 +20,9 @@ use std::sync::{Arc, Mutex};
 
 use converge_pack::{
     AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, Suggestor,
+};
+use converge_provider::{
+    ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError, ResponseFormat,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -133,16 +137,6 @@ pub trait DdSearch: Send + Sync {
     async fn search(&self, query: &str) -> Result<Vec<SearchHit>, DdError>;
 }
 
-/// Async LLM backend. Apps implement this by wrapping their
-/// LLM providers (Anthropic, OpenAI, etc.).
-///
-/// Apps are responsible for classifying raw HTTP/provider errors into
-/// [`DdError`] variants so organism can make informed decisions.
-#[async_trait::async_trait]
-pub trait DdLlm: Send + Sync {
-    async fn complete(&self, prompt: &str) -> Result<String, DdError>;
-}
-
 /// A search hit returned by a [`DdSearch`] implementation.
 #[derive(Debug, Clone)]
 pub struct SearchHit {
@@ -152,51 +146,67 @@ pub struct SearchHit {
     pub provider: String,
 }
 
-// ── Failover wrappers ─────────────────────────────────────────────
+// ── ChatBackend bridge ─────────────────────────────────────────────
 
-/// Tries LLM backends in order. On retryable errors (credits exhausted,
-/// rate limited, provider unavailable), moves to the next backend.
-/// On non-retryable errors (parse failed, bad response), returns
-/// immediately — a different provider won't fix bad output.
-pub struct FailoverDdLlm {
-    backends: Vec<Arc<dyn DdLlm>>,
+/// Sends a single-turn DD prompt to a [`DynChatBackend`] and returns the
+/// response content. Provider errors are classified into [`DdError`] variants
+/// so the calling Suggestor can decide whether to retry, abort, or record a
+/// constraint.
+///
+/// This is the only place dd.rs touches `ChatRequest`/`LlmError`. New DD
+/// Suggestors that need an LLM should call this helper rather than building
+/// requests inline.
+pub async fn dd_complete(backend: &dyn DynChatBackend, prompt: &str) -> Result<String, DdError> {
+    let request = ChatRequest {
+        messages: vec![ChatMessage {
+            role: ChatRole::User,
+            content: prompt.to_string(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }],
+        system: None,
+        tools: Vec::new(),
+        response_format: ResponseFormat::Json,
+        max_tokens: None,
+        temperature: None,
+        stop_sequences: Vec::new(),
+        model: None,
+    };
+    backend
+        .chat(request)
+        .await
+        .map(|resp| resp.content)
+        .map_err(|err| classify_llm_error(&err))
 }
 
-impl FailoverDdLlm {
-    pub fn new(backends: Vec<Arc<dyn DdLlm>>) -> Self {
-        Self { backends }
-    }
-}
-
-#[async_trait::async_trait]
-impl DdLlm for FailoverDdLlm {
-    async fn complete(&self, prompt: &str) -> Result<String, DdError> {
-        let mut last_error = None;
-        for backend in &self.backends {
-            match backend.complete(prompt).await {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    let should_failover = e.is_infra_failure();
-                    eprintln!(
-                        "[failover] {} — {}",
-                        e,
-                        if should_failover {
-                            "trying next"
-                        } else {
-                            "not retryable"
-                        }
-                    );
-                    if !should_failover {
-                        return Err(e);
-                    }
-                    last_error = Some(e);
-                }
-            }
-        }
-        Err(last_error.unwrap_or_else(|| DdError::ProviderUnavailable {
-            provider: "failover".into(),
-            detail: "no backends configured".into(),
-        }))
+fn classify_llm_error(err: &LlmError) -> DdError {
+    let provider = "chat-backend".to_string();
+    let message = err.to_string();
+    match err {
+        LlmError::RateLimited { retry_after, .. } => DdError::RateLimited {
+            provider,
+            retry_after_ms: u64::try_from(retry_after.as_millis()).ok(),
+        },
+        LlmError::AuthDenied { .. } => DdError::CreditsExhausted {
+            provider,
+            detail: message,
+        },
+        LlmError::Timeout { .. } | LlmError::NetworkError { .. } => DdError::ProviderUnavailable {
+            provider,
+            detail: message,
+        },
+        LlmError::ContextLengthExceeded { request_tokens, .. } => DdError::PromptTooLarge {
+            provider,
+            tokens: Some(*request_tokens as usize),
+        },
+        LlmError::InvalidRequest { .. }
+        | LlmError::ModelNotFound { .. }
+        | LlmError::ContentFiltered { .. }
+        | LlmError::ResponseFormatMismatch { .. }
+        | LlmError::ProviderError { .. } => DdError::BadResponse {
+            provider,
+            detail: message,
+        },
     }
 }
 
@@ -476,12 +486,16 @@ impl Suggestor for DepthResearchSuggestor {
 pub struct FactExtractorSuggestor {
     subject: String,
     budget: Arc<SharedBudget>,
-    llm: Arc<dyn DdLlm>,
+    llm: Arc<dyn DynChatBackend>,
     processed_signal_count: Mutex<usize>,
 }
 
 impl FactExtractorSuggestor {
-    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
+    pub fn new(
+        subject: impl Into<String>,
+        budget: Arc<SharedBudget>,
+        llm: Arc<dyn DynChatBackend>,
+    ) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -534,7 +548,7 @@ impl Suggestor for FactExtractorSuggestor {
             .collect();
 
         let mut effect = AgentEffect::builder();
-        match self.llm.complete(&prompt).await {
+        match dd_complete(self.llm.as_ref(), &prompt).await {
             Ok(raw) => match parse_json_array_response(&raw, "facts") {
                 Ok(facts) => {
                     for (i, fact) in facts.iter().enumerate() {
@@ -584,7 +598,7 @@ impl Suggestor for FactExtractorSuggestor {
 pub struct GapDetectorSuggestor {
     subject: String,
     budget: Arc<SharedBudget>,
-    llm: Arc<dyn DdLlm>,
+    llm: Arc<dyn DynChatBackend>,
     last_hypothesis_count: Mutex<usize>,
     generation_count: Mutex<usize>,
     max_generations: usize,
@@ -592,7 +606,11 @@ pub struct GapDetectorSuggestor {
 }
 
 impl GapDetectorSuggestor {
-    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
+    pub fn new(
+        subject: impl Into<String>,
+        budget: Arc<SharedBudget>,
+        llm: Arc<dyn DynChatBackend>,
+    ) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -658,7 +676,7 @@ impl Suggestor for GapDetectorSuggestor {
             .map(|fact| fact.content().to_string())
             .collect();
 
-        match self.llm.complete(&prompt).await {
+        match dd_complete(self.llm.as_ref(), &prompt).await {
             Ok(raw) => match parse_json_array_response(&raw, "strategies") {
                 Ok(strategies) => {
                     for (i, s) in strategies.iter().enumerate() {
@@ -812,14 +830,18 @@ impl Suggestor for ContradictionFinderSuggestor {
 pub struct SynthesisSuggestor {
     subject: String,
     budget: Arc<SharedBudget>,
-    llm: Arc<dyn DdLlm>,
+    llm: Arc<dyn DynChatBackend>,
     last_hypothesis_count: Mutex<usize>,
     stable_cycles: Mutex<usize>,
     required_stable_cycles: usize,
 }
 
 impl SynthesisSuggestor {
-    pub fn new(subject: impl Into<String>, budget: Arc<SharedBudget>, llm: Arc<dyn DdLlm>) -> Self {
+    pub fn new(
+        subject: impl Into<String>,
+        budget: Arc<SharedBudget>,
+        llm: Arc<dyn DynChatBackend>,
+    ) -> Self {
         Self {
             subject: subject.into(),
             budget,
@@ -874,7 +896,7 @@ impl Suggestor for SynthesisSuggestor {
         let consolidated = consolidate_dd_hypotheses(hypotheses);
         let prompt = prompts::synthesis(&self.subject, &consolidated);
 
-        match self.llm.complete(&prompt).await {
+        match dd_complete(self.llm.as_ref(), &prompt).await {
             Ok(raw) => {
                 let id = format!("synthesis-{}", Uuid::new_v4());
                 AgentEffect::builder()
@@ -1881,19 +1903,30 @@ mod tests {
 
     use converge_pack::{Context, ContextFact, ContextKey, ProposedFact, Suggestor};
 
+    use converge_provider::{BoxFuture, ChatRequest, ChatResponse, DynChatBackend, LlmError};
+
     use super::{
-        DdError, DdLlm, SharedBudget, SynthesisSuggestor, canonicalize_claim,
-        consolidate_dd_fact_values, extract_first_json_value, next_batch_bounds, normalize_dd_fact,
-        parse_json_array_response,
+        DdError, SharedBudget, SynthesisSuggestor, canonicalize_claim, consolidate_dd_fact_values,
+        extract_first_json_value, next_batch_bounds, normalize_dd_fact, parse_json_array_response,
     };
 
+    /// Returns a hardcoded `{}` response for any prompt — sufficient for the
+    /// tests that exercise SynthesisSuggestor's plumbing without committing to
+    /// a real LLM round-trip.
     struct StubLlm;
 
-    #[async_trait::async_trait]
-    impl DdLlm for StubLlm {
-        async fn complete(&self, prompt: &str) -> Result<String, DdError> {
-            let _ = prompt;
-            Ok("{}".to_string())
+    impl DynChatBackend for StubLlm {
+        fn chat(&self, _req: ChatRequest) -> BoxFuture<'_, Result<ChatResponse, LlmError>> {
+            Box::pin(async {
+                Ok(ChatResponse {
+                    content: "{}".to_string(),
+                    tool_calls: Vec::new(),
+                    usage: None,
+                    model: None,
+                    finish_reason: None,
+                    metadata: std::collections::HashMap::new(),
+                })
+            })
         }
     }
 

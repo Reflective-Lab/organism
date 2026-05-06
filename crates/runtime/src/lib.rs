@@ -62,7 +62,14 @@ pub use vendor_selection::{
     vendor_selection_lifecycle,
 };
 
+use axiom_truth::TruthDocument;
+use converge_kernel::admission::{
+    AdmissionActor, AdmissionContent, AdmissionError, AdmissionReceipt, AdmissionRequest,
+    AdmissionSource, admit_observation,
+};
+use converge_kernel::{ContextKey, ContextState, ConvergeError};
 use organism_intent::admission::{self, Admission};
+use organism_intent::bridge::{BridgeError, compile_truth_document};
 use organism_pack::IntentPacket;
 use std::sync::Arc;
 
@@ -90,6 +97,32 @@ pub enum PipelineError {
     Formation(#[from] FormationError),
 }
 
+/// Why a Truth Document failed to compile or admit.
+#[derive(Debug, thiserror::Error)]
+pub enum TruthAdmissionError {
+    /// The Truth Document did not compile to an IntentPacket.
+    #[error("truth document did not compile: {0}")]
+    Bridge(#[from] BridgeError),
+    /// Organism's structural admission gate rejected the compiled IntentPacket.
+    #[error("admission rejected: {0}")]
+    Rejected(String),
+    /// Constructing the Converge admission request failed (empty actor / source / id / content).
+    #[error("admission request invalid: {0}")]
+    AdmissionRequest(#[from] AdmissionError),
+    /// Serializing the IntentPacket payload failed.
+    #[error("intent payload could not be serialized: {0}")]
+    Serialize(String),
+    /// `converge_kernel::admission::admit_observation` rejected the staged proposal.
+    #[error("converge admission failed: {0}")]
+    Converge(String),
+}
+
+impl From<ConvergeError> for TruthAdmissionError {
+    fn from(err: ConvergeError) -> Self {
+        Self::Converge(err.to_string())
+    }
+}
+
 /// The formation guru.
 ///
 /// Organism's runtime does exactly three things:
@@ -104,6 +137,58 @@ pub struct Runtime;
 impl Runtime {
     pub fn new() -> Self {
         Self
+    }
+
+    /// Compile a Truth Document into an IntentPacket and admit it through
+    /// Converge's typed admission boundary.
+    ///
+    /// This is the public Organism → Helms contract. Helms' `truth-catalog`
+    /// should call this rather than hand-rolling `IntentPacket` field-by-field
+    /// (the older `helms/truth-catalog/src/organism.rs` path). The flow:
+    ///
+    /// 1. `axiom_truth::TruthDocument` is compiled to an [`IntentPacket`] via
+    ///    [`organism_intent::bridge::compile_truth_document`].
+    /// 2. Organism's structural admission gate runs (cheap, deterministic).
+    /// 3. The compiled intent is staged through
+    ///    [`converge_kernel::admission::admit_observation`] under
+    ///    [`ContextKey::Seeds`]. The kernel produces the [`AdmissionReceipt`];
+    ///    promotion to a governed fact happens later through the engine's
+    ///    normal gate.
+    ///
+    /// Returns the compiled `IntentPacket` (so the caller can drive resolution
+    /// and planning) plus the `AdmissionReceipt` (proof that the truth has
+    /// been staged). The `IntentPacket` is the input the resolver ladder
+    /// consumes; the receipt is what audit / replay needs.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TruthAdmissionError`] if the Truth fails to compile, fails
+    /// the admission gate, or fails Converge admission validation.
+    pub fn resolve_and_admit_truth(
+        &self,
+        truth: &TruthDocument,
+        actor: AdmissionActor,
+        source: AdmissionSource,
+        context: &mut ContextState,
+    ) -> Result<(IntentPacket, AdmissionReceipt), TruthAdmissionError> {
+        let intent = compile_truth_document(truth)?;
+        admit_intent(&intent).map_err(|err| match err {
+            PipelineError::Rejected(msg) => TruthAdmissionError::Rejected(msg),
+            other => TruthAdmissionError::Rejected(other.to_string()),
+        })?;
+
+        let payload = serde_json::to_string(&intent)
+            .map_err(|err| TruthAdmissionError::Serialize(err.to_string()))?;
+        let admission_body = AdmissionContent::new(payload)?;
+        let request = AdmissionRequest::new(
+            actor,
+            source,
+            ContextKey::Seeds,
+            format!("intent:{}", intent.id),
+            admission_body,
+        )?;
+        let receipt = admit_observation(context, request)?;
+        Ok((intent, receipt))
     }
 
     /// Admit an intent and compile the formation plan Organism would run.
@@ -233,7 +318,7 @@ mod tests {
         FormationTemplateQuery, ProfileSnapshot, SuggestorCapability, SuggestorRole,
     };
     use converge_kernel::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
-    use converge_provider_api::{BackendRequirements, CostClass, LatencyClass};
+    use converge_provider::{BackendRequirements, CostClass, LatencyClass};
 
     fn id(n: u128) -> uuid::Uuid {
         uuid::Uuid::from_u128(n)

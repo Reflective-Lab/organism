@@ -153,7 +153,7 @@ The first scaffold exists in `organism-runtime`:
 - `Runtime::compile_and_run_formation()` runs a single compiled candidate and
   returns a `FormationExecutionRecord` with the compiled plan, Converge result,
   and learning-ready outcome record.
-- `examples/formation-compiler` compiles the vendor-selection F3 plan,
+- `examples/formation-compiler` (in `atelier-showcase`) compiles the vendor-selection F3 plan,
   instantiates it through fixture suggestor factories, launches the governed
   Converge run, and emits a draft outcome record.
 

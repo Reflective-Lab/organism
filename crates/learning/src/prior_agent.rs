@@ -101,12 +101,15 @@ impl Suggestor for PlanningPriorAgent {
         let mut effect = AgentEffect::builder();
 
         for prior in &priors {
-            let blended = recall_signal
-                .map_or(prior.posterior_confidence, |signal| {
-                    prior.posterior_confidence + (signal - prior.posterior_confidence) * 0.3
+            let posterior_f = prior.posterior_confidence.as_f64();
+            let prior_f = prior.prior_confidence.as_f64();
+            let blended_f = recall_signal
+                .map_or(posterior_f, |signal| {
+                    posterior_f + (signal - posterior_f) * 0.3
                 })
                 .clamp(0.0, 1.0);
-            let adjustment = blended - prior.prior_confidence;
+            let blended = converge_pack::UnitInterval::clamped(blended_f);
+            let adjustment = blended_f - prior_f;
             let direction = if adjustment > 0.0 { "up" } else { "down" };
 
             effect.push(ProposedFact::new(
@@ -130,7 +133,10 @@ impl Suggestor for PlanningPriorAgent {
         }
 
         if !priors.is_empty() {
-            let avg_confidence: f64 = priors.iter().map(|p| p.posterior_confidence).sum::<f64>()
+            let avg_confidence: f64 = priors
+                .iter()
+                .map(|p| p.posterior_confidence.as_f64())
+                .sum::<f64>()
                 / f64::from(u32::try_from(priors.len()).unwrap_or(1));
 
             effect.push(ProposedFact::new(

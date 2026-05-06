@@ -31,6 +31,12 @@ Where [Converge](https://github.com/Reflective-Lab/converge) answers *"what acti
 Human intent → Organism (form, reason, debate, simulate) → Converge (run, promote, govern) → World
 ```
 
+## A New World
+
+The old world translated human intent into explicit instructions before execution. The new world keeps the gap between *intent* and *decision* open and runs systems that close it safely at runtime. Organism is the layer that does that closure — admission, decomposition, planning, adversarial review, simulation — all governed by Converge's commit boundary.
+
+**Why it matters.** Without a reasoning layer, an intent-driven stack collapses into prompt engineering or rigid workflow software. Organism is where messy human intent becomes a Formation the kernel can run — and where the system *earns* autonomy stage by stage rather than seizing it upfront.
+
 ## The Intent Pipeline
 
 Every intent flows through a mandatory six-stage sequence. No shortcuts, no "trusted plan" exceptions.
@@ -205,7 +211,7 @@ Provider-shaped data acquisition from the world. Every result wrapped in `Observ
 | [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, and Formation execution |
 | [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, billing |
 | [`organism-notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
-| [`organism-domain`](crates/domain) | Organizational pack library and blueprints |
+| [`organism-domain`](../../extensions/atelier-showcase/crates/organism-domain) | Organizational pack library and blueprints |
 
 ### Internal Phase Crates
 
@@ -228,6 +234,9 @@ organism-pack = { path = "../organism/crates/pack" }
 
 # Embedded runtime — resolution, readiness, and Formation execution
 organism-runtime = { path = "../organism/crates/runtime" }
+
+# Organizational pack library and blueprints
+organism-domain = { path = "../extensions/atelier-showcase/crates/organism-domain" }
 
 # Converge integration
 converge-kernel = "3"
@@ -254,19 +263,21 @@ Important Converge changes:
 
 ## Examples
 
+See the [`atelier-showcase`](../../extensions/atelier-showcase) repository for a curated set of Organism and Converge examples:
+
 | Example | What it demonstrates |
 |---|---|
-| [`vendor-selection`](examples/vendor-selection) | Swarm evaluation, multi-criteria scoring, reusable partnerships pack Suggestors |
-| [`expense-approval`](examples/expense-approval) | Full pipeline with reusable autonomous_org spend approval Suggestors |
-| [`resolution-showcase`](examples/resolution-showcase) | Intent resolution across all 4 levels |
-| [`debate-loop`](examples/debate-loop) | Adversarial challenge and plan revision cycle |
-| [`collab-huddle`](examples/collab-huddle) | Strict huddle with done-gate voting and validation failures |
-| [`collab-panel`](examples/collab-panel) | Curated panel with role matrix and formation enforcement |
-| [`collab-self-organizing`](examples/collab-self-organizing) | Solo start → swarm growth, advisory consensus |
-| [`collab-discussion`](examples/collab-discussion) | Moderated discussion, full topology/cadence/consensus comparison |
-| [`charter-from-intent`](examples/charter-from-intent) | Dynamic charter derivation from intent properties |
-| [`topology-transition`](examples/topology-transition) | Mid-run shape changes over a simulated convergence loop |
-| [`shape-competition`](examples/shape-competition) | Competing shapes, scoring, winner selection, prior calibration |
+| `vendor-selection` | Swarm evaluation, multi-criteria scoring, reusable partnerships pack Suggestors |
+| `expense-approval` | Full pipeline with reusable autonomous_org spend approval Suggestors |
+| `resolution-showcase` | Intent resolution across all 4 levels |
+| `debate-loop` | Adversarial challenge and plan revision cycle |
+| `collab-huddle` | Strict huddle with done-gate voting and validation failures |
+| `collab-panel` | Curated panel with role matrix and formation enforcement |
+| `collab-self-organizing` | Solo start → swarm growth, advisory consensus |
+| `collab-discussion` | Moderated discussion, full topology/cadence/consensus comparison |
+| `charter-from-intent` | Dynamic charter derivation from intent properties |
+| `topology-transition` | Mid-run shape changes over a simulated convergence loop |
+| `shape-competition` | Competing shapes, scoring, winner selection, prior calibration |
 
 The former loan-application example graduated to
 `~/dev/apps/loan-application` because lending vocabulary, underwriting
