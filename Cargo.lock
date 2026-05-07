@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "organism-adversarial"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intelligence"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "base64",
  "pdf-extract",
@@ -1409,7 +1409,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intent"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "chrono",
  "converge-pack",
@@ -1421,7 +1421,7 @@ dependencies = [
 
 [[package]]
 name = "organism-learning"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "organism-notes"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "base64",
  "chrono",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "organism-pack"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "chrono",
  "converge-pack",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "organism-planning"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1485,7 +1485,7 @@ dependencies = [
 
 [[package]]
 name = "organism-runtime"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1509,7 +1509,7 @@ dependencies = [
 
 [[package]]
 name = "organism-simulation"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "async-trait",
  "converge-pack",

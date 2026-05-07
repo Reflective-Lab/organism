@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-08
+
+Cleanup release that makes the organism crates publishable to crates.io
+without external preconditions. No new features; same Phase B contract
+surface as 1.5.0.
+
 ### Changed
 - **Drop `axiom-truth` dependency.** Organism no longer parses `.truths` source
   itself. The bridge now consumes a self-contained `organism_intent::bridge::TruthInput`
