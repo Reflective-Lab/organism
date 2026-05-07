@@ -1,5 +1,5 @@
 ---
-tags: [handoff, cross-repo, helms, organism-1.7.0, organism-1.8.0, axiom-0.8.0]
+tags: [handoff, cross-repo, helms, organism-1.7.0, organism-1.8.0, organism-1.8.1, axiom-0.8.0]
 source: human
 date: 2026-05-07
 target: helms
@@ -63,11 +63,36 @@ week:
   keyword pass defaulted; degrades to deterministic default on error.
   `ProblemClassification.tiebroken: bool` surfaces whether the tiebreaker
   resolved the ambiguity.
+
+  **Async surface — selection stays sync.** `Runtime::select_formation`
+  and `FormationGuru::select` are deliberately **not** async — the guru
+  classifies internally with the deterministic `classify()` and never
+  takes a tiebreaker. Only the standalone helpers
+  (`classify_with_tiebreaker`, `classify_text_with_tiebreaker`) are
+  async. A helms `auto_run` that wants LLM tiebreaking has two shapes:
+  (a) skip the tiebreaker and call `runtime.select_formation` directly
+  (the cheap default), or (b) call `classify_with_tiebreaker` itself,
+  then route via `template_id_for(class)` + a direct catalog lookup,
+  bypassing the guru. Wrapping the guru is *not* an option in 1.8.x —
+  if helms needs a tiebreaker-aware `select_formation_async`, surface it
+  as a fresh organism deliverable, not a helms-side workaround.
 - **Added:** `organism_runtime::stall::RoleStallSuggestor` — in-loop
   observation Suggestor that emits a `Diagnostic` recommendation when a
   watched role's ContextKey stays empty while convergence happens
   elsewhere. Idempotent. Observation only — host policy decides whether
   to act.
+
+  **Consumer is helms's responsibility — not wired in 1.8.0.** The
+  `Diagnostic` is dead telemetry until something acts on it. The
+  recommended pattern: surface stall facts as
+  `UserExperienceEvent::UserCorrection` (the runtime self-corrected
+  mid-flight, see §"Audit trail integration") and feed them to
+  Converge's experience store; long-term they become `PlanningPriorAgent`
+  inputs. Re-selection on stall (drop the role, retry with an alternate
+  template) is *not* in 1.8.0 — if helms wants it, that's a helms
+  control-loop on top of the diagnostic emission, or a fresh organism
+  deliverable depending on whether re-selection should be Suggestor- or
+  orchestrator-driven.
 
 ### What organism intentionally does **not** ship
 
@@ -148,14 +173,18 @@ A safe order, smallest steps first.
   the v0.6.0 git tag. Step 1 bump is partially done.
 - `organism-{pack,runtime,intent,domain,intelligence,notes} = "1.7.0"`
   with path overrides ✓ at 1.7.0.
-- Bump pending: 1.7.0 → 1.8.0 to pick up the smarter-selection surfaces.
+- Bump pending: 1.7.0 → 1.8.1 to pick up the smarter-selection surfaces.
+  (1.8.1 is a docs-only patch on top of 1.8.0; the API surface is
+  identical to 1.8.0. Pin to the patch so this handoff doc and the pin
+  agree.)
 
 ### Steps
 
-1. **Bump organism pins to 1.8.0.** Trivial caret-relaxed; the path
+1. **Bump organism pins 1.7.0 → 1.8.1.** Trivial caret-relaxed; the path
    overrides resolve the local source either way. Confirms helms picks up
    `CandidateScore` / `CostHint` / `ClassifierTiebreaker` /
-   `RoleStallSuggestor`.
+   `RoleStallSuggestor`. The 1.8.1 patch is docs-only on top of 1.8.0 —
+   no API delta — so this collapses to a single version-string change.
 2. **Replace one `organism_recipe` truth at a time.** For each existing
    `TruthDefinition`, write the Truth as a `.truths` source string (or read
    it from a file), pipe through `axiom_truth::compile_intent_from_source`,
@@ -355,13 +384,27 @@ viable shapes:
   reversibility + queries HITL approval, then calls
   `runtime.admit_intent`. Direct calls to `runtime.admit_intent` from
   helms are forbidden by linter / convention.
+
+  *Tradeoff:* one chokepoint to audit; centralised enforcement is hard
+  to bypass once the convention holds. **Cost:** couples HITL to the
+  kernel admission boundary — every future organism admission entry
+  point (e.g. an in-loop re-admit, a streaming admission API) has to
+  preserve that wrapping or HITL silently leaks.
+
 - **Pre-admission gate at the truth-catalog boundary.** Every Truth that
   becomes an `IntentPacket` flows through `truth-catalog`'s ingress;
   attach the HITL check there, before `compile_intent` is even called.
 
-Helms picks one. The losing option becomes deprecated. Either way,
-organism's `Registry::packs_handling_irreversible` stops being "a hint"
-the moment helms commits to enforcement somewhere.
+  *Tradeoff:* keeps the kernel pure — organism stays unaware of HITL,
+  which preserves the layering. **Cost:** every new admission entry
+  point has to remember the gate. The day helms grows a second ingress
+  (a CLI tool, a webhook, a replay path), HITL is on the author of that
+  entry point, not on the type system.
+
+Helms picks one — eyes open on the cost, not just the centralisation
+appeal. The losing option becomes deprecated. Either way, organism's
+`Registry::packs_handling_irreversible` stops being "a hint" the moment
+helms commits to enforcement somewhere.
 
 ### Audit trail integration (worth threading)
 
@@ -429,10 +472,26 @@ unanswered).
 - LLM tiebreaker for the problem classifier (`ClassifierTiebreaker`)
 - In-loop re-selection (Suggestor that flags stalled roles)
 
+**Doc-only patch (1.8.1, 2026-05-07):**
+- This handoff doc itself: async-surface callout, RoleStall consumer
+  note, HITL ADR tradeoffs sketched per shape, per-role descriptor
+  scoring promoted to a planning-input for helms's tournament design.
+- No API delta vs 1.8.0; pin to 1.8.1 so the version on disk and the
+  version of this doc agree.
+
 **Deferred to a future cut:**
 - Per-role descriptor scoring + per-role decisions in `SelectionTrace`.
   Touches `FormationCompiler` and `CompiledFormationPlan`. Splitting it
   out kept 1.8.0 backwards-compatible.
+
+  **Planning input for helms tournament design.** If helms's tournament
+  scoring assumes per-role decisions ("template X won because role Y's
+  descriptor Z scored high"), redesign now around whole-template
+  composites — only `CandidateScore.composite`, `catalog_rank`,
+  `capability_surplus`, and `cost_hint` are exposed today. Don't build
+  a per-role scoring workaround on the helms side: organism owns that
+  surface and will likely ship it in 1.9.0, and a parallel helms
+  implementation will need to be retired the moment organism does.
 
 **Not committed (and should not be assumed):**
 - Per-step Suggestor cost telemetry. If helms ends up needing

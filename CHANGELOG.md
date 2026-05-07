@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-05-07
+
+Docs-only patch on top of 1.8.0. No API delta. Sharpens the helms
+migration handoff so helms picks up the 1.8.x surface eyes-open on the
+four nits the reviewer raised against the prior draft.
+
+### Changed
+- `kb/Handoffs/2026-05-07 Helms — organism 1.7.0 migration.md`:
+  - **Async surface callout.** Pinned that `Runtime::select_formation` /
+    `FormationGuru::select` stay sync; only the standalone
+    `classify_with_tiebreaker` / `classify_text_with_tiebreaker` helpers
+    are async. Helms's `auto_run` either skips the tiebreaker or routes
+    via `template_id_for(class)` after pre-classifying — wrapping the
+    guru is not an option in 1.8.x.
+  - **`RoleStallSuggestor` consumer named.** Diagnostic emission is dead
+    telemetry without a consumer; helms's responsibility is to surface
+    the fact as a `UserExperienceEvent::UserCorrection` and feed it
+    through the audit-trail path. Re-selection on stall is explicitly
+    not in 1.8.0.
+  - **HITL ADR tradeoffs sketched per shape.** Single-ingress (centralised
+    enforcement, but couples HITL to the kernel boundary) vs.
+    pre-admission gate at truth-catalog (kernel stays pure, but every
+    new admission entry point owns the gate). Helms picks with the cost
+    visible.
+  - **Per-role descriptor scoring promoted to a planning input.** Helms
+    must redesign tournament scoring around whole-template composites
+    (`CandidateScore.composite`, `catalog_rank`, `capability_surplus`,
+    `cost_hint`) — don't ship a per-role workaround that organism then
+    retires in 1.9.0.
+  - Step 1 of the migration sequence updated: pin to **1.8.1**, not
+    1.8.0, so the doc and the pin agree.
+- Workspace bumped 1.8.0 → 1.8.1.
+
 ## [1.8.0] - 2026-05-07
 
 Stage 3+ — "Smarter selection". Selection-shaped additions only; no

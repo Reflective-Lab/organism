@@ -16,7 +16,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.8.0"
+version = "1.8.1"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -24,15 +24,15 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.8.0" }
-organism-planning = { path = "crates/planning", version = "1.8.0" }
-organism-adversarial = { path = "crates/adversarial", version = "1.8.0" }
-organism-simulation = { path = "crates/simulation", version = "1.8.0" }
-organism-learning = { path = "crates/learning", version = "1.8.0" }
-organism-runtime = { path = "crates/runtime", version = "1.8.0" }
-organism-pack = { path = "crates/pack", version = "1.8.0" }
-organism-intelligence = { path = "crates/intelligence", version = "1.8.0" }
-organism-notes = { path = "crates/notes", version = "1.8.0" }
+organism-intent = { path = "crates/intent", version = "1.8.1" }
+organism-planning = { path = "crates/planning", version = "1.8.1" }
+organism-adversarial = { path = "crates/adversarial", version = "1.8.1" }
+organism-simulation = { path = "crates/simulation", version = "1.8.1" }
+organism-learning = { path = "crates/learning", version = "1.8.1" }
+organism-runtime = { path = "crates/runtime", version = "1.8.1" }
+organism-pack = { path = "crates/pack", version = "1.8.1" }
+organism-intelligence = { path = "crates/intelligence", version = "1.8.1" }
+organism-notes = { path = "crates/notes", version = "1.8.1" }
 
 # Converge contract (3.8.1 floor — published to crates.io)
 converge-pack     = "3.8.1"
