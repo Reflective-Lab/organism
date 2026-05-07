@@ -8,7 +8,6 @@ repository.workspace = true
 description = "Intent contracts for Organism — packets, admission, decomposition, resolution"
 
 [dependencies]
-axiom-truth.workspace = true
 chrono.workspace = true
 converge-pack.workspace = true
 serde.workspace = true

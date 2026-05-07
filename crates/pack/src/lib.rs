@@ -47,6 +47,13 @@
 //! };
 //! ```
 
+// ── Pack contract types ────────────────────────────────────────────
+// Vocabulary used by domain packs and the runtime registry.
+
+pub mod pack;
+
+pub use pack::{AgentMeta, ContextKey, InvariantClass, InvariantMeta, Pack, PackProfile};
+
 // ── Converge confidence vocabulary ────────────────────────────────
 // Named steps for adjust_confidence() — same values as converge_pack once
 // those constants land on main. Switch to re-exports when converge is updated.
