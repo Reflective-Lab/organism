@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "organism-adversarial"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intelligence"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "base64",
  "pdf-extract",
@@ -1409,19 +1409,21 @@ dependencies = [
 
 [[package]]
 name = "organism-intent"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
+ "async-trait",
  "chrono",
  "converge-pack",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "uuid",
 ]
 
 [[package]]
 name = "organism-learning"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1437,7 +1439,7 @@ dependencies = [
 
 [[package]]
 name = "organism-notes"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "base64",
  "chrono",
@@ -1450,7 +1452,7 @@ dependencies = [
 
 [[package]]
 name = "organism-pack"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "chrono",
  "converge-pack",
@@ -1467,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "organism-planning"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1485,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "organism-runtime"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1509,7 +1511,7 @@ dependencies = [
 
 [[package]]
 name = "organism-simulation"
-version = "1.5.1"
+version = "1.8.1"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -3434,7 +3436,7 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[patch.unused]]
 name = "converge-arbiter-policy"
-version = "1.0.0"
+version = "1.1.0"
 
 [[patch.unused]]
 name = "converge-atelier-domain"
@@ -3442,36 +3444,36 @@ version = "1.0.0"
 
 [[patch.unused]]
 name = "converge-embassy-linkedin"
-version = "1.0.0"
+version = "1.1.0"
 
 [[patch.unused]]
 name = "converge-embassy-pack"
-version = "1.0.0"
+version = "1.1.0"
 
 [[patch.unused]]
 name = "converge-ferrox-highs-sys"
-version = "0.4.1"
+version = "0.5.0"
 
 [[patch.unused]]
 name = "converge-ferrox-ortools-sys"
-version = "0.4.1"
+version = "0.5.0"
 
 [[patch.unused]]
 name = "converge-ferrox-server"
-version = "0.4.1"
+version = "0.5.0"
 
 [[patch.unused]]
 name = "converge-ferrox-solver"
-version = "0.4.1"
+version = "0.5.0"
 
 [[patch.unused]]
 name = "converge-manifold-adapters"
-version = "1.0.0"
+version = "1.1.0"
 
 [[patch.unused]]
 name = "converge-mnemos-knowledge"
-version = "1.0.0"
+version = "1.1.0"
 
 [[patch.unused]]
 name = "converge-prism-analytics"
-version = "1.0.0"
+version = "1.1.0"

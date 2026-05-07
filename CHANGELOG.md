@@ -6,6 +6,152 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-05-07
+
+Docs-only patch on top of 1.8.0. No API delta. Sharpens the helms
+migration handoff so helms picks up the 1.8.x surface eyes-open on the
+four nits the reviewer raised against the prior draft.
+
+### Changed
+- `kb/Handoffs/2026-05-07 Helms — organism 1.7.0 migration.md`:
+  - **Async surface callout.** Pinned that `Runtime::select_formation` /
+    `FormationGuru::select` stay sync; only the standalone
+    `classify_with_tiebreaker` / `classify_text_with_tiebreaker` helpers
+    are async. Helms's `auto_run` either skips the tiebreaker or routes
+    via `template_id_for(class)` after pre-classifying — wrapping the
+    guru is not an option in 1.8.x.
+  - **`RoleStallSuggestor` consumer named.** Diagnostic emission is dead
+    telemetry without a consumer; helms's responsibility is to surface
+    the fact as a `UserExperienceEvent::UserCorrection` and feed it
+    through the audit-trail path. Re-selection on stall is explicitly
+    not in 1.8.0.
+  - **HITL ADR tradeoffs sketched per shape.** Single-ingress (centralised
+    enforcement, but couples HITL to the kernel boundary) vs.
+    pre-admission gate at truth-catalog (kernel stays pure, but every
+    new admission entry point owns the gate). Helms picks with the cost
+    visible.
+  - **Per-role descriptor scoring promoted to a planning input.** Helms
+    must redesign tournament scoring around whole-template composites
+    (`CandidateScore.composite`, `catalog_rank`, `capability_surplus`,
+    `cost_hint`) — don't ship a per-role workaround that organism then
+    retires in 1.9.0.
+  - Step 1 of the migration sequence updated: pin to **1.8.1**, not
+    1.8.0, so the doc and the pin agree.
+- Workspace bumped 1.8.0 → 1.8.1.
+
+## [1.8.0] - 2026-05-07
+
+Stage 3+ — "Smarter selection". Selection-shaped additions only; no
+orchestration, no compilation. The four bullets that pivoted out of
+Stage 3's "Automatic tournament" deliverable land here, except per-role
+descriptor scoring which is deferred to a future cut (it would need to
+modify `FormationCompiler` and `CompiledFormationPlan` — out of scope for
+"keep the API stable").
+
+### Added
+- **Capability-surplus + cost-aware template scoring in `FormationGuru`.**
+  The guru's composite ranking now factors in three signals: catalog match
+  rank (still dominant), how many host capabilities the template doesn't
+  require (surplus = template "underspending" the host = preferable), and
+  the template's organism-side cost class. New types: `templates::CostHint`,
+  `templates::cost_hint_for`, `guru::CandidateScore`. `SelectionTrace`
+  gains a `scores: Vec<CandidateScore>` field so traces explain the rank.
+  Composite formula: `catalog_bonus * 10 + surplus + cost_bonus`.
+- **`organism_intent::problem::ClassifierTiebreaker` trait** — Plug Boundary
+  for LLM-backed (or otherwise external) tiebreakers. Async; same shape as
+  the resolution-ladder Level 3 SemanticMatcher. Paired with new
+  `classify_with_tiebreaker(&IntentPacket, &impl ClassifierTiebreaker)` and
+  `classify_text_with_tiebreaker(&str, ...)` async helpers. Tiebreaker is
+  consulted only when the deterministic keyword pass defaulted; on
+  tiebreaker error the result degrades to the deterministic default.
+- **`ProblemClassification.tiebroken: bool`** — surfaces whether a
+  tiebreaker resolved the ambiguity, so audits and traces can downweight
+  classifications that flipped on retry.
+- **`organism_runtime::stall::RoleStallSuggestor`** — in-loop observation
+  Suggestor that watches one ContextKey and emits a `Diagnostic` fact
+  recommending an alternate descriptor when the role bound to that key is
+  failing to contribute while convergence is happening elsewhere.
+  Idempotent (one stall per role per run). Tunable threshold via
+  `with_min_progress`. Observation only — host policy decides whether to
+  act on the recommendation.
+
+### Deferred to a future cut (not in 1.8.0)
+- Per-role descriptor scoring + per-role decisions in `SelectionTrace`.
+  Touches `FormationCompiler` and `CompiledFormationPlan`. Splitting it
+  out keeps 1.8.0's surface backwards-compatible.
+
+## [1.7.0] - 2026-05-07
+
+Stage 3 — "Truth-Driven Formation Selection" — plus the contract-boundary
+cleanups that completed the axiom split. `1.6.0` is intentionally skipped:
+the bridge deletion and the formation-routing work ship as one minor cut.
+
+### Added
+- **`organism_intent::problem`** — coarse 7-class taxonomy
+  (`ProblemClass::{Decision,Research,Evaluation,Planning,Diligence,Incident,Strategy}`)
+  plus a deterministic keyword-based `classify(&IntentPacket)` and the
+  underlying `classify_text(&str)`. Tie-breaking favors the most expensive
+  misclassification (Incident first, then Diligence). 14 inline tests.
+- **`organism_runtime::classifier::ProblemClassifierSuggestor`** — in-loop
+  classifier that reads `Seeds`/`Signals` and emits a `Hypotheses` fact
+  carrying the problem class. Idempotent; doesn't refire on contexts that
+  already carry a `problem-class:` hypothesis. `extract_classification`
+  recovers the typed value back from the fact. 5 Formation-driven tests.
+- **`organism_runtime::templates`** — five named formation templates
+  (`organism-{decision,research,evaluation,planning,diligence}`) wrapping
+  `converge_kernel::formation::FormationTemplate`. Each declares roles,
+  keywords, entities, and required `SuggestorCapability`s. Plus
+  `standard_formation_catalog()` and `template_id_for(ProblemClass)` for
+  routing. Incident and Strategy fall back to existing templates. 7 tests.
+- **`organism_runtime::guru::FormationGuru`** — picks formation templates
+  given an `IntentPacket` and host `SuggestorCapability` inventory.
+  Classifies internally, queries the catalog by class-derived keywords,
+  post-filters by available capabilities, returns primary + up to 2
+  alternates plus a `SelectionTrace` (problem class, matched keywords,
+  considered template ids, primary reason). 6 tests.
+- **`Runtime::select_formation(&IntentPacket, &FormationCatalog, &[SuggestorCapability])`**
+  — auto-mode's selection front half. Manual modes
+  (`compile_formation`, `compile_and_run_formation`, `handle`) remain
+  unchanged.
+- **`scenarios/truth-driven-formation`** in atelier-showcase — three
+  Truth fixtures (Decision / Research / Diligence), each parsed by
+  `axiom_truth::compile_intent_from_source` and routed by the guru. The
+  binary prints the visible selection trace per Truth.
+
+### Removed
+- **`organism_intent::bridge` deleted entirely.** `TruthInput`,
+  `IntentBlock`, `AuthorityBlock`, `ConstraintBlock`, `EvidenceBlock`,
+  `ExceptionBlock`, and `compile_truth` are gone. Truth-shaped types and
+  the `TruthDocument → IntentPacket` compiler now live in `axiom-truth 0.8`
+  as `axiom_truth::compile_intent`. Callers compile via axiom and pass the
+  resulting `IntentPacket` to the runtime.
+
+### Changed
+- **`Runtime::resolve_and_admit_truth` → `Runtime::admit_intent(&IntentPacket, ...)`.**
+  The runtime no longer compiles Truth; it admits an already-compiled
+  `IntentPacket` through Converge's typed admission boundary. The bridge
+  step is the caller's responsibility (`axiom_truth::compile_intent`).
+- **`TruthAdmissionError` → `IntentAdmissionError`.** The
+  `Bridge(BridgeError)` variant is removed; remaining variants (`Rejected`,
+  `AdmissionRequest`, `Serialize`, `Converge`) are unchanged.
+- **`runtime/tests/truth_admission.rs` → `runtime/tests/intent_admission.rs`.**
+  Tests now build `IntentPacket`s directly. Truth-→-IntentPacket coverage
+  moved to `axiom-truth/src/intent.rs` (17 inline tests).
+
+### Caller migration
+```rust
+// Before (1.5.1):
+let (intent, receipt) = runtime.resolve_and_admit_truth(&truth_input, actor, src, &mut ctx)?;
+
+// After (1.7.0):
+let intent  = axiom_truth::compile_intent(&truth_document)?;  // axiom owns Truth
+let receipt = runtime.admit_intent(&intent, actor, src, &mut ctx)?;
+
+// Optional auto-mode selection:
+let selection = runtime.select_formation(&intent, &catalog, &capabilities)?;
+println!("picked {}: {}", selection.primary.id(), selection.trace.primary_reason);
+```
+
 ## [1.5.1] - 2026-05-08
 
 Cleanup release that makes the organism crates publishable to crates.io

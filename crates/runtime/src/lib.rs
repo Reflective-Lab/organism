@@ -13,18 +13,23 @@
 //!                    └──── reform if needed ────────────────────┘
 //! ```
 
+pub mod classifier;
 pub mod collaboration;
 pub mod compiler;
 pub mod execution;
 pub mod experience;
 pub mod formation;
+pub mod guru;
 pub mod huddle;
 pub mod outcome;
 pub mod readiness;
 pub mod registry;
+pub mod stall;
+pub mod templates;
 pub mod tournament;
 pub mod vendor_selection;
 
+pub use classifier::{ProblemClassifierSuggestor, extract_classification};
 pub use collaboration::{
     CollaborationParticipant, CollaborationRunner, CollaborationRunnerError, TransitionRecord,
 };
@@ -39,6 +44,7 @@ pub use execution::{
 };
 pub use experience::{ExperienceEnvelopeSink, FormationExperienceObserver};
 pub use formation::{Formation, FormationError, FormationResult, Seed};
+pub use guru::{CandidateScore, FormationGuru, GuruError, GuruSelection, SelectionTrace};
 pub use huddle::{
     ConsensusEvaluator, DisagreementMap, DisagreementMapper, RoundConventions, RoundStarter,
     RoundSynthesizer, SynthesisProducer, TerminalPredicate,
@@ -56,6 +62,11 @@ pub use readiness::{
     ReadinessItem, ReadinessProbe, ReadinessReport, ResourceKind, check as check_readiness,
 };
 pub use registry::{RegisteredCapability, RegisteredPack, Registry, StructuralResolver};
+pub use stall::RoleStallSuggestor;
+pub use templates::{
+    CostHint, cost_hint_for, decision_formation, diligence_formation, evaluation_formation,
+    planning_formation, research_formation, standard_formation_catalog, template_id_for,
+};
 pub use tournament::{FormationScore, FormationTournament, TournamentError, TournamentResult};
 pub use vendor_selection::{
     VendorSelectionFlow, VendorSelectionFlowSpec, vendor_selection_formation_catalog,
@@ -66,9 +77,9 @@ use converge_kernel::admission::{
     AdmissionActor, AdmissionContent, AdmissionError, AdmissionReceipt, AdmissionRequest,
     AdmissionSource, admit_observation,
 };
+use converge_kernel::formation::{FormationCatalog, SuggestorCapability};
 use converge_kernel::{ContextKey, ContextState, ConvergeError};
 use organism_intent::admission::{self, Admission};
-use organism_intent::bridge::{BridgeError, TruthInput, compile_truth};
 use organism_pack::IntentPacket;
 use std::sync::Arc;
 
@@ -96,13 +107,11 @@ pub enum PipelineError {
     Formation(#[from] FormationError),
 }
 
-/// Why a Truth Document failed to compile or admit.
+/// Why an IntentPacket failed organism's structural gate or Converge's typed
+/// admission boundary.
 #[derive(Debug, thiserror::Error)]
-pub enum TruthAdmissionError {
-    /// The Truth Document did not compile to an IntentPacket.
-    #[error("truth document did not compile: {0}")]
-    Bridge(#[from] BridgeError),
-    /// Organism's structural admission gate rejected the compiled IntentPacket.
+pub enum IntentAdmissionError {
+    /// Organism's structural admission gate rejected the IntentPacket.
     #[error("admission rejected: {0}")]
     Rejected(String),
     /// Constructing the Converge admission request failed (empty actor / source / id / content).
@@ -116,7 +125,7 @@ pub enum TruthAdmissionError {
     Converge(String),
 }
 
-impl From<ConvergeError> for TruthAdmissionError {
+impl From<ConvergeError> for IntentAdmissionError {
     fn from(err: ConvergeError) -> Self {
         Self::Converge(err.to_string())
     }
@@ -138,47 +147,43 @@ impl Runtime {
         Self
     }
 
-    /// Compile a Truth-shaped input into an IntentPacket and admit it through
-    /// Converge's typed admission boundary.
+    /// Run organism's structural admission gate on an [`IntentPacket`] and
+    /// stage it through Converge's typed admission boundary.
     ///
-    /// This is the public Organism → Helms contract. Helms' `truth-catalog`
-    /// should call this rather than hand-rolling `IntentPacket` field-by-field
-    /// (the older `helms/truth-catalog/src/organism.rs` path). The flow:
+    /// This is the public Organism → Helms contract for getting work into the
+    /// runtime. Callers compile their input (e.g. with `axiom_truth::compile_intent`
+    /// for Truth-shaped sources) into an [`IntentPacket`] and pass it here.
     ///
-    /// 1. A [`TruthInput`] (whose fields mirror the canonical Truth Document
-    ///    governance shape) is compiled to an [`IntentPacket`] via
-    ///    [`organism_intent::bridge::compile_truth`].
-    /// 2. Organism's structural admission gate runs (cheap, deterministic).
-    /// 3. The compiled intent is staged through
+    /// Flow:
+    /// 1. Organism's structural admission gate runs (cheap, deterministic).
+    /// 2. The intent is staged through
     ///    [`converge_kernel::admission::admit_observation`] under
     ///    [`ContextKey::Seeds`]. The kernel produces the [`AdmissionReceipt`];
     ///    promotion to a governed fact happens later through the engine's
     ///    normal gate.
     ///
-    /// Returns the compiled `IntentPacket` (so the caller can drive resolution
-    /// and planning) plus the `AdmissionReceipt` (proof that the truth has
-    /// been staged). The `IntentPacket` is the input the resolver ladder
-    /// consumes; the receipt is what audit / replay needs.
+    /// Returns the [`AdmissionReceipt`] — proof the intent has been staged.
+    /// The caller already holds the `IntentPacket` and can use it directly to
+    /// drive resolution and planning.
     ///
     /// # Errors
     ///
-    /// Returns [`TruthAdmissionError`] if the Truth fails to compile, fails
-    /// the admission gate, or fails Converge admission validation.
-    pub fn resolve_and_admit_truth(
+    /// Returns [`IntentAdmissionError`] if the intent fails the admission
+    /// gate, or fails Converge admission validation.
+    pub fn admit_intent(
         &self,
-        truth: &TruthInput,
+        intent: &IntentPacket,
         actor: AdmissionActor,
         source: AdmissionSource,
         context: &mut ContextState,
-    ) -> Result<(IntentPacket, AdmissionReceipt), TruthAdmissionError> {
-        let intent = compile_truth(truth)?;
-        admit_intent(&intent).map_err(|err| match err {
-            PipelineError::Rejected(msg) => TruthAdmissionError::Rejected(msg),
-            other => TruthAdmissionError::Rejected(other.to_string()),
+    ) -> Result<AdmissionReceipt, IntentAdmissionError> {
+        gate_admission(intent).map_err(|err| match err {
+            PipelineError::Rejected(msg) => IntentAdmissionError::Rejected(msg),
+            other => IntentAdmissionError::Rejected(other.to_string()),
         })?;
 
-        let payload = serde_json::to_string(&intent)
-            .map_err(|err| TruthAdmissionError::Serialize(err.to_string()))?;
+        let payload = serde_json::to_string(intent)
+            .map_err(|err| IntentAdmissionError::Serialize(err.to_string()))?;
         let admission_body = AdmissionContent::new(payload)?;
         let request = AdmissionRequest::new(
             actor,
@@ -188,7 +193,30 @@ impl Runtime {
             admission_body,
         )?;
         let receipt = admit_observation(context, request)?;
-        Ok((intent, receipt))
+        Ok(receipt)
+    }
+
+    /// Pick a formation template for `intent` from `catalog` given the host's
+    /// available `capabilities`. The guru classifies the intent, queries the
+    /// catalog by class-derived keywords, and post-filters by the host's
+    /// declared capability inventory. Returns the chosen primary plus up to
+    /// two alternates and a [`SelectionTrace`] explaining the choice.
+    ///
+    /// This is auto-mode's *front half* — selection without execution. To run
+    /// the chosen template, build a [`FormationCompileRequest`] keyed on
+    /// `selection.primary.id()` and call [`compile_and_run_formation`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GuruError`] if no template in `catalog` satisfies the
+    /// classified problem under `capabilities`.
+    pub fn select_formation<'cat>(
+        &self,
+        intent: &IntentPacket,
+        catalog: &'cat FormationCatalog,
+        capabilities: &[SuggestorCapability],
+    ) -> Result<GuruSelection<'cat>, GuruError> {
+        FormationGuru::new(catalog).select(intent, capabilities)
     }
 
     /// Admit an intent and compile the formation plan Organism would run.
@@ -201,7 +229,7 @@ impl Runtime {
         request: &FormationCompileRequest,
         catalogs: &FormationCompilerCatalogs,
     ) -> Result<CompiledFormationPlan, PipelineError> {
-        admit_intent(intent)?;
+        gate_admission(intent)?;
         Ok(FormationCompiler::new().compile(request, catalogs)?)
     }
 
@@ -271,7 +299,7 @@ impl Runtime {
     ) -> Result<OrganismResult, PipelineError> {
         // 1. Admission — the one imperative check that stays outside the loop.
         //    Is the intent structurally valid? Not expired? Not empty?
-        admit_intent(&intent)?;
+        gate_admission(&intent)?;
 
         // 2. Run formations (concurrently in the future; sequential for now).
         //    Each formation is a complete Converge Engine run with its own
@@ -303,7 +331,7 @@ impl Runtime {
     }
 }
 
-fn admit_intent(intent: &IntentPacket) -> Result<(), PipelineError> {
+fn gate_admission(intent: &IntentPacket) -> Result<(), PipelineError> {
     match admission::admit(intent) {
         Admission::Admit => Ok(()),
         Admission::Reject(err) => Err(PipelineError::Rejected(err.to_string())),
@@ -496,6 +524,30 @@ mod tests {
             })
             .expect("decision-synthesis factory");
         catalog
+    }
+
+    #[test]
+    fn runtime_selects_decision_template_for_decision_intent() {
+        let catalog = standard_formation_catalog();
+        let caps = [
+            SuggestorCapability::LlmReasoning,
+            SuggestorCapability::PolicyEnforcement,
+            SuggestorCapability::Analytics,
+        ];
+        let intent = IntentPacket::new(
+            "decide which vendor to approve",
+            Utc::now() + Duration::hours(1),
+        );
+
+        let selection = Runtime::new()
+            .select_formation(&intent, &catalog, &caps)
+            .expect("decision intent matches the standard catalog");
+
+        assert_eq!(selection.primary.id(), "organism-decision");
+        assert_eq!(
+            selection.classification.class,
+            organism_intent::problem::ProblemClass::Decision
+        );
     }
 
     #[test]
