@@ -62,14 +62,13 @@ pub use vendor_selection::{
     vendor_selection_lifecycle,
 };
 
-use axiom_truth::TruthDocument;
 use converge_kernel::admission::{
     AdmissionActor, AdmissionContent, AdmissionError, AdmissionReceipt, AdmissionRequest,
     AdmissionSource, admit_observation,
 };
 use converge_kernel::{ContextKey, ContextState, ConvergeError};
 use organism_intent::admission::{self, Admission};
-use organism_intent::bridge::{BridgeError, compile_truth_document};
+use organism_intent::bridge::{BridgeError, TruthInput, compile_truth};
 use organism_pack::IntentPacket;
 use std::sync::Arc;
 
@@ -139,15 +138,16 @@ impl Runtime {
         Self
     }
 
-    /// Compile a Truth Document into an IntentPacket and admit it through
+    /// Compile a Truth-shaped input into an IntentPacket and admit it through
     /// Converge's typed admission boundary.
     ///
     /// This is the public Organism → Helms contract. Helms' `truth-catalog`
     /// should call this rather than hand-rolling `IntentPacket` field-by-field
     /// (the older `helms/truth-catalog/src/organism.rs` path). The flow:
     ///
-    /// 1. `axiom_truth::TruthDocument` is compiled to an [`IntentPacket`] via
-    ///    [`organism_intent::bridge::compile_truth_document`].
+    /// 1. A [`TruthInput`] (whose fields mirror the canonical Truth Document
+    ///    governance shape) is compiled to an [`IntentPacket`] via
+    ///    [`organism_intent::bridge::compile_truth`].
     /// 2. Organism's structural admission gate runs (cheap, deterministic).
     /// 3. The compiled intent is staged through
     ///    [`converge_kernel::admission::admit_observation`] under
@@ -166,12 +166,12 @@ impl Runtime {
     /// the admission gate, or fails Converge admission validation.
     pub fn resolve_and_admit_truth(
         &self,
-        truth: &TruthDocument,
+        truth: &TruthInput,
         actor: AdmissionActor,
         source: AdmissionSource,
         context: &mut ContextState,
     ) -> Result<(IntentPacket, AdmissionReceipt), TruthAdmissionError> {
-        let intent = compile_truth_document(truth)?;
+        let intent = compile_truth(truth)?;
         admit_intent(&intent).map_err(|err| match err {
             PipelineError::Rejected(msg) => TruthAdmissionError::Rejected(msg),
             other => TruthAdmissionError::Rejected(other.to_string()),

@@ -397,7 +397,7 @@ mod tests {
             context_keys_read: vec![],
             context_keys_written: vec![],
             has_acceptance_invariants: false,
-            profile: organism_domain::pack::PackProfile::default(),
+            profile: organism_pack::PackProfile::default(),
         });
         // legal is NOT registered
 

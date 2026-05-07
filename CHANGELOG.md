@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-08
+
+Cleanup release that makes the organism crates publishable to crates.io
+without external preconditions. No new features; same Phase B contract
+surface as 1.5.0.
+
+### Changed
+- **Drop `axiom-truth` dependency.** Organism no longer parses `.truths` source
+  itself. The bridge now consumes a self-contained `organism_intent::bridge::TruthInput`
+  whose fields mirror the canonical Truth Document governance shape;
+  upstream tooling (Helms / atelier showcase) parses `.truths` with its own
+  toolchain and populates `TruthInput`. `compile_truth_document` /
+  `compile_truth_source` are renamed to `compile_truth(&TruthInput)`.
+  `Runtime::resolve_and_admit_truth` takes `&TruthInput` instead of
+  `&axiom_truth::TruthDocument`.
+- **Drop `organism-domain` dependency.** The pack-framework vocabulary
+  (`AgentMeta`, `InvariantMeta`, `Pack`, `PackProfile`, `ContextKey`,
+  `InvariantClass`) now lives in `organism-pack::pack`. `Registry`'s
+  `with_standard_packs` / `register_standard_packs` helpers are removed —
+  downstream catalogs (e.g. `organism-domain`) register their own packs into
+  a `Registry` directly.
+
 ## [1.5.0] - 2026-05-07
 
 Phase B contract closure. Organism is Helms's typed front door: Truth Documents

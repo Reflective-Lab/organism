@@ -16,7 +16,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.5.0"
+version = "1.5.1"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -24,16 +24,15 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.5.0" }
-organism-planning = { path = "crates/planning", version = "1.5.0" }
-organism-adversarial = { path = "crates/adversarial", version = "1.5.0" }
-organism-simulation = { path = "crates/simulation", version = "1.5.0" }
-organism-learning = { path = "crates/learning", version = "1.5.0" }
-organism-runtime = { path = "crates/runtime", version = "1.5.0" }
-organism-pack = { path = "crates/pack", version = "1.5.0" }
-organism-intelligence = { path = "crates/intelligence", version = "1.5.0" }
-organism-domain = { path = "../../extensions/atelier-showcase/crates/organism-domain", version = "1.5.0" }
-organism-notes = { path = "crates/notes", version = "1.5.0" }
+organism-intent = { path = "crates/intent", version = "1.5.1" }
+organism-planning = { path = "crates/planning", version = "1.5.1" }
+organism-adversarial = { path = "crates/adversarial", version = "1.5.1" }
+organism-simulation = { path = "crates/simulation", version = "1.5.1" }
+organism-learning = { path = "crates/learning", version = "1.5.1" }
+organism-runtime = { path = "crates/runtime", version = "1.5.1" }
+organism-pack = { path = "crates/pack", version = "1.5.1" }
+organism-intelligence = { path = "crates/intelligence", version = "1.5.1" }
+organism-notes = { path = "crates/notes", version = "1.5.1" }
 
 # Converge contract (3.8.1 floor — published to crates.io)
 converge-pack     = "3.8.1"
@@ -51,9 +50,6 @@ ferrox-server    = { package = "converge-ferrox-server",    version = "0.4.1" }
 manifold         = { package = "converge-manifold-adapters", version = "1.0" }
 mnemos           = { package = "converge-mnemos-knowledge", version = "1.0" }
 prism            = { package = "converge-prism-analytics",  version = "1.0" }
-
-# Axiom contract
-axiom-truth = "0.7"
 
 # Shared deps
 anyhow = "1"
@@ -93,8 +89,8 @@ codegen-units = 1
 lto = true
 
 # Converge 3.8.1 foundation crates publish to crates.io directly; no patches
-# needed for them. Extension crates (`publish = false`) and the local axiom
-# checkout resolve through these path entries.
+# needed for them. Extension crates (`publish = false`) resolve through these
+# path entries.
 [patch.crates-io]
 converge-arbiter-policy     = { path = "../../extensions/arbiter-policy/crates/arbiter" }
 converge-atelier-domain     = { path = "../../extensions/atelier-showcase/crates/atelier-domain" }
@@ -107,4 +103,3 @@ converge-ferrox-highs-sys   = { path = "../../extensions/ferrox-solvers/crates/h
 converge-manifold-adapters  = { path = "../../extensions/manifold-adapters/crates/manifold" }
 converge-mnemos-knowledge   = { path = "../../extensions/mnemos-knowledge/crates/mnemos" }
 converge-prism-analytics    = { path = "../../extensions/prism-analytics/crates/prism" }
-axiom-truth                 = { path = "../axiom" }
