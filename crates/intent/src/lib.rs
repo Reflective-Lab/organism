@@ -8,8 +8,11 @@
 
 pub mod admission;
 pub mod decomposition;
+pub mod graded_admission;
 pub mod problem;
 pub mod resolution;
+
+pub use graded_admission::{DimensionRulebook, GradedAdmissionController};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

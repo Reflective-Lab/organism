@@ -9,6 +9,7 @@
 //! Converge's fixed-point detection handles termination.
 
 pub mod agents;
+pub mod anomaly_skeptic;
 pub mod types;
 
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,7 @@ pub use agents::{
     AssumptionBreakerAgent, ConstraintCheck, ConstraintCheckerAgent, EconomicSkepticAgent,
     OperationalSkepticAgent, OrgConstraint,
 };
+pub use anomaly_skeptic::{ANOMALY_SKEPTIC_META, AnomalySkepticAgent};
 pub use types::{AdversarialVerdict, AgentId, Complexity};
 
 // ── Challenge ──────────────────────────────────────────────────────
@@ -66,6 +68,10 @@ pub enum SkepticismKind {
     CausalSkepticism,
     EconomicSkepticism,
     OperationalSkepticism,
+    /// Statistical-anomaly skepticism — flags plans whose key metrics
+    /// are outliers in the distribution of the strategy set, via
+    /// `prism::packs::anomaly_detection` (Z-score).
+    StatisticalAnomaly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
