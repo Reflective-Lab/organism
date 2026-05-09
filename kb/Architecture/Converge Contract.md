@@ -5,7 +5,7 @@ tags: [architecture]
 
 How Organism uses Converge. See [[Philosophy/Relationship to Converge]] for why.
 
-Shared stack guidance: `~/dev/work/converge/kb/Architecture/Golden Path Matrix.md`.
+Shared stack guidance: `~/dev/reflective-stack/bedrock-platform/converge/kb/Architecture/Golden Path Matrix.md`.
 
 ## Direct Type Usage
 
@@ -68,6 +68,18 @@ What Converge owns:
 - invariants and typed stop reasons
 - integrity proof and governed result
 
+## Fixed-Point Formation Rule
+
+A Formation exists to exploit Converge's fixed-point loop. It is not a prompt
+chain, workflow recipe, or static roster. Organism selects Suggestors because
+their read/write relationships should make shared context stabilize: some
+propose candidate facts, some retrieve evidence, some challenge weak claims,
+some score or optimize alternatives, some authorize or block, and some
+synthesize the final shape.
+
+Selection traces should explain this loop contribution. If a formation omits a
+useful specialist family, the omission should be visible and intentional.
+
 ## Allowed
 
 - Implement any Organism agent as `Suggestor`
@@ -84,6 +96,8 @@ What Converge owns:
 - Bypass `Engine.run()` for governed fact creation
 - Build wrapper types that pretend to replace the Converge surface
 - Rely on suggestor name ordering for sequencing; use dependency keys instead
+- Implement reusable specialist cores in Organism, Helm, or apps when Mosaic
+  owns the professional implementation
 
 ## Extending Types
 
@@ -110,4 +124,21 @@ blueprints layer on top. Policy, optimization, analytics, and knowledge are
 still valid formation members, but they are `Suggestor`s, not special pipeline
 stages.
 
-See also: [[Architecture/Crate Map]], [[Philosophy/Key Invariants]]
+## Mosaic Specialist Bench
+
+Use Mosaic extension implementations for specialist work:
+
+| Need | Bench |
+|---|---|
+| Policy, Cedar, authorization, approval gates | Arbiter |
+| Generic providers, storage, search, fetch, feed, vector, tools | Manifold |
+| Source-specific connectors and provenance | Embassy |
+| Knowledge, recall, retrieval, memory | Mnemos |
+| Regression, fuzzy inference, ranking, forecasting, anomaly detection, ML | Prism |
+| Optimization, scheduling, routing, allocation, feasibility proofs | Ferrox |
+
+Organism may define formation roles, descriptors, input/output contracts, and
+thin adapter-agnostic Suggestors. It should not import concrete adapter types
+or rebuild the algorithms these extensions own.
+
+See also: [[Architecture/Crate Map]], [[Architecture/Specialist Bench Formations]], [[Philosophy/Key Invariants]]

@@ -4,7 +4,7 @@ tags: [concept, vendor-selection, rfp, formations, compiler]
 # Vendor Selection Lifecycle
 
 Vendor selection is the first proof wedge for the Organism formation compiler.
-It should not be modeled as a simple scorecard. The hackathon materials describe
+It should not be modeled as a simple scorecard. Discovery materials describe
 a full governed lifecycle that collapses a manual 8- or 9-step RFP process into
 four composite decision flows.
 

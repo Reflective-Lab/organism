@@ -35,6 +35,7 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 - [[Architecture/Pipeline Flow]] — step-by-step data flow
 - [[Architecture/Converge Contract]] — which Converge crates to use and how
 - [[Architecture/Two-Sided Capabilities]] — provider-shaped + pack-shaped capability model
+- [[Architecture/Specialist Bench Formations]] — Formations exploit Converge fixed points with Mosaic specialists
 - [[Architecture/Migration from Converge]] — what moves from converge-provider to Organism
 
 ## Building

@@ -8,7 +8,7 @@ vendor selection as the first proof wedge.
 
 The milestone is broader than procurement. Vendor selection is the first named
 decision product because it is reconciliation-heavy, policy-rich, measurable,
-and available as live hackathon discovery material.
+and available as live discovery material.
 
 ## Claim
 
@@ -54,7 +54,7 @@ handoff tax:
 
 ## Downstream Consumers
 
-`axiom` and hackathon applications should consume Organism as the decision layer:
+`axiom` and product applications should consume Organism as the decision layer:
 
 - depend on `organism-runtime` for compiler, lifecycle, execution, and outcome
   surfaces
@@ -171,7 +171,7 @@ These workstreams can proceed with auto-approval because they are pure
 Organism-side scaffolding:
 
 - compiler/catalog types and deterministic unit tests
-- vendor-selection lifecycle fixture from the hackathon docs
+- vendor-selection lifecycle fixture
 - per-role provider requirement mapping
 - outcome record and correlation metadata structs
 - explicit compiled-plan-to-formation instantiation boundary

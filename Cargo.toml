@@ -92,14 +92,14 @@ lto = true
 # needed for them. Extension crates (`publish = false`) resolve through these
 # path entries.
 [patch.crates-io]
-converge-arbiter-policy     = { path = "../../extensions/arbiter-policy/crates/arbiter" }
-converge-atelier-domain     = { path = "../../extensions/atelier-showcase/crates/atelier-domain" }
-converge-embassy-pack       = { path = "../../extensions/embassy-ports/crates/pack" }
-converge-embassy-linkedin   = { path = "../../extensions/embassy-ports/crates/linkedin" }
-converge-ferrox-solver      = { path = "../../extensions/ferrox-solvers/crates/ferrox" }
-converge-ferrox-server      = { path = "../../extensions/ferrox-solvers/crates/ferrox-server" }
-converge-ferrox-ortools-sys = { path = "../../extensions/ferrox-solvers/crates/ortools-sys" }
-converge-ferrox-highs-sys   = { path = "../../extensions/ferrox-solvers/crates/highs-sys" }
-converge-manifold-adapters  = { path = "../../extensions/manifold-adapters/crates/manifold" }
-converge-mnemos-knowledge   = { path = "../../extensions/mnemos-knowledge/crates/mnemos" }
-converge-prism-analytics    = { path = "../../extensions/prism-analytics/crates/prism" }
+converge-arbiter-policy     = { path = "../../mosaic-extensions/arbiter-policy/crates/arbiter" }
+converge-atelier-domain     = { path = "../../atelier-showcase/crates/atelier-domain" }
+converge-embassy-pack       = { path = "../../mosaic-extensions/embassy-ports/crates/pack" }
+converge-embassy-linkedin   = { path = "../../mosaic-extensions/embassy-ports/crates/linkedin" }
+converge-ferrox-solver      = { path = "../../mosaic-extensions/ferrox-solvers/crates/ferrox" }
+converge-ferrox-server      = { path = "../../mosaic-extensions/ferrox-solvers/crates/ferrox-server" }
+converge-ferrox-ortools-sys = { path = "../../mosaic-extensions/ferrox-solvers/crates/ortools-sys" }
+converge-ferrox-highs-sys   = { path = "../../mosaic-extensions/ferrox-solvers/crates/highs-sys" }
+converge-manifold-adapters  = { path = "../../mosaic-extensions/manifold-adapters/crates/manifold" }
+converge-mnemos-knowledge   = { path = "../../mosaic-extensions/mnemos-knowledge/crates/mnemos" }
+converge-prism-analytics    = { path = "../../mosaic-extensions/prism-analytics/crates/prism" }

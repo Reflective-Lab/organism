@@ -47,7 +47,7 @@ Organism owns the organizational workflow packs in `organism-domain` (now mainta
 - `virtual_teams`
 - `linkedin_research`
 - `reskilling`
-- `due_diligence` (born from monterro + hackathon consolidation)
+- `due_diligence` (born from monterro + governance-app consolidation)
 
 Organism also owns cross-pack blueprints when the flow is reusable:
 
@@ -125,7 +125,7 @@ Monterro's convergent due diligence flow was built app-first:
 1. **App-discovered patterns:** Five hand-rolled suggestors (breadth search, depth
    search, fact extraction, gap detection, synthesis), a hand-rolled budget tracker,
    and a planning seed that converted Organism plans into Converge strategy facts.
-2. **Hackathon duplicated them:** The governance hackathon independently built the
+2. **A second governance app duplicated them:** An independent governance app built the
    same patterns — budget, planning seed, gap detection, synthesis — with different
    domain payloads but identical structure.
 3. **Consolidated to Organism:** The reusable patterns moved into `organism-planning`:
@@ -135,7 +135,7 @@ Monterro's convergent due diligence flow was built app-first:
    - `SharedBudget` — cross-suggestor resource tracking with named limits
 4. **Next step:** The five DD suggestors themselves (search, extract, detect, synthesize)
    move into `organism-domain` (external) as a proper domain pack
-   with generic callbacks for search and LLM. Monterro and hackathon become thin
+   with generic callbacks for search and LLM. Consuming apps become thin
    wiring layers that inject their backends.
 
 This is the intended lifecycle: **app → pattern → organism crate → multiple apps reuse**.
