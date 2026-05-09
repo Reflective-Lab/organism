@@ -11,12 +11,20 @@ pub mod charter_derivation;
 pub mod collaboration;
 pub mod dd;
 pub mod debate;
+pub mod fuzzy_reasoner;
 pub mod huddle;
 pub mod huddle_invocation;
 pub mod kb;
+pub mod ml_prediction_reasoner;
 pub mod shape_hypothesis;
 pub mod suggestor;
 pub mod topology_transition;
+
+pub use fuzzy_reasoner::FuzzyReasoner;
+pub use ml_prediction_reasoner::{
+    ML_PREDICTION_REASONER_META, MlPredictionMode, MlPredictionReasoner,
+    MlPredictionReasonerDescriptor,
+};
 
 use converge_pack::FactId;
 use organism_intent::IntentPacket;
@@ -122,6 +130,10 @@ pub enum ReasoningSystem {
     CausalAnalysis,
     CostEstimation,
     DomainModel,
+    /// Graded reasoning over linguistic variables via `prism::fuzzy`.
+    /// Holds membership-of-X-set semantics through to synthesis instead of
+    /// collapsing to binary outcomes.
+    FuzzyReasoning,
 }
 
 // ── Huddle ─────────────────────────────────────────────────────────

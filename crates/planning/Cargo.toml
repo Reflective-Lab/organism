@@ -12,6 +12,7 @@ organism-intent.workspace = true
 converge-pack.workspace = true
 converge-kernel.workspace = true
 converge-provider.workspace = true
+prism.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
@@ -22,6 +23,7 @@ uuid.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

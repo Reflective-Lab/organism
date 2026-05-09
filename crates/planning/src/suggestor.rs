@@ -59,6 +59,7 @@ impl HuddleSeedSuggestor {
                     ReasoningSystem::CostEstimation => "cost",
                     ReasoningSystem::LlmReasoning => "llm",
                     ReasoningSystem::MlPrediction => "ml",
+                    ReasoningSystem::FuzzyReasoning => "fuzzy",
                 };
                 NamedPlan {
                     id: format!("huddle-{system}-{i}"),
@@ -137,6 +138,7 @@ fn reasoning_system_tag(system: ReasoningSystem) -> &'static str {
         ReasoningSystem::CostEstimation => "cost-estimation",
         ReasoningSystem::LlmReasoning => "llm-reasoning",
         ReasoningSystem::MlPrediction => "ml-prediction",
+        ReasoningSystem::FuzzyReasoning => "fuzzy-reasoning",
     }
 }
 
