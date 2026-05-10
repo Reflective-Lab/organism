@@ -45,4 +45,4 @@ Monday:     /audit
 /deploy [target] Deploy to production
 ```
 
-For the full reference: `~/dev/reflective-stack/bedrock-platform/kb/Workflow/Cheat Sheet.md`
+For the full reference: `~/dev/reflective/stack/bedrock-platform/kb/Workflow/Cheat Sheet.md`

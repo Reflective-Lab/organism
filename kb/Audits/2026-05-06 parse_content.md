@@ -80,6 +80,6 @@ Each schema-to-struct migration is independently shippable and unblocks property
 
 ## Cross-references
 
-- `~/dev/reflective-stack/bedrock-platform/converge/crates/pack/src/fact.rs` — `parse_json_content` definition
+- `~/dev/reflective/stack/bedrock-platform/converge/crates/pack/src/fact.rs` — `parse_json_content` definition
 - `kb/Concepts/Bidirectional ExperienceStore.md` — already uses typed deserialization for the user variants; serves as the pattern for future schema-to-struct work
-- 3.8 declaration item 4 (in `~/dev/reflective-stack/bedrock-platform/converge/`)
+- 3.8 declaration item 4 (in `~/dev/reflective/stack/bedrock-platform/converge/`)

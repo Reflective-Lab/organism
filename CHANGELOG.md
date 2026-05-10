@@ -271,7 +271,7 @@ topology (manifold, mnemos, prism, arbiter, atelier-domain, embassy, ferrox).
   constructor reachable, no field-by-field construction of authoritative
   facts.
 - **`organism-domain` path** — moved to
-  `~/dev/reflective-stack/mosaic-extensions/atelier-showcase/crates/organism-domain` (workspace
+  `~/dev/reflective/stack/mosaic-extensions/atelier-showcase/crates/organism-domain` (workspace
   directory rename). Crate name unchanged.
 
 ### Removed
@@ -281,7 +281,7 @@ topology (manifold, mnemos, prism, arbiter, atelier-domain, embassy, ferrox).
   (e.g. `monterro-core`) need to migrate their `DdLlm` impls to
   `DynChatBackend` when picking up 1.5.0.
 - **`organism-intelligence::linkedin`** module — extracted to
-  `embassy-linkedin` (`~/dev/reflective-stack/mosaic-extensions/embassy-ports/crates/linkedin`).
+  `embassy-linkedin` (`~/dev/reflective/stack/mosaic-extensions/embassy-ports/crates/linkedin`).
   Embassy owns source-specific connector ports.
 - **LinkedIn readiness probe** — `CredentialProbe::with_standard_checks` no
   longer requires `LINKEDIN_API_KEY`. Consumers that want a LinkedIn probe
@@ -330,7 +330,7 @@ queued for a focused cleanup release.
   packs; the examples now consume pack-level Suggestors instead of owning the
   reusable business mechanics.
 - The loan-application example graduated out of Organism into
-  `~/dev/reflective-stack/marquee-apps/loan-application`, keeping lending vocabulary and underwriting
+  `~/dev/reflective/stack/marquee-apps/loan-application`, keeping lending vocabulary and underwriting
   assumptions in the app layer.
 - `PlanningPriorAgent` can consult Converge recall through `ExperienceStore`,
   closing the experience-to-planning feedback loop.

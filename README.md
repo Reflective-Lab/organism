@@ -280,7 +280,7 @@ See the [`atelier-showcase`](../../extensions/atelier-showcase) repository for a
 | `shape-competition` | Competing shapes, scoring, winner selection, prior calibration |
 
 The former loan-application example graduated to
-`~/dev/reflective-stack/marquee-apps/loan-application` because lending vocabulary, underwriting
+`~/dev/reflective/stack/marquee-apps/loan-application` because lending vocabulary, underwriting
 assumptions, fixture data, and product workflow belong in concrete apps rather
 than reusable Organism examples.
 
