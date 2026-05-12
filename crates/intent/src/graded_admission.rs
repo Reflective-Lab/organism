@@ -143,7 +143,7 @@ fn assess_from_output(
     let memberships: BTreeMap<&str, f64> = output
         .memberships
         .iter()
-        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|name| (name, *v)))
+        .filter_map(|(k, v): (&String, &f64)| k.strip_prefix(&prefix).map(|name| (name, *v)))
         .collect();
 
     let kind_candidates: &[(&str, FeasibilityKind)] = &[
@@ -159,7 +159,7 @@ fn assess_from_output(
     let chosen = kind_candidates
         .iter()
         .filter_map(|(name, k)| memberships.get(name).map(|m| (*k, *m)))
-        .filter(|(_, m)| *m > 0.0)
+        .filter(|(_, m): &(FeasibilityKind, f64)| *m > 0.0)
         .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let (kind, top_membership) = chosen.unwrap_or((FeasibilityKind::Uncertain, 0.0));
