@@ -77,6 +77,7 @@ pub struct FormationTournament {
     plan_id: Uuid,
 }
 
+#[derive(Debug, Clone)]
 pub struct TournamentResult {
     pub winner: FormationScore,
     pub all_scores: Vec<FormationScore>,

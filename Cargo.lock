@@ -4938,6 +4938,7 @@ dependencies = [
  "converge-provider",
  "organism-adversarial",
  "organism-catalog",
+ "organism-catalog-seed",
  "organism-intent",
  "organism-learning",
  "organism-pack",

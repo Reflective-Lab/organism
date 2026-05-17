@@ -29,6 +29,7 @@ tracing.workspace = true
 [dev-dependencies]
 chrono.workspace = true
 proptest.workspace = true
+organism-catalog-seed.workspace = true
 
 [lints]
 workspace = true

@@ -76,14 +76,30 @@ impl ExecutableSuggestorCatalog {
         self.factories.keys().map(String::as_str).collect()
     }
 
-    /// Instantiate a compiled plan into a runnable formation.
+    /// Instantiate a compiled plan into a runnable formation, labelled
+    /// with `plan.template_id`.
     ///
-    /// Provider assignments remain part of the compiled plan and outcome record.
-    /// Concrete provider clients should be captured by the registered factories.
+    /// Provider assignments remain part of the compiled plan and
+    /// outcome record. Concrete provider clients should be captured by
+    /// the registered factories.
     pub fn instantiate(
         &self,
         plan: &CompiledFormationPlan,
         seeds: impl IntoIterator<Item = Seed>,
+    ) -> Result<Formation, FormationInstantiationError> {
+        self.instantiate_with_label(plan, seeds, plan.template_id.clone())
+    }
+
+    /// Instantiate a compiled plan into a runnable formation with a
+    /// caller-supplied label. Use this when running multiple candidate
+    /// rosters compiled from the same template — the unique label is
+    /// the join key that lets a downstream tournament distinguish
+    /// scores per candidate.
+    pub fn instantiate_with_label(
+        &self,
+        plan: &CompiledFormationPlan,
+        seeds: impl IntoIterator<Item = Seed>,
+        label: impl Into<String>,
     ) -> Result<Formation, FormationInstantiationError> {
         let missing = plan
             .roster
@@ -98,7 +114,7 @@ impl ExecutableSuggestorCatalog {
             });
         }
 
-        let mut formation = Formation::new(plan.template_id.clone());
+        let mut formation = Formation::new(label);
         for seed in seeds {
             formation = formation.seed(seed.key, seed.id, seed.content, seed.provenance);
         }

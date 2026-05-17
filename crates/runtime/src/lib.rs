@@ -76,6 +76,8 @@ pub use vendor_selection::{
     vendor_selection_lifecycle,
 };
 
+use organism_catalog::DiscoveryCatalog;
+
 use converge_kernel::admission::{
     AdmissionActor, AdmissionContent, AdmissionError, AdmissionReceipt, AdmissionRequest,
     AdmissionSource, admit_observation,
@@ -95,6 +97,45 @@ pub struct OrganismResult {
     pub converge_result: converge_kernel::ConvergeResult,
 }
 
+/// A single scored catalog-sourced candidate. Pairs the per-role
+/// decision trace (why this roster was chosen) with the tournament
+/// score (how it performed). Indexed-paired entries are how callers
+/// join "selection rationale" to "score outcome" without parsing
+/// labels.
+#[derive(Debug, Clone)]
+pub struct ScoredCatalogCandidate {
+    /// Stable index 0..k matching position in the originating
+    /// `compile_k_candidates` call. The label of the underlying
+    /// `Formation` was set to `format!("{template_id}#{index}")` at
+    /// instantiation so the tournament's `FormationScore.label` can be
+    /// joined back here unambiguously.
+    pub index: usize,
+    pub candidate: CatalogCompiledFormationPlan,
+    pub score: FormationScore,
+}
+
+/// Result of [`Runtime::compile_k_and_run_tournament`]. Pairs each
+/// candidate's selection rationale (decisions) with its tournament
+/// score so the audit trail can show *why* each roster was chosen
+/// alongside *how* it performed. Pair-by-index is the join key — the
+/// tournament's `FormationScore.label` is `{template_id}#{index}` for
+/// candidate at that index.
+#[derive(Debug, Clone)]
+pub struct CatalogTournamentOutcome {
+    /// Index into `scored_candidates` of the tournament winner.
+    pub winner_index: usize,
+    pub scored_candidates: Vec<ScoredCatalogCandidate>,
+    /// Calibrated priors ready to feed the next planning prior agent.
+    pub priors: Vec<organism_learning::PriorCalibration>,
+}
+
+impl CatalogTournamentOutcome {
+    #[must_use]
+    pub fn winner(&self) -> &ScoredCatalogCandidate {
+        &self.scored_candidates[self.winner_index]
+    }
+}
+
 /// Why the pipeline rejected an intent or formation.
 #[derive(Debug, thiserror::Error)]
 pub enum PipelineError {
@@ -102,12 +143,20 @@ pub enum PipelineError {
     Rejected(String),
     #[error("formation compile error: {0}")]
     Compile(#[from] FormationCompileError),
+    /// Catalog-aware compile failure. Carries the partial per-role
+    /// decision trace so callers can explain why the requirement could
+    /// not be satisfied.
+    #[error("catalog compile error: {0}")]
+    CatalogCompile(#[from] CatalogCompileFailure),
     #[error("formation instantiation error: {0}")]
     Instantiate(#[from] FormationInstantiationError),
     #[error("all formations failed: {0}")]
     AllFormationsFailed(String),
     #[error("formation error: {0}")]
     Formation(#[from] FormationError),
+    /// Tournament error (e.g. no formations to score, all failed).
+    #[error("tournament error: {0}")]
+    Tournament(String),
 }
 
 /// Why an IntentPacket failed organism's structural gate or Converge's typed
@@ -279,6 +328,168 @@ impl Runtime {
         Ok(FormationExecutionRecord::from_plan_and_result(plan, result))
     }
 
+    // -- Catalog-aware compile path ----------------------------------------
+    //
+    // These methods source Suggestor candidates from a `DiscoveryCatalog`
+    // (organism-catalog) via deterministic structural filters, and return
+    // the structured per-role decision trace so callers can explain why
+    // each specialist is present or absent. `advisory_order` is an
+    // optional ranked list of descriptor IDs from an out-of-band advisor
+    // (e.g. an LLM-backed `CatalogLookup`); the compiler uses it strictly
+    // as a tie-breaker after deterministic scoring — never as authority.
+
+    /// Admit an intent and compile a formation plan from a
+    /// [`DiscoveryCatalog`]. Catalog-aware parallel to
+    /// [`Self::compile_formation`].
+    pub fn compile_formation_from_catalog(
+        &self,
+        intent: &IntentPacket,
+        request: &FormationCompileRequest,
+        formation_templates: &FormationCatalog,
+        catalog: &DiscoveryCatalog,
+        providers: &ProviderDescriptorCatalog,
+        advisory_order: Option<&[String]>,
+    ) -> Result<CatalogCompiledFormationPlan, PipelineError> {
+        gate_admission(intent)?;
+        Ok(FormationCompiler::new().compile_from_catalog(
+            request,
+            formation_templates,
+            catalog,
+            providers,
+            advisory_order,
+        )?)
+    }
+
+    /// Admit, compile from catalog, and instantiate a runnable formation.
+    /// Catalog-aware parallel to [`Self::compile_and_instantiate_formation`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn compile_and_instantiate_from_catalog(
+        &self,
+        intent: &IntentPacket,
+        request: &FormationCompileRequest,
+        formation_templates: &FormationCatalog,
+        catalog: &DiscoveryCatalog,
+        providers: &ProviderDescriptorCatalog,
+        executables: &ExecutableSuggestorCatalog,
+        seeds: impl IntoIterator<Item = Seed>,
+        advisory_order: Option<&[String]>,
+    ) -> Result<(CatalogCompiledFormationPlan, Formation), PipelineError> {
+        let outcome = self.compile_formation_from_catalog(
+            intent,
+            request,
+            formation_templates,
+            catalog,
+            providers,
+            advisory_order,
+        )?;
+        let formation = executables.instantiate(&outcome.plan, seeds)?;
+        Ok((outcome, formation))
+    }
+
+    /// Source `k` candidate rosters from the catalog, instantiate each,
+    /// and run a [`FormationTournament`] to pick the winner.
+    ///
+    /// Each candidate covers the same formation template requirements
+    /// but draws a different roster from the catalog (via swap-out
+    /// diversity — see [`FormationCompiler::compile_k_candidates`]).
+    /// The returned [`CatalogTournamentOutcome`] carries both the
+    /// tournament result (winner + scores + priors) and each candidate's
+    /// [`CatalogCompiledFormationPlan`] so the audit trail shows
+    /// selection rationale AND score outcome side-by-side.
+    ///
+    /// `seeds_fn` is called once per candidate to produce its seed
+    /// inventory — formations consume their seeds when run, so each
+    /// candidate needs its own fresh `Vec<Seed>`.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn compile_k_and_run_tournament<F>(
+        &self,
+        intent: &IntentPacket,
+        request: &FormationCompileRequest,
+        formation_templates: &FormationCatalog,
+        catalog: &DiscoveryCatalog,
+        providers: &ProviderDescriptorCatalog,
+        executables: &ExecutableSuggestorCatalog,
+        seeds_fn: F,
+        k: usize,
+    ) -> Result<CatalogTournamentOutcome, PipelineError>
+    where
+        F: Fn(usize, &CatalogCompiledFormationPlan) -> Vec<Seed>,
+    {
+        gate_admission(intent)?;
+
+        let candidates = FormationCompiler::new().compile_k_candidates(
+            request,
+            formation_templates,
+            catalog,
+            providers,
+            k,
+        )?;
+
+        if candidates.is_empty() {
+            return Err(PipelineError::Tournament(
+                "compile_k_candidates returned no candidates".to_string(),
+            ));
+        }
+
+        let mut formations: Vec<Formation> = Vec::with_capacity(candidates.len());
+        for (index, candidate) in candidates.iter().enumerate() {
+            let seeds = seeds_fn(index, candidate);
+            // Unique label per candidate so the tournament's
+            // FormationScore.label is the join key back to the
+            // originating candidate. Format: "{template_id}#{index}".
+            let label = format!("{}#{index}", candidate.plan.template_id);
+            let formation = executables.instantiate_with_label(&candidate.plan, seeds, label)?;
+            formations.push(formation);
+        }
+
+        let tournament = FormationTournament::new(intent.id, request.plan_id, formations);
+        let tournament_result = tournament
+            .run()
+            .await
+            .map_err(|err| PipelineError::Tournament(err.to_string()))?;
+
+        // Pair each FormationScore back to its candidate by parsing the
+        // index suffix from the label.
+        let mut scored_candidates: Vec<ScoredCatalogCandidate> =
+            Vec::with_capacity(candidates.len());
+        for score in &tournament_result.all_scores {
+            let index = candidate_index_from_label(&score.label).ok_or_else(|| {
+                PipelineError::Tournament(format!(
+                    "tournament returned an unjoinable score label: {label}",
+                    label = score.label
+                ))
+            })?;
+            let candidate = candidates.get(index).cloned().ok_or_else(|| {
+                PipelineError::Tournament(format!(
+                    "score index {index} out of range (k = {})",
+                    candidates.len()
+                ))
+            })?;
+            scored_candidates.push(ScoredCatalogCandidate {
+                index,
+                candidate,
+                score: score.clone(),
+            });
+        }
+        // Sort by index so the order matches the original
+        // compile_k_candidates output for predictable consumption.
+        scored_candidates.sort_by_key(|sc| sc.index);
+
+        let winner_index =
+            candidate_index_from_label(&tournament_result.winner.label).ok_or_else(|| {
+                PipelineError::Tournament(format!(
+                    "tournament winner has unjoinable label: {label}",
+                    label = tournament_result.winner.label
+                ))
+            })?;
+
+        Ok(CatalogTournamentOutcome {
+            winner_index,
+            scored_candidates,
+            priors: tournament_result.priors,
+        })
+    }
+
     /// Drive an intent through the pipeline.
     ///
     /// The caller is responsible for assembling formations (teams of Suggestors).
@@ -332,6 +543,14 @@ impl Runtime {
             converge_result: winner.converge_result,
         })
     }
+}
+
+/// Extract the candidate index from a label of the form
+/// `{template_id}#{index}` as produced by
+/// [`Runtime::compile_k_and_run_tournament`]. Returns `None` if the
+/// label has no `#` or the suffix is not a valid `usize`.
+fn candidate_index_from_label(label: &str) -> Option<usize> {
+    label.rsplit_once('#')?.1.parse::<usize>().ok()
 }
 
 fn gate_admission(intent: &IntentPacket) -> Result<(), PipelineError> {

@@ -1,4 +1,20 @@
 //! Descriptors for `organism-runtime::*` agents.
+//!
+//! ## Exclusion rule for generic Suggestors
+//!
+//! Suggestors that are generic over a host-supplied type parameter
+//! AND whose `name()` is derived from the constructed instance (e.g.
+//! `organism-planning::StabilitySuggestor<F>`) are intentionally
+//! omitted from this seed. Their catalog identity is not stable until
+//! the host monomorphizes them, and each host instantiation produces a
+//! distinct effective Suggestor with a distinct name. Hosts that wire
+//! such Suggestors should register a per-instance
+//! [`CatalogSuggestorDescriptor`] alongside the factory at runtime.
+//!
+//! Generic Suggestors that DO have a stable static name (e.g.
+//! `organism-round-synthesizer`, generic over `SynthesisProducer` but
+//! returns a fixed `&'static str` from `name()`) are included here as
+//! the descriptor identifies the surface, not the parameter.
 
 use converge_kernel::ContextKey;
 use converge_kernel::formation::{SuggestorCapability, SuggestorRole};
@@ -13,6 +29,7 @@ pub fn descriptors() -> Vec<CatalogSuggestorDescriptor> {
         problem_classifier(),
         role_stall(),
         round_starter(),
+        round_synthesizer(),
         disagreement_mapper(),
         consensus_evaluator(),
     ]
@@ -84,6 +101,28 @@ pub fn round_starter() -> CatalogSuggestorDescriptor {
         ],
         loop_contributions: vec![LoopContribution::Propose],
         produces: vec!["organism.runtime.huddle-round"],
+    })
+}
+
+#[must_use]
+pub fn round_synthesizer() -> CatalogSuggestorDescriptor {
+    entry(EntrySpec {
+        id: "organism-round-synthesizer",
+        role: SuggestorRole::Synthesis,
+        capabilities: vec![SuggestorCapability::LlmReasoning],
+        output_keys: vec![ContextKey::Proposals, ContextKey::Hypotheses],
+        reads: vec![ContextKey::Hypotheses],
+        domain_tags: vec!["runtime", "huddle", "synthesis"],
+        cost: CostClass::Medium,
+        latency: LatencyClass::Interactive,
+        summary: "Synthesize the end-of-round outcome from accumulated hypotheses.",
+        use_when: "When a huddle round closes and per-round hypotheses must be combined into a coherent step output.",
+        examples: vec![
+            "summarise this round's conclusions",
+            "synthesize the team's hypotheses into a next step",
+        ],
+        loop_contributions: vec![LoopContribution::Synthesize],
+        produces: vec!["organism.runtime.round-synthesis"],
     })
 }
 

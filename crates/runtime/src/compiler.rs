@@ -536,6 +536,117 @@ fn suggestor_coverage(
     role_score + capability_score
 }
 
+impl FormationCompiler {
+    /// Source up to `k` distinct candidate rosters from the same
+    /// [`DiscoveryCatalog`] by iterative swap-out diversity.
+    ///
+    /// After each candidate is compiled, descriptors from its roster
+    /// are added to the exclusion set used for the next iteration —
+    /// **but only if the descriptor is swappable**, i.e. the catalog
+    /// contains at least one other descriptor with the same role
+    /// covering at least one of its capabilities. Non-swappable
+    /// descriptors (the only one of their kind for a required slot)
+    /// stay available for every iteration, so a scarce specialist
+    /// shared by all valid rosters does not block diversity in the
+    /// other slots.
+    ///
+    /// Stops early when the filtered catalog can no longer cover the
+    /// formation requirements — that's the graceful end of the pool,
+    /// not an error. Returns whatever candidates were produced.
+    ///
+    /// Returns the underlying [`CatalogCompileFailure`] **only** when
+    /// the very first iteration fails (i.e. the catalog can't satisfy
+    /// the template even unfiltered). All later failures are absorbed
+    /// as "pool exhausted" and the loop stops.
+    ///
+    /// `k = 0` is well-defined and returns `Ok(vec![])`. `k = 1` is
+    /// equivalent to a single [`Self::compile_from_catalog`] call.
+    pub fn compile_k_candidates(
+        &self,
+        request: &FormationCompileRequest,
+        formation_templates: &FormationCatalog,
+        catalog: &DiscoveryCatalog,
+        providers: &ProviderDescriptorCatalog,
+        k: usize,
+    ) -> Result<Vec<CatalogCompiledFormationPlan>, CatalogCompileFailure> {
+        let mut candidates: Vec<CatalogCompiledFormationPlan> = Vec::new();
+        let mut excluded: Vec<String> = Vec::new();
+
+        for _ in 0..k {
+            let filtered = filter_out_ids(catalog, &excluded);
+            match self.compile_from_catalog(
+                request,
+                formation_templates,
+                &filtered,
+                providers,
+                None,
+            ) {
+                Ok(plan) => {
+                    for role in &plan.plan.roster {
+                        // Look up the descriptor in the FULL catalog
+                        // (not the filtered view) to decide swappability.
+                        // Non-swappable descriptors stay available for
+                        // future candidates so scarce specialists aren't
+                        // locked out of valid alternate rosters.
+                        if let Some(entry) = catalog.get(&role.suggestor_id)
+                            && has_swappable_alternative(catalog, entry)
+                        {
+                            excluded.push(role.suggestor_id.clone());
+                        }
+                    }
+                    candidates.push(plan);
+                }
+                Err(failure) => {
+                    if candidates.is_empty() {
+                        return Err(failure);
+                    }
+                    // Pool exhausted for later candidates — graceful stop.
+                    break;
+                }
+            }
+        }
+
+        Ok(candidates)
+    }
+}
+
+/// Returns `true` if `catalog` contains at least one other descriptor
+/// (id != `entry.id()`) that shares `entry`'s role and at least one of
+/// its capabilities. Used by [`FormationCompiler::compile_k_candidates`]
+/// to decide whether to exclude a descriptor from later iterations: a
+/// descriptor with no alternative for its (role, capability) slot is
+/// kept available so it does not block diversity in other slots.
+fn has_swappable_alternative(
+    catalog: &DiscoveryCatalog,
+    entry: &CatalogSuggestorDescriptor,
+) -> bool {
+    let target_role = entry.descriptor.profile.role;
+    let target_caps = &entry.descriptor.profile.capabilities;
+    catalog.iter().any(|other| {
+        other.id() != entry.id()
+            && other.descriptor.profile.role == target_role
+            && other
+                .descriptor
+                .profile
+                .capabilities
+                .iter()
+                .any(|c| target_caps.contains(c))
+    })
+}
+
+/// Build a new [`DiscoveryCatalog`] containing every entry of `source`
+/// whose id is not in `exclude_ids`. Used by k-best swap-out to source
+/// diverse candidate rosters from the same underlying catalog.
+fn filter_out_ids(source: &DiscoveryCatalog, exclude_ids: &[String]) -> DiscoveryCatalog {
+    let mut filtered = DiscoveryCatalog::new();
+    for entry in source {
+        if !exclude_ids.iter().any(|id| id == entry.id()) {
+            filtered.register(entry.clone());
+        }
+    }
+    filtered
+}
+
 /// Catalog-aware variant of [`best_suggestor`]. Uses the
 /// [`DiscoveryCatalog`]'s structural filters to source candidates and
 /// records every considered candidate (chosen, outranked, already

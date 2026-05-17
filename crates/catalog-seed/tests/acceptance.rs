@@ -249,6 +249,17 @@ fn mosaic_only_fails_when_synthesis_required_with_partial_trace() {
 
 // ---------------------------------------------------------------------------
 // (d) per-source pinned_to manifests
+//
+// NOTE on scope: these tests assert that the seed crate's *self-reported*
+// pin manifest matches the values we expect. They do NOT cross-check
+// against the actual workspace Cargo.toml or crates.io. A real drift
+// check would parse the workspace manifest at test time and assert each
+// pinned_to entry resolves to the same version that the workspace
+// resolver picks. That belongs in a separate audit step (e.g. a
+// pre-release check or a CI job that runs `cargo metadata --format-version 1`
+// and joins on crate name). For now the assertions below catch
+// hand-edited drift in the seed itself, which is the most common
+// regression.
 // ---------------------------------------------------------------------------
 
 #[test]
