@@ -4841,6 +4841,7 @@ dependencies = [
  "converge-pack",
  "converge-provider",
  "organism-catalog",
+ "organism-planning",
  "organism-runtime",
  "serde",
  "serde_json",

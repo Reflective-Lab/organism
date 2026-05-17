@@ -221,6 +221,10 @@ pub enum FormationCompileError {
     /// referenced a descriptor id that does not exist in the catalog.
     #[error("draft references unknown descriptor '{descriptor_id}'")]
     DraftDescriptorMissing { descriptor_id: String },
+    /// A draft passed to [`FormationCompiler::compile_draft_from_catalog`]
+    /// referenced the same descriptor id more than once.
+    #[error("draft references descriptor '{descriptor_id}' more than once")]
+    DuplicateDraftDescriptor { descriptor_id: String },
 }
 
 /// Failure outcome from [`FormationCompiler::compile_from_catalog`].
@@ -501,10 +505,11 @@ impl FormationCompiler {
     /// Exact-roster validator for a draft produced by an upstream
     /// deliberation Formation (see `organism-dynamics`).
     ///
-    /// Confirms every id in `descriptor_ids` resolves in `catalog`
-    /// (returns [`FormationCompileError::DraftDescriptorMissing`] for
-    /// the first missing one) and that the supplied roster covers the
-    /// template's required roles + capabilities (returns
+    /// Confirms every id in `descriptor_ids` is unique, resolves in
+    /// `catalog` (returns
+    /// [`FormationCompileError::DraftDescriptorMissing`] for the first
+    /// missing one), and that the supplied roster covers the template's
+    /// required roles + capabilities (returns
     /// [`FormationCompileError::UncoveredRequirements`] otherwise).
     /// Does **not** greedy-reselect — the returned plan's roster is
     /// exactly `descriptor_ids` in the supplied order.
@@ -536,6 +541,22 @@ impl FormationCompiler {
                 decisions: decisions.clone(),
             })?;
         let metadata = template.metadata();
+
+        // Reject duplicates before resolving. A draft roster is an exact
+        // executable roster, not a weighted vote; repeated ids would
+        // duplicate the same Suggestor in the work Formation and can also
+        // game draft-time scoring.
+        let mut seen_descriptor_ids = std::collections::BTreeSet::new();
+        for id in descriptor_ids {
+            if !seen_descriptor_ids.insert(id.as_str()) {
+                return Err(CatalogCompileFailure {
+                    error: FormationCompileError::DuplicateDraftDescriptor {
+                        descriptor_id: id.clone(),
+                    },
+                    decisions,
+                });
+            }
+        }
 
         // Resolve every descriptor id — first miss is the failure.
         let mut selected: Vec<&CatalogSuggestorDescriptor> =
@@ -1823,6 +1844,30 @@ mod tests {
             failure.error,
             FormationCompileError::DraftDescriptorMissing { ref descriptor_id }
                 if descriptor_id == "does-not-exist"
+        ));
+    }
+
+    #[test]
+    fn compile_draft_rejects_duplicate_descriptor() {
+        let templates = loop_demo_template_catalog();
+        let catalog = loop_demo_catalog_full();
+        let providers = ProviderDescriptorCatalog::new();
+        let request = loop_demo_query();
+
+        let descriptor_ids = vec![
+            "retrieve-suggestor".to_string(),
+            "retrieve-suggestor".to_string(),
+            "optimize-suggestor".to_string(),
+            "authorize-suggestor".to_string(),
+        ];
+
+        let failure = FormationCompiler::new()
+            .compile_draft_from_catalog(&request, &templates, &catalog, &providers, &descriptor_ids)
+            .expect_err("duplicate descriptor must be rejected");
+        assert!(matches!(
+            failure.error,
+            FormationCompileError::DuplicateDraftDescriptor { ref descriptor_id }
+                if descriptor_id == "retrieve-suggestor"
         ));
     }
 

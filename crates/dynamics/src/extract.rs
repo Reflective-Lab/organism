@@ -11,7 +11,7 @@ use converge_kernel::{Context, ContextKey};
 use converge_pack::TextPayload;
 use thiserror::Error;
 
-use crate::payload::FormationDraft;
+use crate::payload::{DraftValidation, FormationDraft, FormationDraftValidationError};
 
 /// Why a single fact failed to parse as a [`FormationDraft`]. Returned
 /// from [`extract_drafts_strict`] for diagnostic use; the default
@@ -24,13 +24,9 @@ pub enum DraftParseError {
     /// The TextPayload content failed JSON parsing.
     #[error("text payload is not valid JSON: {0}")]
     Json(String),
-    /// JSON parsed but the `kind` discriminator did not match
-    /// [`crate::DRAFT_KIND`].
-    #[error("kind mismatch: expected '{expected}', got '{actual}'")]
-    KindMismatch {
-        expected: &'static str,
-        actual: String,
-    },
+    /// JSON parsed as a draft but failed the strict draft validator.
+    #[error("invalid draft: {0}")]
+    InvalidDraft(#[from] FormationDraftValidationError),
 }
 
 /// Extract every well-formed [`FormationDraft`] fact from `context`
@@ -62,13 +58,31 @@ pub fn extract_drafts_strict(
                 .ok_or(DraftParseError::PayloadNotText)?;
             let parsed: FormationDraft = serde_json::from_str(text.as_str())
                 .map_err(|err| DraftParseError::Json(err.to_string()))?;
-            if !parsed.is_well_formed() {
-                return Err(DraftParseError::KindMismatch {
-                    expected: crate::payload::DRAFT_KIND,
-                    actual: parsed.kind,
-                });
-            }
+            parsed.validate()?;
             Ok(parsed)
+        })
+        .collect()
+}
+
+/// Extract every well-formed [`DraftValidation`] fact from `context`
+/// at `context_key`. Same strict-parser semantics as
+/// [`extract_drafts`]: non-text payload, malformed JSON, wrong
+/// `kind`, or shape-invalid verdicts are silently skipped. Use to
+/// read critic verdicts (e.g. from `ContextKey::Evaluations` for
+/// passes or `ContextKey::Constraints` for blocks).
+#[must_use]
+pub fn extract_draft_validations(
+    context: &dyn Context,
+    context_key: ContextKey,
+) -> Vec<DraftValidation> {
+    context
+        .get(context_key)
+        .iter()
+        .filter_map(|fact| {
+            let text = fact.payload::<TextPayload>()?;
+            let parsed: DraftValidation = serde_json::from_str(text.as_str()).ok()?;
+            parsed.validate().ok()?;
+            Some(parsed)
         })
         .collect()
 }

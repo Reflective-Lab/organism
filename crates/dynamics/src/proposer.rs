@@ -34,6 +34,7 @@ pub struct CatalogProposerSuggestor {
     providers: ProviderDescriptorCatalog,
     request: FormationCompileRequest,
     k: usize,
+    source_label: String,
 }
 
 impl CatalogProposerSuggestor {
@@ -51,7 +52,23 @@ impl CatalogProposerSuggestor {
             providers,
             request,
             k,
+            source_label: SUGGESTOR_NAME.to_string(),
         }
+    }
+
+    /// Override the source label recorded in emitted drafts and fact ids.
+    ///
+    /// This lets a design Formation host multiple catalog-backed
+    /// proposers without colliding on `formation-draft-*` fact ids.
+    #[must_use]
+    pub fn with_source_label(mut self, source_label: impl Into<String>) -> Self {
+        let source_label = source_label.into();
+        self.source_label = if source_label.trim().is_empty() {
+            SUGGESTOR_NAME.to_string()
+        } else {
+            source_label
+        };
+        self
     }
 }
 
@@ -60,6 +77,7 @@ impl std::fmt::Debug for CatalogProposerSuggestor {
         f.debug_struct("CatalogProposerSuggestor")
             .field("k", &self.k)
             .field("catalog_entries", &self.catalog.len())
+            .field("source_label", &self.source_label)
             .finish_non_exhaustive()
     }
 }
@@ -86,6 +104,7 @@ impl Suggestor for CatalogProposerSuggestor {
 
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
         let mut effect = AgentEffect::builder();
+        let fact_prefix = fact_id_prefix(&self.source_label, &self.request.plan_id);
 
         match FormationCompiler::new().compile_k_candidates(
             &self.request,
@@ -108,14 +127,14 @@ impl Suggestor for CatalogProposerSuggestor {
                             "Catalog-derived candidate #{index} for template '{}'.",
                             candidate.plan.template_id
                         ),
-                        SUGGESTOR_NAME,
+                        self.source_label.clone(),
                     );
                     let json = match serde_json::to_string(&draft) {
                         Ok(s) => s,
                         Err(err) => {
                             effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                                 ContextKey::Diagnostic,
-                                format!("draft-serialize-error-{index}"),
+                                format!("{fact_prefix}-serialize-error-{index}"),
                                 TextPayload::new(format!(
                                     "{SUGGESTOR_NAME}: failed to serialize draft {index}: {err}"
                                 )),
@@ -125,7 +144,7 @@ impl Suggestor for CatalogProposerSuggestor {
                     };
                     effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                         ContextKey::Strategies,
-                        format!("formation-draft-{index}"),
+                        format!("{fact_prefix}-{index}"),
                         TextPayload::new(json),
                     ));
                 }
@@ -137,7 +156,7 @@ impl Suggestor for CatalogProposerSuggestor {
                 // promote anything.
                 effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                     ContextKey::Diagnostic,
-                    "catalog-proposer-failed".to_string(),
+                    format!("{fact_prefix}-failed"),
                     TextPayload::new(format!(
                         "{SUGGESTOR_NAME}: catalog cannot satisfy template — {}",
                         failure.error
@@ -147,5 +166,40 @@ impl Suggestor for CatalogProposerSuggestor {
         }
 
         effect.build()
+    }
+}
+
+fn fact_id_prefix(source_label: &str, plan_id: &uuid::Uuid) -> String {
+    format!("formation-draft-{}-{plan_id}", slug(source_label))
+}
+
+fn slug(input: &str) -> String {
+    let mut out = String::new();
+    let mut last_dash = false;
+    for ch in input.chars().flat_map(char::to_lowercase) {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch);
+            last_dash = false;
+        } else if !last_dash {
+            out.push('-');
+            last_dash = true;
+        }
+    }
+    let trimmed = out.trim_matches('-');
+    if trimmed.is_empty() {
+        SUGGESTOR_NAME.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slug_normalizes_source_label_for_fact_ids() {
+        assert_eq!(slug("Proposer A / EU"), "proposer-a-eu");
+        assert_eq!(slug(" "), SUGGESTOR_NAME);
     }
 }

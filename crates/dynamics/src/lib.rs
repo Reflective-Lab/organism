@@ -44,14 +44,21 @@
 //! Converge accepts the proposals.
 
 mod compile;
+mod critic;
 mod extract;
 mod payload;
+mod preflight;
 mod proposer;
 mod provenance;
 mod scorer;
 
 pub use compile::compile_draft;
-pub use extract::{DraftParseError, extract_drafts};
-pub use payload::{DRAFT_KIND, FormationDraft};
+pub use critic::{CRITIC_PASS_COMPLETE_MARKER, DraftValidatorCriticSuggestor};
+pub use extract::{DraftParseError, extract_draft_validations, extract_drafts};
+pub use payload::{
+    DRAFT_KIND, DRAFT_VALIDATION_KIND, DraftValidation, DraftValidationPayloadError, DraftVerdict,
+    FormationDraft, FormationDraftValidationError,
+};
+pub use preflight::{PreflightError, preflight_design_formation};
 pub use proposer::CatalogProposerSuggestor;
 pub use scorer::BeautyContestSuggestor;

@@ -296,6 +296,43 @@ fn compile_draft_rejects_bogus_descriptor_no_silent_replacement() {
 }
 
 #[test]
+fn compile_draft_rejects_duplicate_descriptor_no_score_gaming() {
+    let catalog = work_catalog();
+    let templates = work_template_catalog();
+    let providers = ProviderDescriptorCatalog::new();
+    let request = work_request();
+    let compiler = FormationCompiler::new();
+
+    // A draft cannot repeat the same descriptor to inflate beauty-contest
+    // score or instantiate the same Suggestor twice in a work Formation.
+    let duplicate_draft = FormationDraft::new(
+        vec![
+            "signal-a".to_string(),
+            "signal-a".to_string(),
+            "constraint-a".to_string(),
+        ],
+        "duplicate descriptor should be rejected",
+        "test",
+    );
+
+    let failure = compile_draft(
+        &compiler,
+        &request,
+        &templates,
+        &catalog,
+        &providers,
+        &duplicate_draft,
+    )
+    .expect_err("duplicate descriptor must be rejected");
+
+    assert!(matches!(
+        failure.error,
+        FormationCompileError::DuplicateDraftDescriptor { ref descriptor_id }
+            if descriptor_id == "signal-a"
+    ));
+}
+
+#[test]
 fn compile_draft_rejects_undercovering_roster_no_silent_completion() {
     let catalog = work_catalog();
     let templates = work_template_catalog();
@@ -365,6 +402,12 @@ async fn extract_drafts_ignores_non_draft_facts_on_same_key() {
                 "mixed-emitter",
             );
             let draft_json = serde_json::to_string(&draft).unwrap();
+            let duplicate_draft = FormationDraft::new(
+                vec!["signal-a".to_string(), "signal-a".to_string()],
+                "duplicate ids should be ignored by extraction",
+                "mixed-emitter",
+            );
+            let duplicate_json = serde_json::to_string(&duplicate_draft).unwrap();
             AgentEffect::builder()
                 .proposal(TestProvenance.proposed_fact(
                     ContextKey::Proposals,
@@ -380,6 +423,11 @@ async fn extract_drafts_ignores_non_draft_facts_on_same_key() {
                     ContextKey::Proposals,
                     "wrong-kind-json",
                     TextPayload::new(r#"{"kind":"something.else","descriptor_ids":[]}"#),
+                ))
+                .proposal(TestProvenance.proposed_fact(
+                    ContextKey::Proposals,
+                    "duplicate-draft",
+                    TextPayload::new(duplicate_json),
                 ))
                 .build()
         }
