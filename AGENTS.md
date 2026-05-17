@@ -116,7 +116,7 @@ Anytime:    /help
 ## Legacy
 
 The pre-restructure monolith has been retired. Current crates and the
-[`atelier-showcase`](../../extensions/atelier-showcase) repository are the
+[`atelier-showcase`](../../atelier-showcase) repository are the
 only supported source of truth.
 
 ## Strategy

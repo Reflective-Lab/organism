@@ -34,22 +34,22 @@ organism-pack = { path = "crates/pack", version = "1.8.1" }
 organism-intelligence = { path = "crates/intelligence", version = "1.8.1" }
 organism-notes = { path = "crates/notes", version = "1.8.1" }
 
-# Converge contract (3.8.1 floor — published to crates.io)
-converge-pack     = "3.8.1"
-converge-kernel   = "3.8.1"
-converge-provider = "3.8.1"
+# Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
+converge-pack     = "3.9.1"
+converge-kernel   = "3.9.1"
+converge-provider = "3.9.1"
 
-# Converge extensions — all target Converge 3.8.1.
+# Converge extensions — all target the Converge 3.9 contract.
 # Aliased to their `[lib] name` for ergonomic `use <alias>::...`.
-arbiter          = { package = "converge-arbiter-policy",   version = "1.0" }
+arbiter          = { package = "converge-arbiter-policy",   version = "2.0.0" }
 atelier-domain   = { package = "converge-atelier-domain",   version = "1.0" }
-embassy-pack     = { package = "converge-embassy-pack",     version = "1.0" }
-embassy-linkedin = { package = "converge-embassy-linkedin", version = "1.0" }
-ferrox           = { package = "converge-ferrox-solver",    version = "0.4.1" }
-ferrox-server    = { package = "converge-ferrox-server",    version = "0.4.1" }
-manifold         = { package = "converge-manifold-adapters", version = "1.0" }
-mnemos           = { package = "converge-mnemos-knowledge", version = "1.0" }
-prism            = { package = "converge-prism-analytics",  version = "1.0" }
+embassy-pack     = { package = "converge-embassy-pack",     version = "1.1.1" }
+embassy-linkedin = { package = "converge-embassy-linkedin", version = "1.1.1" }
+ferrox           = { package = "converge-ferrox-solver",    version = "0.7.0" }
+ferrox-server    = { package = "converge-ferrox-server",    version = "0.7.0" }
+manifold         = { package = "converge-manifold-adapters", version = "1.1.1" }
+mnemos           = { package = "converge-mnemos-knowledge", version = "1.2.1" }
+prism            = { package = "converge-prism-analytics",  version = "2.0.0" }
 
 # Shared deps
 anyhow = "1"
@@ -88,10 +88,16 @@ cast_lossless = "allow"
 codegen-units = 1
 lto = true
 
-# Converge 3.8.1 foundation crates publish to crates.io directly; no patches
-# needed for them. Extension crates (`publish = false`) resolve through these
-# path entries.
+# Converge 3.9.1 provenance work is verified from the sibling checkout until
+# the foundation release is published to crates.io.
+# Extension crates (`publish = false`) resolve through these path entries.
 [patch.crates-io]
+converge-core               = { path = "../converge/crates/core" }
+converge-kernel             = { path = "../converge/crates/kernel" }
+converge-model              = { path = "../converge/crates/model" }
+converge-optimization       = { path = "../converge/crates/optimization" }
+converge-pack               = { path = "../converge/crates/pack" }
+converge-provider           = { path = "../converge/crates/provider" }
 converge-arbiter-policy     = { path = "../../mosaic-extensions/arbiter-policy/crates/arbiter" }
 converge-atelier-domain     = { path = "../../atelier-showcase/crates/atelier-domain" }
 converge-embassy-pack       = { path = "../../mosaic-extensions/embassy-ports/crates/pack" }

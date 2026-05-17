@@ -372,7 +372,7 @@ If you disagree, the alternative is to allow `admit_observation` to accept an op
 
 ## Provenance
 
-- **Spec:** `~/dev/reflective-stack/bedrock-platform/organism/kb/Concepts/Bidirectional ExperienceStore.md`
-- **Existing pattern:** `~/dev/reflective-stack/bedrock-platform/converge/crates/core/src/recall.rs` lines 617-655 (`record_to_candidate`)
-- **First Organism consumer:** `~/dev/reflective-stack/bedrock-platform/organism/crates/runtime/tests/recall_biases_synthesis.rs` (already exercises the two landed variants)
+- **Spec:** `~/dev/reflective/stack/bedrock-platform/organism/kb/Concepts/Bidirectional ExperienceStore.md`
+- **Existing pattern:** `~/dev/reflective/stack/bedrock-platform/converge/crates/core/src/recall.rs` lines 617-655 (`record_to_candidate`)
+- **First Organism consumer:** `~/dev/reflective/stack/bedrock-platform/organism/crates/runtime/tests/recall_biases_synthesis.rs` (already exercises the two landed variants)
 - **Originating session:** Organism's Phase B push for the 1.5.0 sync release (2026-05-05/06)

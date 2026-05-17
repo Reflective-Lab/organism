@@ -123,7 +123,7 @@ async fn user_override_feeds_into_planning_priors() {
         .find(|f| f.id().as_str() == "recall-summary")
         .expect("recall-summary hypothesis published");
     let parsed: serde_json::Value =
-        serde_json::from_str(recall_summary.content()).expect("valid json");
+        serde_json::from_str(recall_summary.text().unwrap_or_default()).expect("valid json");
     assert_eq!(parsed["count"], serde_json::json!(1));
 
     let prior = hypotheses
@@ -131,7 +131,7 @@ async fn user_override_feeds_into_planning_priors() {
         .find(|f| f.id().as_str() == "prior-cost_accuracy")
         .expect("prior hypothesis published");
     let prior_payload: serde_json::Value =
-        serde_json::from_str(prior.content()).expect("valid json");
+        serde_json::from_str(prior.text().unwrap_or_default()).expect("valid json");
     assert!(prior_payload["recall_signal"].is_number());
     assert_eq!(prior_payload["recall_count"], serde_json::json!(1));
 

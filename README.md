@@ -211,7 +211,7 @@ Provider-shaped data acquisition from the world. Every result wrapped in `Observ
 | [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, and Formation execution |
 | [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, billing |
 | [`organism-notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
-| [`organism-domain`](../../extensions/atelier-showcase/crates/organism-domain) | Organizational pack library and blueprints |
+| [`organism-domain`](../../atelier-showcase/crates/organism-domain) | Organizational pack library and blueprints |
 
 ### Internal Phase Crates
 
@@ -263,7 +263,7 @@ Important Converge changes:
 
 ## Examples
 
-See the [`atelier-showcase`](../../extensions/atelier-showcase) repository for a curated set of Organism and Converge examples:
+See the [`atelier-showcase`](../../atelier-showcase) repository for a curated set of Organism and Converge examples:
 
 | Example | What it demonstrates |
 |---|---|

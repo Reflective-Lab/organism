@@ -12,10 +12,26 @@
 //! detection is meaningless against a sample of one.
 
 use converge_pack::gate::{ObjectiveSpec, ProblemSpec};
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
+    TextPayload,
+};
 use prism::packs::anomaly_detection::{AnomalyDetectionInput, ZScoreSolver};
 
+use crate::provenance::ORGANISM_ADVERSARIAL_PROVENANCE;
 use crate::{Finding, Severity};
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_ADVERSARIAL_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
 
 /// Z-score skeptic over the active strategy set.
 pub struct AnomalySkepticAgent {
@@ -90,6 +106,10 @@ impl Suggestor for AnomalySkepticAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
@@ -102,8 +122,9 @@ impl Suggestor for AnomalySkepticAgent {
         let parsed: Vec<(String, serde_json::Value, Option<f64>)> = strategies
             .iter()
             .map(|fact| {
-                let plan: serde_json::Value = serde_json::from_str(fact.content())
-                    .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+                let content = fact_text(fact);
+                let plan: serde_json::Value = serde_json::from_str(content)
+                    .unwrap_or_else(|_| serde_json::json!({"description": content}));
                 let metric = self.extract_metric(&plan);
                 (fact.id().to_string(), plan, metric)
             })
@@ -113,7 +134,7 @@ impl Suggestor for AnomalySkepticAgent {
         let metrics: Vec<f64> = parsed.iter().filter_map(|(_, _, m)| *m).collect();
         if metrics.len() < self.min_strategies {
             for (id, _, _) in &parsed {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("anomaly-skip-{id}"),
                     serde_json::json!({
@@ -129,7 +150,6 @@ impl Suggestor for AnomalySkepticAgent {
                         ),
                     })
                     .to_string(),
-                    self.name(),
                 ));
             }
             return effect.build();
@@ -158,7 +178,7 @@ impl Suggestor for AnomalySkepticAgent {
         let mut metric_idx = 0usize;
         for (id, _plan, metric) in &parsed {
             if metric.is_none() {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("anomaly-skip-{id}"),
                     serde_json::json!({
@@ -172,7 +192,6 @@ impl Suggestor for AnomalySkepticAgent {
                         ),
                     })
                     .to_string(),
-                    self.name(),
                 ));
                 continue;
             }
@@ -206,7 +225,7 @@ impl Suggestor for AnomalySkepticAgent {
 
             match finding {
                 Some(f) if f.severity == Severity::Blocker => {
-                    effect.push(ProposedFact::new(
+                    effect.push(proposed_text_fact(
                         ContextKey::Constraints,
                         format!("anomaly-block-{id}"),
                         serde_json::json!({
@@ -217,11 +236,10 @@ impl Suggestor for AnomalySkepticAgent {
                             "findings": [f.message],
                         })
                         .to_string(),
-                        self.name(),
                     ));
                 }
                 Some(f) => {
-                    effect.push(ProposedFact::new(
+                    effect.push(proposed_text_fact(
                         ContextKey::Constraints,
                         format!("anomaly-warn-{id}"),
                         serde_json::json!({
@@ -232,11 +250,10 @@ impl Suggestor for AnomalySkepticAgent {
                             "findings": [f.message],
                         })
                         .to_string(),
-                        self.name(),
                     ));
                 }
                 None => {
-                    effect.push(ProposedFact::new(
+                    effect.push(proposed_text_fact(
                         ContextKey::Evaluations,
                         format!("anomaly-pass-{id}"),
                         serde_json::json!({
@@ -248,7 +265,6 @@ impl Suggestor for AnomalySkepticAgent {
                             "std_dev": output.std_dev,
                         })
                         .to_string(),
-                        self.name(),
                     ));
                 }
             }

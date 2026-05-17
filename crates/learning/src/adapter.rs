@@ -22,6 +22,10 @@ use crate::{
     PriorCalibration, SignalKind,
 };
 
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
+
 /// Build a learning episode from a completed converge engine context.
 ///
 /// The `intent_id` and `plan_id` tie this episode back to the organism
@@ -56,7 +60,7 @@ pub fn build_episode_from_run(
     let categories = extract_categories(hypotheses);
     let contradiction_count = evaluations
         .iter()
-        .filter(|f| f.content().contains("contradiction"))
+        .filter(|f| fact_text(f).contains("contradiction"))
         .count();
 
     // Predicted outcome: the synthesis proposal if present.
@@ -193,9 +197,9 @@ pub fn build_episode_from_run(
     // Adversarial context from contradictions
     let adversarial_signals: Vec<AdversarialContext> = evaluations
         .iter()
-        .filter(|f| f.content().contains("contradiction"))
+        .filter(|f| fact_text(f).contains("contradiction"))
         .filter_map(|f| {
-            let v: serde_json::Value = serde_json::from_str(f.content()).ok()?;
+            let v: serde_json::Value = serde_json::from_str(fact_text(f)).ok()?;
             Some(AdversarialContext {
                 kind: "contradiction".into(),
                 failed_assumption: v["description"]
@@ -264,7 +268,7 @@ pub fn extract_signals_from_run(
 
     let contradictions = evaluations
         .iter()
-        .filter(|f| f.content().contains("contradiction"))
+        .filter(|f| fact_text(f).contains("contradiction"))
         .count();
 
     if contradictions > 0 {
@@ -301,7 +305,7 @@ pub fn extract_signals_from_run(
     let constraints = ctx.get(ContextKey::Constraints);
     let adversarial_block_count = constraints
         .iter()
-        .filter(|f| is_from_adversarial_agent(f.content()))
+        .filter(|f| is_from_adversarial_agent(fact_text(f)))
         .count();
 
     if adversarial_block_count > 0 {
@@ -316,7 +320,7 @@ pub fn extract_signals_from_run(
     let adversarial_warnings = evaluations
         .iter()
         .filter(|f| {
-            let v: Option<serde_json::Value> = serde_json::from_str(f.content()).ok();
+            let v: Option<serde_json::Value> = serde_json::from_str(fact_text(f)).ok();
             v.and_then(|v| v.get("warnings").cloned()).is_some()
         })
         .count();
@@ -341,7 +345,7 @@ pub fn extract_signals_from_run(
 pub fn has_infra_failure(ctx: &dyn Context) -> bool {
     ctx.get(ContextKey::Constraints)
         .iter()
-        .any(|f| f.content().contains("\"is_infra_failure\":true"))
+        .any(|f| fact_text(f).contains("\"is_infra_failure\":true"))
 }
 
 /// Produce prior calibrations from a learning episode.
@@ -394,7 +398,7 @@ fn extract_categories(hypotheses: &[ContextFact]) -> Vec<String> {
     hypotheses
         .iter()
         .filter_map(|f| {
-            let v: serde_json::Value = serde_json::from_str(f.content()).ok()?;
+            let v: serde_json::Value = serde_json::from_str(fact_text(f)).ok()?;
             v["category"].as_str().map(String::from)
         })
         .collect::<std::collections::HashSet<_>>()
@@ -437,7 +441,7 @@ fn latest_outcome_event(events: &[ExperienceEventEnvelope]) -> Option<OutcomeEve
 fn latest_governed_outcome(proposals: &[ContextFact]) -> Option<String> {
     proposals
         .last()
-        .map(|proposal| proposal.content().to_string())
+        .map(|proposal| fact_text(proposal).to_string())
 }
 
 fn latest_run_status(events: &[ExperienceEventEnvelope]) -> Option<String> {

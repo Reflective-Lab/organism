@@ -14,9 +14,23 @@ use std::sync::Mutex;
 
 use converge_pack::{
     AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextFact, ContextKey, Disagreement,
-    ProposedFact, Suggestor, Vote, VoteTopicId,
+    ProposedFact, ProvenanceSource, Suggestor, TextPayload, Vote, VoteTopicId,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_RUNTIME_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
 
 /// Fact-id and key conventions for round-based deliberation.
 ///
@@ -170,6 +184,10 @@ impl Suggestor for RoundStarter {
         &[]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if (self.is_terminal)(ctx) {
             return false;
@@ -181,11 +199,10 @@ impl Suggestor for RoundStarter {
         let Some(round) = self.next_round_to_emit(ctx) else {
             return AgentEffect::empty();
         };
-        AgentEffect::with_proposal(ProposedFact::new(
+        AgentEffect::with_proposal(proposed_text_fact(
             self.conventions.round_signal_key,
             self.conventions.round_signal_id(round),
             format!("start round {round}"),
-            self.name(),
         ))
     }
 }
@@ -315,6 +332,10 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
         &[ContextKey::Hypotheses]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if (self.is_terminal)(ctx) {
             return false;
@@ -334,17 +355,15 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
             .collect();
 
         match self.producer.synthesize(round, &notes, ctx).await {
-            Ok(content) => AgentEffect::with_proposal(ProposedFact::new(
+            Ok(content) => AgentEffect::with_proposal(proposed_text_fact(
                 self.conventions.synthesis_key,
                 self.conventions.synthesis_id(round),
                 content,
-                self.name(),
             )),
-            Err(err) => AgentEffect::with_proposal(ProposedFact::new(
+            Err(err) => AgentEffect::with_proposal(proposed_text_fact(
                 ContextKey::Diagnostic,
                 format!("runtime:error:synthesis:{round}"),
                 err,
-                self.name(),
             )),
         }
     }
@@ -410,6 +429,10 @@ impl Suggestor for DisagreementMapper {
         &[ContextKey::Disagreements]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if !ctx.has(ContextKey::Disagreements) {
             return false;
@@ -417,7 +440,7 @@ impl Suggestor for DisagreementMapper {
         let mapped = self.mapped_topics.lock().unwrap();
         ctx.get(ContextKey::Disagreements)
             .iter()
-            .filter_map(|fact| fact.parse_json_content::<Disagreement>().ok())
+            .filter_map(|fact| serde_json::from_str::<Disagreement>(fact_text(fact)).ok())
             .any(|d| !mapped.contains(&d.topic))
     }
 
@@ -426,7 +449,7 @@ impl Suggestor for DisagreementMapper {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Disagreement>> = HashMap::new();
         for fact in ctx.get(ContextKey::Disagreements) {
-            let Ok(d) = fact.parse_json_content::<Disagreement>() else {
+            let Ok(d) = serde_json::from_str::<Disagreement>(fact_text(fact)) else {
                 continue;
             };
             if mapped.contains(&d.topic) {
@@ -448,11 +471,10 @@ impl Suggestor for DisagreementMapper {
             let Ok(content) = serde_json::to_string(&map) else {
                 continue;
             };
-            proposals.push(ProposedFact::new(
+            proposals.push(proposed_text_fact(
                 self.output_key,
                 Self::map_id(&topic),
                 content,
-                self.name(),
             ));
             mapped.insert(topic);
         }
@@ -507,6 +529,10 @@ impl Suggestor for ConsensusEvaluator {
         &[ContextKey::Votes]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if !ctx.has(ContextKey::Votes) {
             return false;
@@ -514,7 +540,7 @@ impl Suggestor for ConsensusEvaluator {
         let decided = self.decided_topics.lock().unwrap();
         ctx.get(ContextKey::Votes)
             .iter()
-            .filter_map(|fact| fact.parse_json_content::<Vote>().ok())
+            .filter_map(|fact| serde_json::from_str::<Vote>(fact_text(fact)).ok())
             .any(|vote| !decided.contains(&vote.topic))
     }
 
@@ -523,7 +549,7 @@ impl Suggestor for ConsensusEvaluator {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Vote>> = HashMap::new();
         for fact in ctx.get(ContextKey::Votes) {
-            let Ok(vote) = fact.parse_json_content::<Vote>() else {
+            let Ok(vote) = serde_json::from_str::<Vote>(fact_text(fact)) else {
                 continue;
             };
             if decided.contains(&vote.topic) {
@@ -549,11 +575,10 @@ impl Suggestor for ConsensusEvaluator {
             let Ok(content) = serde_json::to_string(&outcome) else {
                 continue;
             };
-            proposals.push(ProposedFact::new(
+            proposals.push(proposed_text_fact(
                 ContextKey::ConsensusOutcomes,
                 format!("outcome:{}", topic.as_str()),
                 content,
-                self.name(),
             ));
             decided.insert(topic);
         }
@@ -616,7 +641,7 @@ mod tests {
         assert_eq!(outcomes.len(), 1);
         assert_eq!(outcomes[0].id().as_str(), "outcome:done-r1");
 
-        let outcome: ConsensusOutcome = outcomes[0].parse_json_content().unwrap();
+        let outcome: ConsensusOutcome = serde_json::from_str(fact_text(&outcomes[0])).unwrap();
         assert_eq!(outcome.tally().yes_votes(), 2);
         assert_eq!(outcome.tally().no_votes(), 1);
         assert_eq!(outcome.total_voters().get(), 3);
@@ -647,7 +672,7 @@ mod tests {
         for fact in outcomes {
             decisions.insert(
                 fact.id().as_str().to_string(),
-                fact.parse_json_content().unwrap(),
+                serde_json::from_str(fact_text(fact)).unwrap(),
             );
         }
         assert!(decisions["outcome:a"].passes());
@@ -670,7 +695,7 @@ mod tests {
             .context
             .get(ContextKey::ConsensusOutcomes);
         assert_eq!(outcomes.len(), 1);
-        let outcome: ConsensusOutcome = outcomes[0].parse_json_content().unwrap();
+        let outcome: ConsensusOutcome = serde_json::from_str(fact_text(&outcomes[0])).unwrap();
         assert!(!outcome.passes());
     }
 
@@ -880,7 +905,7 @@ mod tests {
         let strategies = result.converge_result.context.get(ContextKey::Strategies);
         assert_eq!(strategies.len(), 1);
         assert_eq!(strategies[0].id().as_str(), "synthesis:1");
-        assert_eq!(strategies[0].content(), "round 1 from 2 notes");
+        assert_eq!(strategies[0].text(), Some("round 1 from 2 notes"));
     }
 
     #[tokio::test]
@@ -930,7 +955,7 @@ mod tests {
         let diagnostic = result.converge_result.context.get(ContextKey::Diagnostic);
         assert_eq!(diagnostic.len(), 1);
         assert_eq!(diagnostic[0].id().as_str(), "runtime:error:synthesis:1");
-        assert_eq!(diagnostic[0].content(), "upstream timeout");
+        assert_eq!(diagnostic[0].text(), Some("upstream timeout"));
     }
 
     #[tokio::test]
@@ -1053,7 +1078,7 @@ mod tests {
         let mut by_id: std::collections::HashMap<String, DisagreementMap> =
             std::collections::HashMap::new();
         for fact in maps {
-            let parsed: DisagreementMap = fact.parse_json_content().unwrap();
+            let parsed: DisagreementMap = serde_json::from_str(fact_text(fact)).unwrap();
             by_id.insert(fact.id().as_str().to_string(), parsed);
         }
         let map_a = &by_id["disagreement_map:topic-a"];

@@ -118,7 +118,8 @@ async fn run_with_events(events: Vec<UserExperienceEvent>) -> serde_json::Value 
         .iter()
         .find(|f| f.id().as_str() == "recall-summary")
         .expect("recall-summary hypothesis published");
-    serde_json::from_str(recall_summary.content()).expect("recall-summary is valid JSON")
+    serde_json::from_str(recall_summary.text().unwrap_or_default())
+        .expect("recall-summary is valid JSON")
 }
 
 fn user_approval_rejected() -> UserExperienceEvent {

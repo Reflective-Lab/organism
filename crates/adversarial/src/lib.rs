@@ -10,6 +10,7 @@
 
 pub mod agents;
 pub mod anomaly_skeptic;
+pub mod provenance;
 pub mod types;
 
 use serde::{Deserialize, Serialize};

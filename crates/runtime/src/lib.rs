@@ -22,6 +22,7 @@ pub mod formation;
 pub mod guru;
 pub mod huddle;
 pub mod outcome;
+pub mod provenance;
 pub mod readiness;
 pub mod registry;
 pub mod stall;
@@ -345,7 +346,8 @@ mod tests {
     use converge_kernel::formation::{
         FormationTemplateQuery, ProfileSnapshot, SuggestorCapability, SuggestorRole,
     };
-    use converge_kernel::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+    use converge_kernel::{AgentEffect, Context, ContextKey, Suggestor};
+    use converge_pack::{ProvenanceSource, TextPayload};
     use converge_provider::{BackendRequirements, CostClass, LatencyClass};
 
     fn id(n: u128) -> uuid::Uuid {
@@ -475,17 +477,22 @@ mod tests {
             &self.dependencies
         }
 
+        fn provenance(&self) -> &'static str {
+            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        }
+
         fn accepts(&self, ctx: &dyn Context) -> bool {
             self.dependencies.iter().any(|key| ctx.has(*key)) && !ctx.has(self.output)
         }
 
         async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
-            AgentEffect::with_proposal(ProposedFact::new(
-                self.output,
-                format!("{}-output", self.name),
-                format!("{} produced compiled-role output", self.name),
-                self.name,
-            ))
+            AgentEffect::with_proposal(
+                crate::provenance::ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
+                    self.output,
+                    format!("{}-output", self.name),
+                    TextPayload::new(format!("{} produced compiled-role output", self.name)),
+                ),
+            )
         }
     }
 

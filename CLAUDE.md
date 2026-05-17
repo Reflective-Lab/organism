@@ -94,5 +94,5 @@ See `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/API Surfac
 ## Legacy
 
 The pre-restructure crates have been retired. Use the current `crates/`
-tree and the [`atelier-showcase`](../../extensions/atelier-showcase)
+tree and the [`atelier-showcase`](../../atelier-showcase)
 repository as the only supported implementation surface.

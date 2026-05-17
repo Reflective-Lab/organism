@@ -177,8 +177,24 @@ impl OutcomeSimulator {
 
 // ── Suggestor Implementation ──────────────────────────────────────
 
+use crate::provenance::ORGANISM_SIMULATION_PROVENANCE;
 use crate::types::SimulationVerdict;
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
+    TextPayload,
+};
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_SIMULATION_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
 
 /// Outcome simulation as a Suggestor — participates in the convergence loop.
 ///
@@ -216,6 +232,10 @@ impl Suggestor for OutcomeSimulationAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_SIMULATION_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         // Run when strategies exist and we haven't already evaluated them
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
@@ -226,8 +246,9 @@ impl Suggestor for OutcomeSimulationAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+            let content = fact_text(fact);
+            let plan_json: serde_json::Value = serde_json::from_str(content)
+                .unwrap_or_else(|_| serde_json::json!({"description": content}));
 
             let result = self.simulator.simulate(&plan_json);
 
@@ -250,11 +271,10 @@ impl Suggestor for OutcomeSimulationAgent {
                 ContextKey::Constraints
             };
 
-            effect.push(ProposedFact::new(
+            effect.push(proposed_text_fact(
                 key,
                 verdict.fact_id(),
                 verdict.to_json(),
-                "outcome-simulation",
             ));
         }
 

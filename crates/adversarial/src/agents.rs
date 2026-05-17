@@ -4,8 +4,24 @@
 //! in its domain, and proposes `ContextKey::Constraints` (blocking) or
 //! `ContextKey::Evaluations` (passed scrutiny).
 
+use crate::provenance::ORGANISM_ADVERSARIAL_PROVENANCE;
 use crate::{Finding, Severity};
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
+    TextPayload,
+};
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_ADVERSARIAL_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
 
 // ── Assumption Breaker ────────────────────────────────────────────
 
@@ -104,6 +120,10 @@ impl Suggestor for AssumptionBreakerAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
@@ -113,8 +133,9 @@ impl Suggestor for AssumptionBreakerAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+            let content = fact_text(fact);
+            let plan_json: serde_json::Value = serde_json::from_str(content)
+                .unwrap_or_else(|_| serde_json::json!({"description": content}));
 
             let findings = Self::analyze_assumptions(&plan_json);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
@@ -123,7 +144,7 @@ impl Suggestor for AssumptionBreakerAgent {
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Constraints,
                     format!("assumption-block-{}", fact.id()),
                     serde_json::json!({
@@ -134,10 +155,9 @@ impl Suggestor for AssumptionBreakerAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "assumption-breaker",
                 ));
             } else if has_warnings {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("assumption-warn-{}", fact.id()),
                     serde_json::json!({
@@ -148,10 +168,9 @@ impl Suggestor for AssumptionBreakerAgent {
                         "warnings": messages,
                     })
                     .to_string(),
-                    "assumption-breaker",
                 ));
             } else {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("assumption-pass-{}", fact.id()),
                     serde_json::json!({
@@ -162,7 +181,6 @@ impl Suggestor for AssumptionBreakerAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "assumption-breaker",
                 ));
             }
         }
@@ -322,6 +340,10 @@ impl Suggestor for ConstraintCheckerAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
@@ -331,15 +353,16 @@ impl Suggestor for ConstraintCheckerAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+            let content = fact_text(fact);
+            let plan_json: serde_json::Value = serde_json::from_str(content)
+                .unwrap_or_else(|_| serde_json::json!({"description": content}));
 
             let findings = self.check_plan(&plan_json);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Constraints,
                     format!("constraint-block-{}", fact.id()),
                     serde_json::json!({
@@ -350,10 +373,9 @@ impl Suggestor for ConstraintCheckerAgent {
                         "violations": messages,
                     })
                     .to_string(),
-                    "constraint-checker",
                 ));
             } else {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("constraint-pass-{}", fact.id()),
                     serde_json::json!({
@@ -364,7 +386,6 @@ impl Suggestor for ConstraintCheckerAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "constraint-checker",
                 ));
             }
         }
@@ -496,6 +517,10 @@ impl Suggestor for EconomicSkepticAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
@@ -505,15 +530,16 @@ impl Suggestor for EconomicSkepticAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+            let content = fact_text(fact);
+            let plan_json: serde_json::Value = serde_json::from_str(content)
+                .unwrap_or_else(|_| serde_json::json!({"description": content}));
 
             let findings = Self::analyze_economics(&plan_json, self.skepticism_threshold);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Constraints,
                     format!("econ-block-{}", fact.id()),
                     serde_json::json!({
@@ -524,10 +550,9 @@ impl Suggestor for EconomicSkepticAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "economic-skeptic",
                 ));
             } else {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("econ-eval-{}", fact.id()),
                     serde_json::json!({
@@ -538,7 +563,6 @@ impl Suggestor for EconomicSkepticAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "economic-skeptic",
                 ));
             }
         }
@@ -685,6 +709,10 @@ impl Suggestor for OperationalSkepticAgent {
         &[ContextKey::Strategies]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
     }
@@ -694,15 +722,16 @@ impl Suggestor for OperationalSkepticAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
-            let plan_json: serde_json::Value = serde_json::from_str(fact.content())
-                .unwrap_or_else(|_| serde_json::json!({"description": fact.content()}));
+            let content = fact_text(fact);
+            let plan_json: serde_json::Value = serde_json::from_str(content)
+                .unwrap_or_else(|_| serde_json::json!({"description": content}));
 
             let findings = Self::analyze_operations(&plan_json, self.max_parallel_initiatives);
             let has_blockers = findings.iter().any(|f| f.severity == Severity::Blocker);
             let messages: Vec<String> = findings.iter().map(|f| f.message.clone()).collect();
 
             if has_blockers {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Constraints,
                     format!("ops-skeptic-block-{}", fact.id()),
                     serde_json::json!({
@@ -713,10 +742,9 @@ impl Suggestor for OperationalSkepticAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "operational-skeptic",
                 ));
             } else {
-                effect.push(ProposedFact::new(
+                effect.push(proposed_text_fact(
                     ContextKey::Evaluations,
                     format!("ops-skeptic-eval-{}", fact.id()),
                     serde_json::json!({
@@ -727,7 +755,6 @@ impl Suggestor for OperationalSkepticAgent {
                         "findings": messages,
                     })
                     .to_string(),
-                    "operational-skeptic",
                 ));
             }
         }

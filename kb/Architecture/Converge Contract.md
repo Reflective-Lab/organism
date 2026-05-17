@@ -25,7 +25,7 @@ assembling Organism from phase crates.
 | `converge-pack` | Suggestor trait, ProposedFact, Invariant — for authoring packs that run inside Converge |
 | `converge-model` | Governed semantic types — for interpreting Converge results |
 | `converge-kernel` | Engine, `ContextState`, `ConvergeResult`, re-exported `Suggestor` contract — for embedded execution |
-| `converge-provider-api` | Backend identity and role-level `BackendRequirements` |
+| `converge-provider` | Backend identity, role-level `BackendRequirements`, and capability routing |
 | `converge-client` | gRPC SDK — only for remote (out-of-process) deployment |
 
 Use published Converge crates for normal development. Local path dependencies
@@ -36,7 +36,6 @@ that the formation compiler substrate is released.
 
 - `converge-core` — internal engine implementation
 - `converge-runtime` — HTTP/gRPC server internals
-- `converge-provider` — provider adapter internals
 - `converge-storage` — storage adapter internals
 - Any other internal Converge crate
 
@@ -83,6 +82,8 @@ useful specialist family, the omission should be visible and intentional.
 ## Allowed
 
 - Implement any Organism agent as `Suggestor`
+- Emit typed `FactPayload` values through a canonical `ProvenanceSource` marker
+  and override `Suggestor::provenance()` for every fact-emitting suggestor
 - Mix LLM, optimization, policy, analytics, knowledge, adversarial, and simulation agents in one formation
 - Stage initial inputs through `ContextState`
 - Read promoted facts from `ConvergeResult`
@@ -92,6 +93,7 @@ useful specialist family, the omission should be visible and intentional.
 
 - Depend on `converge-core`
 - Construct `Fact` directly
+- Emit a `ProposedFact` from a suggestor whose `provenance()` is empty
 - Use removed or stale names such as `ContextView`, `Context::new()`, or `register_in_pack(...)`
 - Bypass `Engine.run()` for governed fact creation
 - Build wrapper types that pretend to replace the Converge surface

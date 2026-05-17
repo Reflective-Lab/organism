@@ -125,7 +125,7 @@ They are the internal building blocks re-exported by `organism-pack` and, for
 resolution/readiness concerns, selectively surfaced by `organism-runtime`.
 Direct dependencies are reasonable when extending Organism itself or
 working on the planning loop implementation. Examples have graduated to the
-[`atelier-showcase`](../../extensions/atelier-showcase) repository.
+[`atelier-showcase`](../../atelier-showcase) repository.
 
 ## Specialist Bench Boundary
 

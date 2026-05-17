@@ -13,6 +13,7 @@ pub mod cost;
 pub mod operational;
 pub mod outcome;
 pub mod policy;
+pub mod provenance;
 pub mod types;
 
 use converge_pack::UnitInterval;

@@ -16,6 +16,7 @@ pub mod huddle;
 pub mod huddle_invocation;
 pub mod kb;
 pub mod ml_prediction_reasoner;
+pub mod provenance;
 pub mod shape_hypothesis;
 pub mod suggestor;
 pub mod topology_transition;

@@ -31,6 +31,10 @@ impl Suggestor for BoxedAgent {
         self.0.accepts(ctx)
     }
 
+    fn provenance(&self) -> &'static str {
+        self.0.provenance()
+    }
+
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         self.0.execute(ctx).await
     }
@@ -272,6 +276,8 @@ pub enum FormationError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
+    use converge_pack::{ProvenanceSource, TextPayload};
     use proptest::prelude::*;
 
     const SEED_DEPENDENCIES: &[ContextKey] = &[ContextKey::Seeds];
@@ -292,6 +298,10 @@ mod tests {
             SEED_DEPENDENCIES
         }
 
+        fn provenance(&self) -> &'static str {
+            ORGANISM_RUNTIME_PROVENANCE.as_str()
+        }
+
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Hypotheses)
         }
@@ -299,11 +309,10 @@ mod tests {
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seed = &ctx.get(ContextKey::Seeds)[0];
             AgentEffect::builder()
-                .proposal(converge_kernel::ProposedFact::new(
+                .proposal(ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
                     ContextKey::Hypotheses,
                     format!("observed-{}", seed.id()),
-                    format!("observed {}", seed.content()),
-                    self.name(),
+                    TextPayload::new(format!("observed {}", seed.text().unwrap_or_default())),
                 ))
                 .build()
         }
@@ -331,10 +340,10 @@ mod tests {
 
         assert_eq!(seeds.len(), 1);
         assert_eq!(seeds[0].id().as_str(), "seed-1");
-        assert_eq!(seeds[0].content(), "seed content");
+        assert_eq!(seeds[0].text(), Some("seed content"));
         assert_eq!(hypotheses.len(), 1);
         assert_eq!(hypotheses[0].id().as_str(), "observed-seed-1");
-        assert_eq!(hypotheses[0].content(), "observed seed content");
+        assert_eq!(hypotheses[0].text(), Some("observed seed content"));
     }
 
     #[tokio::test]
@@ -390,9 +399,10 @@ mod tests {
 
             prop_assert_eq!(seeds.len(), 1);
             prop_assert_eq!(seeds[0].id().as_str(), id.as_str());
-            prop_assert_eq!(seeds[0].content(), content.as_str());
+            prop_assert_eq!(seeds[0].text(), Some(content.as_str()));
             prop_assert_eq!(hypotheses.len(), 1);
-            prop_assert_eq!(hypotheses[0].content(), format!("observed {content}"));
+            let expected = format!("observed {content}");
+            prop_assert_eq!(hypotheses[0].text(), Some(expected.as_str()));
             prop_assert!(!result.converge_result.context.has_pending_proposals());
         }
 
