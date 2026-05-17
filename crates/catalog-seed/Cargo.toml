@@ -1,0 +1,21 @@
+[package]
+name = "organism-catalog-seed"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Seed descriptor bundle for the discovery catalog. Three trees: Converge public Suggestors, Organism production Suggestors, mosaic-extensions Suggestors. Descriptor-only — references Suggestor-implementing crates by name but never links them, so the seed compiles cheaply and ships independently of each source's cadence."
+
+[dependencies]
+organism-catalog.workspace = true
+converge-kernel.workspace = true
+converge-pack.workspace = true
+converge-provider.workspace = true
+
+[dev-dependencies]
+organism-runtime.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

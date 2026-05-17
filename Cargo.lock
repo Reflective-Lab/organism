@@ -4820,6 +4820,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "organism-catalog-seed"
+version = "1.9.0"
+dependencies = [
+ "converge-kernel",
+ "converge-pack",
+ "converge-provider",
+ "organism-catalog",
+ "organism-runtime",
+ "uuid",
+]
+
+[[package]]
 name = "organism-intelligence"
 version = "1.9.0"
 dependencies = [
