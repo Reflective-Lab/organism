@@ -120,19 +120,36 @@ pub struct ScoredCatalogCandidate {
 /// alongside *how* it performed. Pair-by-index is the join key — the
 /// tournament's `FormationScore.label` is `{template_id}#{index}` for
 /// candidate at that index.
+///
+/// `winner_index` is the *original candidate index* (0..k) of the
+/// winner, not a position inside `scored_candidates`. Use
+/// [`Self::winner`] to dereference safely — if any non-winning
+/// candidate failed at runtime, the tournament drops it from
+/// `scored_candidates`, and looking up by position would index a
+/// different (or invalid) element.
 #[derive(Debug, Clone)]
 pub struct CatalogTournamentOutcome {
-    /// Index into `scored_candidates` of the tournament winner.
+    /// Original candidate index (0..k) of the tournament winner.
     pub winner_index: usize,
+    /// Candidates that produced a scored result. Ordered by `index`
+    /// ascending; may be shorter than the originating `k` if any
+    /// candidate's formation failed at run time.
     pub scored_candidates: Vec<ScoredCatalogCandidate>,
     /// Calibrated priors ready to feed the next planning prior agent.
     pub priors: Vec<organism_learning::PriorCalibration>,
 }
 
 impl CatalogTournamentOutcome {
+    /// Returns the winning [`ScoredCatalogCandidate`] by matching
+    /// `winner_index` against each entry's `index`. Safe against
+    /// partial tournament failures where some candidates were dropped
+    /// from `scored_candidates`.
     #[must_use]
     pub fn winner(&self) -> &ScoredCatalogCandidate {
-        &self.scored_candidates[self.winner_index]
+        self.scored_candidates
+            .iter()
+            .find(|sc| sc.index == self.winner_index)
+            .expect("winner_index must correspond to a scored candidate")
     }
 }
 
@@ -577,6 +594,57 @@ mod tests {
 
     fn valid_intent() -> IntentPacket {
         IntentPacket::new("select the best AI vendor", Utc::now() + Duration::hours(1))
+    }
+
+    /// HIGH #1 regression. Verify [`CatalogTournamentOutcome::winner`]
+    /// looks up by `sc.index`, not by array position. When a
+    /// non-winning candidate fails at runtime, `FormationTournament`
+    /// drops it from `scored_candidates` — but `winner_index` stays
+    /// as the original candidate index. Indexing
+    /// `scored_candidates[winner_index]` would panic; finding by
+    /// `sc.index == winner_index` is safe.
+    #[test]
+    fn catalog_tournament_winner_lookup_safe_when_lower_index_dropped() {
+        // Construct an outcome that mimics: candidate 0 was dropped,
+        // candidate 1 won. scored_candidates has length 1 with
+        // index = 1; winner_index = 1.
+        let plan = CompiledFormationPlan {
+            plan_id: id(0xCAFE),
+            correlation_id: id(0xBEEF),
+            tenant_id: None,
+            template_id: "winner-template".to_string(),
+            template_kind: converge_kernel::formation::FormationKind::Static,
+            roster: Vec::new(),
+            provider_assignments: Vec::new(),
+            trace: Vec::new(),
+        };
+        let candidate = CatalogCompiledFormationPlan {
+            plan,
+            decisions: Vec::new(),
+        };
+        let score = FormationScore {
+            label: "winner-template#1".to_string(),
+            score: 0.9,
+            converged: true,
+            cycles: 1,
+            criteria_met: 0,
+            criteria_total: 0,
+        };
+        let outcome = CatalogTournamentOutcome {
+            winner_index: 1,
+            scored_candidates: vec![ScoredCatalogCandidate {
+                index: 1,
+                candidate,
+                score,
+            }],
+            priors: Vec::new(),
+        };
+
+        // Before the fix: scored_candidates[winner_index] would index
+        // position 1 in a length-1 Vec → out-of-bounds panic.
+        let winner = outcome.winner();
+        assert_eq!(winner.index, 1);
+        assert!((winner.score.score - 0.9).abs() < f64::EPSILON);
     }
 
     fn profile(

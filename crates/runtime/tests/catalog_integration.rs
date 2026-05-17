@@ -179,18 +179,55 @@ fn compile_k_one_matches_single_compile_from_catalog() {
 
 #[test]
 fn compile_k_stops_gracefully_when_pool_exhausted() {
-    let templates = loop_demo_templates();
-    let catalog = seed::mosaic_only();
+    // Use a tightly-bounded synthetic catalog (1 A + 3 Bs) so the
+    // exhaustion bound is deterministic: at most 3 distinct rosters
+    // can be formed even though we ask for 20.
+    let templates = template_catalog(
+        "exhaust-test",
+        "exhaust-test",
+        vec![SuggestorRole::Signal, SuggestorRole::Constraint],
+        vec![
+            SuggestorCapability::KnowledgeRetrieval,
+            SuggestorCapability::PolicyEnforcement,
+        ],
+    );
+    let catalog = DiscoveryCatalog::new()
+        .with_entry(synthetic_descriptor(
+            "a1",
+            SuggestorRole::Signal,
+            SuggestorCapability::KnowledgeRetrieval,
+            ContextKey::Hypotheses,
+        ))
+        .with_entry(synthetic_descriptor(
+            "b1",
+            SuggestorRole::Constraint,
+            SuggestorCapability::PolicyEnforcement,
+            ContextKey::Constraints,
+        ))
+        .with_entry(synthetic_descriptor(
+            "b2",
+            SuggestorRole::Constraint,
+            SuggestorCapability::PolicyEnforcement,
+            ContextKey::Constraints,
+        ))
+        .with_entry(synthetic_descriptor(
+            "b3",
+            SuggestorRole::Constraint,
+            SuggestorCapability::PolicyEnforcement,
+            ContextKey::Constraints,
+        ));
     let providers = ProviderDescriptorCatalog::new();
-    let req = request(0xA30, "tournament-due-diligence");
+    let req = request(0xA30, "exhaust-test");
 
-    // k=20 is much larger than what the mosaic seed can produce as
-    // distinct rosters; we should get whatever fits without error.
     let candidates = FormationCompiler::new()
         .compile_k_candidates(&req, &templates, &catalog, &providers, 20)
         .expect("graceful stop should not be an error");
     assert!(!candidates.is_empty());
-    assert!(candidates.len() < 20, "should not actually produce 20");
+    assert_eq!(
+        candidates.len(),
+        3,
+        "exactly 3 distinct rosters are possible with 1 A and 3 Bs"
+    );
 }
 
 #[test]
@@ -538,6 +575,91 @@ async fn compile_k_and_run_tournament_errors_when_intent_rejected() {
         .expect_err("expired intent should be rejected by admission gate");
 
     assert!(matches!(err, PipelineError::Rejected(_)));
+}
+
+#[test]
+fn compile_k_does_not_exclude_broad_descriptor_when_no_compositional_replacement() {
+    // HIGH #2 regression. Template requires roles [Signal,
+    // Constraint] + caps [KnowledgeRetrieval, Analytics,
+    // PolicyEnforcement]. Catalog has:
+    //   broad-signal: Signal + [KnowledgeRetrieval, Analytics]
+    //                 (the only descriptor providing Analytics)
+    //   narrow-signal: Signal + [KnowledgeRetrieval]
+    //   constraint-only: Constraint + [PolicyEnforcement]
+    //
+    // The previous "shares one capability with same role" heuristic
+    // would have marked broad-signal as swappable (narrow-signal shares
+    // KnowledgeRetrieval). But excluding broad-signal makes Analytics
+    // unreachable for any later candidate. The compositional
+    // check (trial-compile without broad-signal) catches this:
+    // narrow-signal alone can't cover Analytics, so the trial fails
+    // and broad-signal stays available.
+    let templates = template_catalog(
+        "broad-only-provider",
+        "broad-only-provider",
+        vec![SuggestorRole::Signal, SuggestorRole::Constraint],
+        vec![
+            SuggestorCapability::KnowledgeRetrieval,
+            SuggestorCapability::Analytics,
+            SuggestorCapability::PolicyEnforcement,
+        ],
+    );
+    let providers = ProviderDescriptorCatalog::new();
+    let catalog = DiscoveryCatalog::new()
+        .with_entry({
+            let descriptor = SuggestorDescriptor::new(
+                "broad-signal",
+                ProfileSnapshot {
+                    name: "broad-signal".to_string(),
+                    role: SuggestorRole::Signal,
+                    output_keys: vec![ContextKey::Hypotheses],
+                    cost_hint: CostClass::Low,
+                    latency_hint: LatencyClass::Interactive,
+                    capabilities: vec![
+                        SuggestorCapability::KnowledgeRetrieval,
+                        SuggestorCapability::Analytics,
+                    ],
+                    confidence_min: 0.7,
+                    confidence_max: 0.95,
+                },
+            );
+            let discovery = DiscoveryMetadata::new("Broad signal.", "Test fixture.")
+                .with_loop_contribution(LoopContribution::Synthesize);
+            CatalogSuggestorDescriptor::new(descriptor, discovery)
+        })
+        .with_entry(synthetic_descriptor(
+            "narrow-signal",
+            SuggestorRole::Signal,
+            SuggestorCapability::KnowledgeRetrieval,
+            ContextKey::Hypotheses,
+        ))
+        .with_entry(synthetic_descriptor(
+            "constraint-only",
+            SuggestorRole::Constraint,
+            SuggestorCapability::PolicyEnforcement,
+            ContextKey::Constraints,
+        ));
+    let req = request(0xA60, "broad-only-provider");
+
+    let candidates = FormationCompiler::new()
+        .compile_k_candidates(&req, &templates, &catalog, &providers, 3)
+        .expect("first compile should succeed");
+
+    // broad-signal is the ONLY provider of Analytics. Every candidate
+    // must include it; the compositional swappability test must keep
+    // it available across iterations.
+    for (i, cand) in candidates.iter().enumerate() {
+        let ids: Vec<&str> = cand
+            .plan
+            .roster
+            .iter()
+            .map(|r| r.suggestor_id.as_str())
+            .collect();
+        assert!(
+            ids.contains(&"broad-signal"),
+            "candidate {i} missing broad-signal (the only Analytics provider): {ids:?}"
+        );
+    }
 }
 
 #[test]

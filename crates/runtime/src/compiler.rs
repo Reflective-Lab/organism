@@ -540,15 +540,20 @@ impl FormationCompiler {
     /// Source up to `k` distinct candidate rosters from the same
     /// [`DiscoveryCatalog`] by iterative swap-out diversity.
     ///
-    /// After each candidate is compiled, descriptors from its roster
-    /// are added to the exclusion set used for the next iteration —
-    /// **but only if the descriptor is swappable**, i.e. the catalog
-    /// contains at least one other descriptor with the same role
-    /// covering at least one of its capabilities. Non-swappable
-    /// descriptors (the only one of their kind for a required slot)
-    /// stay available for every iteration, so a scarce specialist
-    /// shared by all valid rosters does not block diversity in the
-    /// other slots.
+    /// After each candidate is compiled, the function tests whether
+    /// excluding each chosen descriptor would still leave the catalog
+    /// capable of satisfying the template — by running a trial
+    /// [`Self::compile_from_catalog`] against the catalog minus the
+    /// descriptor and the current exclude set. A descriptor is added
+    /// to the exclude set for the next iteration only when the trial
+    /// compile succeeds, i.e. the remaining catalog can still produce
+    /// *some* valid roster without that descriptor (possibly via a
+    /// compositional alternative — multiple other descriptors covering
+    /// the slot collectively). This is stricter and more correct than
+    /// the previous heuristic "shares one capability with another
+    /// descriptor of the same role", which could mis-classify a
+    /// broad specialist as swappable even when it was the only
+    /// provider of a separate required capability.
     ///
     /// Stops early when the filtered catalog can no longer cover the
     /// formation requirements — that's the graceful end of the pool,
@@ -558,6 +563,12 @@ impl FormationCompiler {
     /// the very first iteration fails (i.e. the catalog can't satisfy
     /// the template even unfiltered). All later failures are absorbed
     /// as "pool exhausted" and the loop stops.
+    ///
+    /// **Cost.** Per produced candidate, this runs `1 + roster_size`
+    /// compiles: one to produce the candidate, and one per chosen
+    /// descriptor to test swappability. `compile_from_catalog` is
+    /// pure metadata work (no executable instantiation), so the
+    /// constant is small.
     ///
     /// `k = 0` is well-defined and returns `Ok(vec![])`. `k = 1` is
     /// equivalent to a single [`Self::compile_from_catalog`] call.
@@ -582,19 +593,41 @@ impl FormationCompiler {
                 None,
             ) {
                 Ok(plan) => {
+                    let excluded_before = excluded.len();
                     for role in &plan.plan.roster {
-                        // Look up the descriptor in the FULL catalog
-                        // (not the filtered view) to decide swappability.
-                        // Non-swappable descriptors stay available for
-                        // future candidates so scarce specialists aren't
-                        // locked out of valid alternate rosters.
-                        if let Some(entry) = catalog.get(&role.suggestor_id)
-                            && has_swappable_alternative(catalog, entry)
+                        // Trial-compile against the catalog minus the
+                        // current exclude set AND this descriptor. If
+                        // the trial succeeds, the descriptor is
+                        // genuinely swappable (a compositional
+                        // alternative exists) and is safe to exclude
+                        // for the next iteration. Scarce specialists
+                        // — and broad specialists whose contribution
+                        // is irreplaceable — stay available.
+                        let mut trial_exclude = excluded.clone();
+                        trial_exclude.push(role.suggestor_id.clone());
+                        let trial_catalog = filter_out_ids(catalog, &trial_exclude);
+                        if self
+                            .compile_from_catalog(
+                                request,
+                                formation_templates,
+                                &trial_catalog,
+                                providers,
+                                None,
+                            )
+                            .is_ok()
                         {
                             excluded.push(role.suggestor_id.clone());
                         }
                     }
+                    let candidate_added_no_exclusions = excluded.len() == excluded_before;
                     candidates.push(plan);
+                    // If no descriptor in this roster was swappable,
+                    // the next iteration would compile against the
+                    // same filtered catalog and produce an identical
+                    // roster. Stop now to avoid emitting duplicates.
+                    if candidate_added_no_exclusions {
+                        break;
+                    }
                 }
                 Err(failure) => {
                     if candidates.is_empty() {
@@ -608,30 +641,6 @@ impl FormationCompiler {
 
         Ok(candidates)
     }
-}
-
-/// Returns `true` if `catalog` contains at least one other descriptor
-/// (id != `entry.id()`) that shares `entry`'s role and at least one of
-/// its capabilities. Used by [`FormationCompiler::compile_k_candidates`]
-/// to decide whether to exclude a descriptor from later iterations: a
-/// descriptor with no alternative for its (role, capability) slot is
-/// kept available so it does not block diversity in other slots.
-fn has_swappable_alternative(
-    catalog: &DiscoveryCatalog,
-    entry: &CatalogSuggestorDescriptor,
-) -> bool {
-    let target_role = entry.descriptor.profile.role;
-    let target_caps = &entry.descriptor.profile.capabilities;
-    catalog.iter().any(|other| {
-        other.id() != entry.id()
-            && other.descriptor.profile.role == target_role
-            && other
-                .descriptor
-                .profile
-                .capabilities
-                .iter()
-                .any(|c| target_caps.contains(c))
-    })
 }
 
 /// Build a new [`DiscoveryCatalog`] containing every entry of `source`
