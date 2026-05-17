@@ -5,207 +5,16 @@
 
 use converge_kernel::ContextKey;
 use converge_kernel::formation::{
-    FormationCatalog, FormationKind, FormationTemplateQuery, ProfileSnapshot, SuggestorCapability,
-    SuggestorRole,
+    FormationCatalog, FormationKind, FormationTemplateQuery, SuggestorCapability, SuggestorRole,
 };
 use converge_provider::{BackendRequirements, ComplianceLevel, DataSovereignty};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DataContract {
-    pub name: String,
-    pub version: String,
-}
-
-impl DataContract {
-    pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            version: version.into(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ReplayMode {
-    Required,
-    Preferred,
-    NotRequired,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GovernanceClass {
-    LowRisk,
-    BusinessDecision,
-    RegulatedDecision,
-    HumanApprovalRequired,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuggestorDescriptor {
-    pub id: String,
-    pub profile: ProfileSnapshot,
-    pub reads: Vec<ContextKey>,
-    pub domain_tags: Vec<String>,
-    pub input_contracts: Vec<DataContract>,
-    pub output_contracts: Vec<DataContract>,
-    pub replay_mode: ReplayMode,
-    pub governance_class: GovernanceClass,
-    pub backend_requirements: Option<BackendRequirements>,
-}
-
-impl SuggestorDescriptor {
-    pub fn new(id: impl Into<String>, profile: ProfileSnapshot) -> Self {
-        Self {
-            id: id.into(),
-            profile,
-            reads: Vec::new(),
-            domain_tags: Vec::new(),
-            input_contracts: Vec::new(),
-            output_contracts: Vec::new(),
-            replay_mode: ReplayMode::NotRequired,
-            governance_class: GovernanceClass::BusinessDecision,
-            backend_requirements: None,
-        }
-    }
-
-    pub fn with_read(mut self, key: ContextKey) -> Self {
-        self.reads.push(key);
-        self
-    }
-
-    pub fn with_domain_tag(mut self, tag: impl Into<String>) -> Self {
-        self.domain_tags.push(tag.into());
-        self
-    }
-
-    pub fn with_input_contract(mut self, contract: DataContract) -> Self {
-        self.input_contracts.push(contract);
-        self
-    }
-
-    pub fn with_output_contract(mut self, contract: DataContract) -> Self {
-        self.output_contracts.push(contract);
-        self
-    }
-
-    pub fn with_replay_mode(mut self, mode: ReplayMode) -> Self {
-        self.replay_mode = mode;
-        self
-    }
-
-    pub fn with_governance_class(mut self, class: GovernanceClass) -> Self {
-        self.governance_class = class;
-        self
-    }
-
-    pub fn with_backend_requirements(mut self, requirements: BackendRequirements) -> Self {
-        self.backend_requirements = Some(requirements);
-        self
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SuggestorDescriptorCatalog {
-    descriptors: Vec<SuggestorDescriptor>,
-}
-
-impl SuggestorDescriptorCatalog {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_descriptor(mut self, descriptor: SuggestorDescriptor) -> Self {
-        self.register(descriptor);
-        self
-    }
-
-    pub fn register(&mut self, descriptor: SuggestorDescriptor) {
-        self.descriptors.push(descriptor);
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<'_, SuggestorDescriptor> {
-        self.descriptors.iter()
-    }
-}
-
-impl<'a> IntoIterator for &'a SuggestorDescriptorCatalog {
-    type IntoIter = std::slice::Iter<'a, SuggestorDescriptor>;
-    type Item = &'a SuggestorDescriptor;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderDescriptor {
-    pub id: String,
-    pub label: String,
-    pub requirements: BackendRequirements,
-    pub role_affinity: Vec<SuggestorRole>,
-    pub domain_tags: Vec<String>,
-}
-
-impl ProviderDescriptor {
-    pub fn new(
-        id: impl Into<String>,
-        label: impl Into<String>,
-        requirements: BackendRequirements,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            label: label.into(),
-            requirements,
-            role_affinity: Vec::new(),
-            domain_tags: Vec::new(),
-        }
-    }
-
-    pub fn with_role_affinity(mut self, role: SuggestorRole) -> Self {
-        self.role_affinity.push(role);
-        self
-    }
-
-    pub fn with_domain_tag(mut self, tag: impl Into<String>) -> Self {
-        self.domain_tags.push(tag.into());
-        self
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ProviderDescriptorCatalog {
-    descriptors: Vec<ProviderDescriptor>,
-}
-
-impl ProviderDescriptorCatalog {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_descriptor(mut self, descriptor: ProviderDescriptor) -> Self {
-        self.register(descriptor);
-        self
-    }
-
-    pub fn register(&mut self, descriptor: ProviderDescriptor) {
-        self.descriptors.push(descriptor);
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<'_, ProviderDescriptor> {
-        self.descriptors.iter()
-    }
-}
-
-impl<'a> IntoIterator for &'a ProviderDescriptorCatalog {
-    type IntoIter = std::slice::Iter<'a, ProviderDescriptor>;
-    type Item = &'a ProviderDescriptor;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
+pub use organism_catalog::{
+    DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode,
+    SuggestorDescriptor, SuggestorDescriptorCatalog,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormationCompilerCatalogs {
@@ -566,6 +375,7 @@ fn remove_capabilities(
 mod tests {
     use super::*;
     use crate::vendor_selection::vendor_selection_formation_catalog;
+    use converge_kernel::formation::ProfileSnapshot;
     use converge_provider::{BackendKind, Capability, CostClass, LatencyClass};
 
     fn id(n: u128) -> Uuid {

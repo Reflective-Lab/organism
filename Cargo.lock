@@ -4806,6 +4806,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "organism-catalog"
+version = "1.9.0"
+dependencies = [
+ "async-trait",
+ "converge-kernel",
+ "converge-pack",
+ "converge-provider",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "organism-intelligence"
 version = "1.9.0"
 dependencies = [
@@ -4911,6 +4925,7 @@ dependencies = [
  "converge-pack",
  "converge-provider",
  "organism-adversarial",
+ "organism-catalog",
  "organism-intent",
  "organism-learning",
  "organism-pack",

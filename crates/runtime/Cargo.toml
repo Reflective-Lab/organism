@@ -13,6 +13,7 @@ organism-adversarial.workspace = true
 organism-simulation.workspace = true
 organism-learning.workspace = true
 organism-intent.workspace = true
+organism-catalog.workspace = true
 converge-kernel.workspace = true
 converge-pack.workspace = true
 converge-provider.workspace = true

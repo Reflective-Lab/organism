@@ -10,6 +10,7 @@ members = [
     "crates/intelligence",
     "crates/pack",
     "crates/notes",
+    "crates/catalog",
 ]
 default-members = [
     "crates/*",
@@ -33,6 +34,7 @@ organism-runtime = { path = "crates/runtime", version = "1.9.0" }
 organism-pack = { path = "crates/pack", version = "1.9.0" }
 organism-intelligence = { path = "crates/intelligence", version = "1.9.0" }
 organism-notes = { path = "crates/notes", version = "1.9.0" }
+organism-catalog = { path = "crates/catalog", version = "1.9.0" }
 
 # Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
 converge-pack     = "3.9.1"
