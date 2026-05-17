@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-05-17
+
+First release on the Converge 3.9 contract, and the first crates.io publish
+since 1.5.1. Adds the FuzzyReasoner / MlPredictionReasoner planning surface,
+the AnomalySkeptic + GradedAdmissionController adversarial/intent pair, and
+per-crate provenance markers that satisfy the Converge 3.9 fact-construction
+contract end-to-end.
+
+### Added
+- **Planning.** `FuzzyReasoner` and `MlPredictionReasoner` backed by
+  `converge-prism-analytics` 2.0 fuzzy inference. Suggestor surface in
+  `crates/planning/src/suggestor.rs`, with kb integration notes in
+  `kb/Architecture/Prism Analytics Integrations.md`.
+- **Adversarial / Intent.** `AnomalySkeptic` agent
+  (`crates/adversarial/src/anomaly_skeptic.rs`) and
+  `GradedAdmissionController` (in `crates/intent`) form a paired
+  admit/challenge loop for graded intent acceptance.
+- **Provenance markers.** New `provenance.rs` module in each of
+  `adversarial`, `learning`, `planning`, `runtime`, `simulation` crates.
+  Each exports a unit struct implementing `converge_pack::ProvenanceSource`
+  and a `*_PROVENANCE` constant for `*_PROVENANCE.proposed_fact(...)`
+  construction.
+- **KB.** `kb/Architecture/Prism Analytics Integrations.md` and
+  `kb/Architecture/Specialist Bench Formations.md` document the new
+  reasoner surface and formation taxonomy.
+
+### Changed
+- **Converge floor: 3.8.1 → 3.9.1.** All fact construction migrates to
+  typed `FactPayload` plus `*_PROVENANCE.proposed_fact(...)`; raw-string
+  payload construction is gone.
+- **Suggestors and adapters across `planning`, `runtime`, `adversarial`,
+  `learning`, `simulation`** updated for the typed payload + provenance
+  surface.
+- **Pack compile-fail tests** updated for the new fact-construction
+  contract (`fact_construction_blocked.{rs,stderr}`,
+  `fact_no_new.stderr`, `proposed_fact_compiles.rs`).
+- **Mosaic extension pins** moved to current crates.io releases:
+  arbiter 2.0.1, embassy-pack/linkedin 1.3.0, ferrox 0.7.1,
+  manifold 1.1.1, mnemos 1.2.2, prism 2.0.0.
+- **Workspace dependency hygiene.** `[patch.crates-io]` block removed
+  entirely — every dependency now resolves directly from crates.io,
+  no path overrides. Dead `converge-ferrox-server` workspace entry
+  removed.
+- Workspace bumped 1.8.1 → 1.9.0.
+
+### Notes
+Versions 1.6.x – 1.8.x existed as internal/tagged work but were never
+published to crates.io. 1.9.0 supersedes them on the registry.
+
 ## [1.8.1] - 2026-05-07
 
 Docs-only patch on top of 1.8.0. No API delta. Sharpens the helms
@@ -271,7 +320,7 @@ topology (manifold, mnemos, prism, arbiter, atelier-domain, embassy, ferrox).
   constructor reachable, no field-by-field construction of authoritative
   facts.
 - **`organism-domain` path** — moved to
-  `~/dev/extensions/atelier-showcase/crates/organism-domain` (workspace
+  `~/dev/reflective/stack/mosaic-extensions/atelier-showcase/crates/organism-domain` (workspace
   directory rename). Crate name unchanged.
 
 ### Removed
@@ -281,7 +330,7 @@ topology (manifold, mnemos, prism, arbiter, atelier-domain, embassy, ferrox).
   (e.g. `monterro-core`) need to migrate their `DdLlm` impls to
   `DynChatBackend` when picking up 1.5.0.
 - **`organism-intelligence::linkedin`** module — extracted to
-  `embassy-linkedin` (`~/dev/extensions/embassy-ports/crates/linkedin`).
+  `embassy-linkedin` (`~/dev/reflective/stack/mosaic-extensions/embassy-ports/crates/linkedin`).
   Embassy owns source-specific connector ports.
 - **LinkedIn readiness probe** — `CredentialProbe::with_standard_checks` no
   longer requires `LINKEDIN_API_KEY`. Consumers that want a LinkedIn probe
@@ -330,7 +379,7 @@ queued for a focused cleanup release.
   packs; the examples now consume pack-level Suggestors instead of owning the
   reusable business mechanics.
 - The loan-application example graduated out of Organism into
-  `~/dev/apps/loan-application`, keeping lending vocabulary and underwriting
+  `~/dev/reflective/stack/marquee-apps/loan-application`, keeping lending vocabulary and underwriting
   assumptions in the app layer.
 - `PlanningPriorAgent` can consult Converge recall through `ExperienceStore`,
   closing the experience-to-planning feedback loop.

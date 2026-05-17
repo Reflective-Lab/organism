@@ -94,7 +94,7 @@ Organism uses `converge-pack`, `converge-kernel`, and `converge-model` directly.
 | Remote | `converge-client` | gRPC wire protocol to deployed Converge |
 
 Do NOT depend on `converge-core`, `converge-runtime`, or other internal crates.
-Full contract: `~/dev/work/converge/kb/Architecture/API Surfaces.md`.
+Full contract: `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/API Surfaces.md`.
 
 ## Allowed and Not Allowed
 

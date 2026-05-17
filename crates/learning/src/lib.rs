@@ -18,6 +18,7 @@
 
 pub mod adapter;
 pub mod prior_agent;
+pub mod provenance;
 
 use converge_pack::UnitInterval;
 use serde::{Deserialize, Serialize};

@@ -62,6 +62,6 @@ Blueprints (lead-to-cash, hire-to-retire, etc.) compose organism-domain packs wi
 
 ## Legacy
 
-The pre-restructure monolith has been retired. Current crates and the [`atelier-showcase`](../../extensions/atelier-showcase) repository are canonical.
+The pre-restructure monolith has been retired. Current crates and the [`atelier-showcase`](../../atelier-showcase) repository are canonical.
 
 See also: [[Architecture/Converge Contract]], [[Architecture/Pipeline Flow]]

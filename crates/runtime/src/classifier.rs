@@ -11,8 +11,25 @@
 //! directly on the structured `IntentPacket` to pick which formation template
 //! to run in the first place.
 
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
+    TextPayload,
+};
 use organism_intent::problem::{ProblemClassification, classify_text};
+
+use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_RUNTIME_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
+}
 
 /// Suggestor that classifies the dominant problem shape from seeds and
 /// signals already in convergence context.
@@ -51,6 +68,10 @@ impl Suggestor for ProblemClassifierSuggestor {
         &[ContextKey::Seeds]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         // Need at least one seed; don't re-fire if we've already classified.
         ctx.has(ContextKey::Seeds)
@@ -64,11 +85,11 @@ impl Suggestor for ProblemClassifierSuggestor {
         let mut haystack = String::new();
         for fact in ctx.get(ContextKey::Seeds) {
             haystack.push(' ');
-            haystack.push_str(fact.content());
+            haystack.push_str(fact_text(fact));
         }
         for fact in ctx.get(ContextKey::Signals) {
             haystack.push(' ');
-            haystack.push_str(fact.content());
+            haystack.push_str(fact_text(fact));
         }
 
         let classification = classify_text(&haystack);
@@ -79,11 +100,10 @@ impl Suggestor for ProblemClassifierSuggestor {
             "defaulted": classification.defaulted,
         });
 
-        AgentEffect::with_proposal(ProposedFact::new(
+        AgentEffect::with_proposal(proposed_text_fact(
             ContextKey::Hypotheses,
             format!("{FACT_PREFIX}:{}", classification.class.as_str()),
             payload.to_string(),
-            "problem-classifier",
         ))
     }
 }
@@ -99,7 +119,7 @@ pub fn extract_classification(ctx: &dyn Context) -> Option<ProblemClassification
     ctx.get(ContextKey::Hypotheses)
         .iter()
         .find(|f| f.id().starts_with(FACT_PREFIX))
-        .and_then(|f| serde_json::from_str(f.content()).ok())
+        .and_then(|f| serde_json::from_str(fact_text(f)).ok())
         .and_then(|v: serde_json::Value| {
             let class_str = v.get("class")?.as_str()?;
             let class = match class_str {
@@ -155,7 +175,7 @@ mod tests {
             .iter()
             .find(|f| f.id().starts_with(FACT_PREFIX))
             .expect("classifier emitted a problem-class hypothesis");
-        serde_json::from_str(fact.content()).expect("payload is JSON")
+        serde_json::from_str(fact_text(fact)).expect("payload is JSON")
     }
 
     #[test]

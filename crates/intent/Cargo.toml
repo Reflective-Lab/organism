@@ -11,6 +11,7 @@ description = "Intent contracts for Organism — packets, admission, decompositi
 async-trait.workspace = true
 chrono.workspace = true
 converge-pack.workspace = true
+prism.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

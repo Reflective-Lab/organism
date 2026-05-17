@@ -19,7 +19,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, Suggestor,
+    AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 use converge_provider::{
     ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError, ResponseFormat,
@@ -27,6 +28,7 @@ use converge_provider::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::provenance::ORGANISM_PLANNING_PROVENANCE;
 use crate::suggestor::SharedBudget;
 
 // ── Error types ───────────────────────────────────────────────────
@@ -122,7 +124,19 @@ fn error_to_constraint(error: &DdError, suggestor: &str) -> ProposedFact {
         "message": error.to_string(),
     })
     .to_string();
-    ProposedFact::new(ContextKey::Constraints, id, content, suggestor).with_confidence(1.0)
+    proposed_text_fact(ContextKey::Constraints, id, content).with_confidence(1.0)
+}
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_PLANNING_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
+
+fn fact_text(fact: &ContextFact) -> &str {
+    fact.text().unwrap_or_default()
 }
 
 // ── Backend traits ───────────────────────────────────────────────
@@ -289,9 +303,9 @@ impl BreadthResearchSuggestor {
         let processed = self.processed.lock().unwrap();
         ctx.get(ContextKey::Strategies)
             .iter()
-            .filter(|f| f.content().contains(&self.tag))
+            .filter(|f| fact_text(f).contains(&self.tag))
             .filter(|f| !processed.contains(f.id()))
-            .map(|f| f.content().to_string())
+            .map(|f| fact_text(f).to_string())
             .collect()
     }
 }
@@ -304,6 +318,10 @@ impl Suggestor for BreadthResearchSuggestor {
 
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Strategies]
+    }
+
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -336,13 +354,8 @@ impl Suggestor for BreadthResearchSuggestor {
                         })
                         .to_string();
                         effect.push(
-                            ProposedFact::new(
-                                ContextKey::Signals,
-                                id,
-                                content,
-                                "dd-breadth-research",
-                            )
-                            .with_confidence(1.0),
+                            proposed_text_fact(ContextKey::Signals, id, content)
+                                .with_confidence(1.0),
                         );
                     }
                 }
@@ -357,7 +370,7 @@ impl Suggestor for BreadthResearchSuggestor {
             self.processed.lock().unwrap().insert(
                 ctx.get(ContextKey::Strategies)
                     .iter()
-                    .find(|f| f.content() == strategy)
+                    .find(|f| fact_text(f) == strategy)
                     .map_or_else(|| FactId::new(""), |f| f.id().clone()),
             );
         }
@@ -402,9 +415,9 @@ impl DepthResearchSuggestor {
         let processed = self.processed.lock().unwrap();
         ctx.get(ContextKey::Strategies)
             .iter()
-            .filter(|f| f.content().contains(&self.tag))
+            .filter(|f| fact_text(f).contains(&self.tag))
             .filter(|f| !processed.contains(f.id()))
-            .map(|f| f.content().to_string())
+            .map(|f| fact_text(f).to_string())
             .collect()
     }
 }
@@ -417,6 +430,10 @@ impl Suggestor for DepthResearchSuggestor {
 
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Strategies]
+    }
+
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -449,13 +466,8 @@ impl Suggestor for DepthResearchSuggestor {
                         })
                         .to_string();
                         effect.push(
-                            ProposedFact::new(
-                                ContextKey::Signals,
-                                id,
-                                content,
-                                "dd-depth-research",
-                            )
-                            .with_confidence(1.0),
+                            proposed_text_fact(ContextKey::Signals, id, content)
+                                .with_confidence(1.0),
                         );
                     }
                 }
@@ -470,7 +482,7 @@ impl Suggestor for DepthResearchSuggestor {
             self.processed.lock().unwrap().insert(
                 ctx.get(ContextKey::Strategies)
                     .iter()
-                    .find(|f| f.content() == strategy)
+                    .find(|f| fact_text(f) == strategy)
                     .map_or_else(|| FactId::new(""), |f| f.id().clone()),
             );
         }
@@ -515,6 +527,10 @@ impl Suggestor for FactExtractorSuggestor {
         &[ContextKey::Signals]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(ContextKey::Signals);
         let processed = *self.processed_signal_count.lock().unwrap();
@@ -544,7 +560,7 @@ impl Suggestor for FactExtractorSuggestor {
         let mut seen_fact_keys: HashSet<String> = ctx
             .get(ContextKey::Hypotheses)
             .iter()
-            .filter_map(|fact| existing_fact_signature(fact.content()))
+            .filter_map(|fact| existing_fact_signature(fact_text(fact)))
             .collect();
 
         let mut effect = AgentEffect::builder();
@@ -561,11 +577,10 @@ impl Suggestor for FactExtractorSuggestor {
                         }
                         let id = format!("hypothesis-{}-{i}", Uuid::new_v4());
                         effect.push(
-                            ProposedFact::new(
+                            proposed_text_fact(
                                 ContextKey::Hypotheses,
                                 id,
                                 normalized_fact.to_string(),
-                                "dd-fact-extractor",
                             )
                             .with_confidence(normalized_fact["confidence"].as_f64().unwrap_or(0.5)),
                         );
@@ -643,6 +658,10 @@ impl Suggestor for GapDetectorSuggestor {
         &[ContextKey::Hypotheses]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(ContextKey::Hypotheses);
         let last = *self.last_hypothesis_count.lock().unwrap();
@@ -673,7 +692,7 @@ impl Suggestor for GapDetectorSuggestor {
         let mut seen_strategy_contents: HashSet<String> = ctx
             .get(ContextKey::Strategies)
             .iter()
-            .map(|fact| fact.content().to_string())
+            .map(|fact| fact_text(fact).to_string())
             .collect();
 
         match dd_complete(self.llm.as_ref(), &prompt).await {
@@ -691,12 +710,7 @@ impl Suggestor for GapDetectorSuggestor {
                         }
                         let id = format!("strategy-gap-{i}-{}", Uuid::new_v4());
 
-                        effect.push(ProposedFact::new(
-                            ContextKey::Strategies,
-                            id,
-                            content,
-                            "dd-gap-detector",
-                        ));
+                        effect.push(proposed_text_fact(ContextKey::Strategies, id, content));
                     }
                 }
                 Err(detail) => {
@@ -745,6 +759,10 @@ impl Suggestor for ContradictionFinderSuggestor {
         &[ContextKey::Hypotheses]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(ContextKey::Hypotheses);
         let last = *self.last_hypothesis_count.lock().unwrap();
@@ -758,7 +776,7 @@ impl Suggestor for ContradictionFinderSuggestor {
         // Group hypotheses by topic (from JSON "category" field)
         let mut by_category: HashMap<String, Vec<(FactId, String)>> = HashMap::new();
         for fact in hypotheses {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(fact.content()) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(fact_text(fact)) {
                 let category = v["category"].as_str().unwrap_or("unknown").to_string();
                 let claim = v["claim"].as_str().unwrap_or("").to_string();
                 if !claim.is_empty() {
@@ -808,13 +826,7 @@ impl Suggestor for ContradictionFinderSuggestor {
                 .to_string();
 
                 effect.push(
-                    ProposedFact::new(
-                        ContextKey::Evaluations,
-                        id,
-                        content,
-                        "dd-contradiction-finder",
-                    )
-                    .with_confidence(0.9),
+                    proposed_text_fact(ContextKey::Evaluations, id, content).with_confidence(0.9),
                 );
             }
         }
@@ -870,6 +882,10 @@ impl Suggestor for SynthesisSuggestor {
         &[]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(ContextKey::Hypotheses);
         let mut last = self.last_hypothesis_count.lock().unwrap();
@@ -901,8 +917,7 @@ impl Suggestor for SynthesisSuggestor {
                 let id = format!("synthesis-{}", Uuid::new_v4());
                 AgentEffect::builder()
                     .proposal(
-                        ProposedFact::new(ContextKey::Proposals, id, raw, "dd-synthesis")
-                            .with_confidence(0.8),
+                        proposed_text_fact(ContextKey::Proposals, id, raw).with_confidence(0.8),
                     )
                     .build()
             }
@@ -935,7 +950,7 @@ struct ConsolidationCandidate {
 // ── Prompts (organism-owned DD intelligence) ──────────────────────
 
 pub mod prompts {
-    use super::{DdFactSummary, covered_dd_categories, missing_expected_dd_categories};
+    use super::{DdFactSummary, covered_dd_categories, fact_text, missing_expected_dd_categories};
     use converge_pack::ContextFact;
 
     pub fn fact_extraction(subject: &str, signals: &[ContextFact]) -> String {
@@ -943,7 +958,7 @@ pub mod prompts {
             .iter()
             .enumerate()
             .filter_map(|(i, f)| {
-                let v: serde_json::Value = serde_json::from_str(f.content()).ok()?;
+                let v: serde_json::Value = serde_json::from_str(fact_text(f)).ok()?;
                 Some(format!(
                     "[Source {i}] ({}) {}\n  URL: {}\n  {}",
                     v["provider"].as_str().unwrap_or("?"),
@@ -994,7 +1009,7 @@ Rules:
     ) -> String {
         let facts_text: String = hypotheses
             .iter()
-            .map(converge_pack::ContextFact::content)
+            .map(fact_text)
             .collect::<Vec<_>>()
             .join("\n");
         let covered_categories = covered_dd_categories(hypotheses);
@@ -1099,7 +1114,7 @@ pub fn consolidate_dd_hypotheses(hypotheses: &[ContextFact]) -> Vec<DdFactSummar
     consolidate_dd_fact_values(
         hypotheses
             .iter()
-            .filter_map(|fact| serde_json::from_str::<serde_json::Value>(fact.content()).ok())
+            .filter_map(|fact| serde_json::from_str::<serde_json::Value>(fact_text(fact)).ok())
             .collect::<Vec<_>>(),
     )
 }
@@ -1784,7 +1799,7 @@ fn covered_dd_categories(hypotheses: &[ContextFact]) -> Vec<String> {
     let mut categories: Vec<String> = hypotheses
         .iter()
         .filter_map(|fact| {
-            let value = serde_json::from_str::<serde_json::Value>(fact.content()).ok()?;
+            let value = serde_json::from_str::<serde_json::Value>(fact_text(fact)).ok()?;
             let normalized = normalize_dd_fact(&value)?;
             normalized["category"].as_str().map(ToOwned::to_owned)
         })

@@ -9,7 +9,19 @@
 //!
 //! See `MILESTONES.md` Stage 3+ "In-loop re-selection" for design rationale.
 
-use converge_pack::{AgentEffect, Context, ContextKey, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextKey, ProposedFact, ProvenanceSource, Suggestor, TextPayload,
+};
+
+use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
+
+fn proposed_text_fact(
+    key: ContextKey,
+    id: impl Into<converge_pack::ProposalId>,
+    content: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_RUNTIME_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
+}
 
 /// Suggestor that watches one [`ContextKey`] and flags the role bound to it
 /// as stalled when convergence is happening elsewhere.
@@ -125,6 +137,10 @@ impl Suggestor for RoleStallSuggestor {
         &self.deps
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if self.already_emitted(ctx) {
             return false;
@@ -150,11 +166,10 @@ impl Suggestor for RoleStallSuggestor {
             ),
             "severity": "stall",
         });
-        AgentEffect::with_proposal(ProposedFact::new(
+        AgentEffect::with_proposal(proposed_text_fact(
             ContextKey::Diagnostic,
             self.fact_id(),
             payload.to_string(),
-            "role-stall",
         ))
     }
 }
@@ -180,16 +195,19 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
+        fn provenance(&self) -> &'static str {
+            ORGANISM_RUNTIME_PROVENANCE.as_str()
+        }
+
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Strategies)
         }
 
         async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
-            AgentEffect::with_proposal(ProposedFact::new(
+            AgentEffect::with_proposal(proposed_text_fact(
                 ContextKey::Strategies,
                 "strat-1".to_string(),
                 "{\"plan\": \"draft\"}".to_string(),
-                "productive-strategist",
             ))
         }
     }
@@ -212,7 +230,7 @@ mod tests {
             .find(|f| f.id().as_str() == "stall:evaluator")
             .expect("stall fact emitted for the missing evaluator role");
         let payload: serde_json::Value =
-            serde_json::from_str(stall.content()).expect("payload is JSON");
+            serde_json::from_str(stall.text().unwrap_or_default()).expect("payload is JSON");
         assert_eq!(payload["role"], "evaluator");
         assert_eq!(payload["severity"], "stall");
         assert!(payload["progress_elsewhere"].as_u64().unwrap() >= 1);

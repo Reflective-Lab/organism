@@ -10,7 +10,7 @@ Human intent → Organism (form, reason, debate, simulate) → Converge (run, pr
 
 - **Milestones:** Read `MILESTONES.md` at the start of every session. Scope work to the current milestone.
 - **Changelog:** Update `CHANGELOG.md` when shipping notable changes.
-- **Strategic context:** `~/dev/work/EPIC.md`
+- **Strategic context:** `~/dev/reflective/stack/bedrock-platform/EPIC.md`
 
 ## Claude-Specific Notes
 
@@ -61,9 +61,9 @@ Converge changes that matter to Organism:
 - Sequencing is by dependencies and deterministic registration order, not by suggestor name.
 
 **Before implementing a core/basic/fundamental function, check if Converge already provides it:**
-`~/dev/work/converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
+`~/dev/reflective/stack/bedrock-platform/converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
 
-See `~/dev/work/converge/kb/Architecture/API Surfaces.md` for the full public contract.
+See `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/API Surfaces.md` for the full public contract.
 
 ## What Organism MUST NOT do
 
@@ -94,5 +94,5 @@ See `~/dev/work/converge/kb/Architecture/API Surfaces.md` for the full public co
 ## Legacy
 
 The pre-restructure crates have been retired. Use the current `crates/`
-tree and the [`atelier-showcase`](../../extensions/atelier-showcase)
+tree and the [`atelier-showcase`](../../atelier-showcase)
 repository as the only supported implementation surface.

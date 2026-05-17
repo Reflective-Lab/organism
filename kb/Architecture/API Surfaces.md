@@ -125,7 +125,28 @@ They are the internal building blocks re-exported by `organism-pack` and, for
 resolution/readiness concerns, selectively surfaced by `organism-runtime`.
 Direct dependencies are reasonable when extending Organism itself or
 working on the planning loop implementation. Examples have graduated to the
-[`atelier-showcase`](../../extensions/atelier-showcase) repository.
+[`atelier-showcase`](../../atelier-showcase) repository.
+
+## Specialist Bench Boundary
+
+Downstream applications should not depend on Organism phase crates to rebuild
+specialist capabilities. They should use `organism-pack` and
+`organism-runtime` to select and run Formations, then register Mosaic-backed
+factories or capability handles at the host boundary.
+
+Reusable specialist cores belong outside Helm and applications:
+
+- Arbiter for policy, Cedar, authorization, delegation checks, and approval gates
+- Manifold for generic provider, storage, search, fetch, feed, vector, and tool adapters
+- Embassy for source-specific connectors and provenance
+- Mnemos for knowledge, recall, retrieval, memory, and evidence seeding
+- Prism for regression, fuzzy inference, ranking, forecasting, anomaly detection, classification, feature extraction, and ML critique
+- Ferrox for optimization, scheduling, routing, allocation, and feasibility proofs
+
+Application code may write thin product glue around these contracts. It should
+not create a local regression engine, fuzzy-logic engine, optimizer, policy
+engine, recall layer, provider adapter, or connector when the bench already
+owns it.
 
 ## Who Uses What
 

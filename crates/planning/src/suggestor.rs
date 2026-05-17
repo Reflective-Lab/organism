@@ -12,9 +12,13 @@
 
 use std::sync::{Arc, Mutex};
 
-use converge_pack::{AgentEffect, Context, ContextKey, FactId, ProposedFact, Suggestor};
+use converge_pack::{
+    AgentEffect, Context, ContextKey, FactId, ProposedFact, ProvenanceSource, Suggestor,
+    TextPayload,
+};
 use organism_intent::IntentPacket;
 
+use crate::provenance::ORGANISM_PLANNING_PROVENANCE;
 use crate::{Plan, ReasoningSystem};
 
 // ── Huddle Seed Suggestor ─────────────────────────────────────────
@@ -59,6 +63,7 @@ impl HuddleSeedSuggestor {
                     ReasoningSystem::CostEstimation => "cost",
                     ReasoningSystem::LlmReasoning => "llm",
                     ReasoningSystem::MlPrediction => "ml",
+                    ReasoningSystem::FuzzyReasoning => "fuzzy",
                 };
                 NamedPlan {
                     id: format!("huddle-{system}-{i}"),
@@ -85,6 +90,10 @@ impl Suggestor for HuddleSeedSuggestor {
         &[]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, _ctx: &dyn Context) -> bool {
         !*self.seeded.lock().unwrap()
     }
@@ -94,11 +103,10 @@ impl Suggestor for HuddleSeedSuggestor {
 
         let mut effect = AgentEffect::builder();
 
-        effect.push(ProposedFact::new(
+        effect.push(ORGANISM_PLANNING_PROVENANCE.proposed_fact(
             ContextKey::Seeds,
             "intent",
-            &self.intent.outcome,
-            "organism-huddle-seed",
+            TextPayload::new(self.intent.outcome.clone()),
         ));
 
         for named in &self.plans {
@@ -117,11 +125,10 @@ impl Suggestor for HuddleSeedSuggestor {
                 named.plan.rationale,
             );
 
-            effect.push(ProposedFact::new(
+            effect.push(ORGANISM_PLANNING_PROVENANCE.proposed_fact(
                 ContextKey::Strategies,
                 named.id.as_str(),
-                strategy_content,
-                "organism-huddle-seed",
+                TextPayload::new(strategy_content),
             ));
         }
 
@@ -137,6 +144,7 @@ fn reasoning_system_tag(system: ReasoningSystem) -> &'static str {
         ReasoningSystem::CostEstimation => "cost-estimation",
         ReasoningSystem::LlmReasoning => "llm-reasoning",
         ReasoningSystem::MlPrediction => "ml-prediction",
+        ReasoningSystem::FuzzyReasoning => "fuzzy-reasoning",
     }
 }
 
@@ -275,6 +283,10 @@ where
         &[ContextKey::Hypotheses]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(ContextKey::Hypotheses);
         let last = *self.last_hypothesis_count.lock().unwrap();
@@ -299,7 +311,13 @@ where
 
         let proposals: Vec<ProposedFact> = new_strategies
             .into_iter()
-            .map(|(id, content)| ProposedFact::new(ContextKey::Strategies, id, content, &self.name))
+            .map(|(id, content)| {
+                ORGANISM_PLANNING_PROVENANCE.proposed_fact(
+                    ContextKey::Strategies,
+                    id,
+                    TextPayload::new(content),
+                )
+            })
             .collect();
 
         AgentEffect::builder().proposals(proposals).build()
@@ -372,6 +390,10 @@ where
         &[ContextKey::Hypotheses]
     }
 
+    fn provenance(&self) -> &'static str {
+        ORGANISM_PLANNING_PROVENANCE.as_str()
+    }
+
     fn accepts(&self, ctx: &dyn Context) -> bool {
         let current = ctx.count(self.watch_key);
         let mut last = self.last_count.lock().unwrap();
@@ -400,7 +422,8 @@ where
         let proposals: Vec<ProposedFact> = results
             .into_iter()
             .map(|(id, content, confidence)| {
-                ProposedFact::new(self.output_key, id, content, &self.name)
+                ORGANISM_PLANNING_PROVENANCE
+                    .proposed_fact(self.output_key, id, TextPayload::new(content))
                     .with_confidence(confidence)
             })
             .collect();
@@ -498,7 +521,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
         // ContradictionFinderSuggestor).
         let contradiction_targets: Vec<(FactId, String)> = evaluation_facts
             .iter()
-            .map(|f| (f.id().clone(), f.content().to_string()))
+            .map(|f| (f.id().clone(), f.text().unwrap_or_default().to_string()))
             .collect();
 
         let mut roster = self.hypotheses.lock().unwrap();
@@ -512,12 +535,12 @@ impl Suggestor for HypothesisTrackerSuggestor {
                 continue;
             }
 
-            let confidence: f64 = fact
-                .content()
+            let fact_text = fact.text().unwrap_or_default();
+            let confidence: f64 = fact_text
                 .parse()
                 .ok()
                 .or_else(|| {
-                    serde_json::from_str::<serde_json::Value>(fact.content())
+                    serde_json::from_str::<serde_json::Value>(fact_text)
                         .ok()
                         .and_then(|v| v.get("confidence")?.as_f64())
                 })
@@ -526,7 +549,7 @@ impl Suggestor for HypothesisTrackerSuggestor {
             roster.push(crate::TrackedHypothesis {
                 fact_id: fact.id().clone(),
                 domain: self.domain.clone(),
-                claim: fact.content().to_string(),
+                claim: fact_text.to_string(),
                 confidence,
                 formed_cycle: cycle,
                 resolved_cycle: None,

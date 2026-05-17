@@ -110,8 +110,8 @@ impl SynthesisProducer for RecallAwareProducer {
             .cloned();
         match summary {
             Some(fact) => {
-                let v: serde_json::Value =
-                    serde_json::from_str(fact.content()).map_err(|e| e.to_string())?;
+                let v: serde_json::Value = serde_json::from_str(fact.text().unwrap_or_default())
+                    .map_err(|e| e.to_string())?;
                 let avg = v["avg_confidence"].as_f64().unwrap_or(0.0);
                 let count = v["count"].as_u64().unwrap_or(0);
                 Ok(format!(
@@ -181,7 +181,7 @@ async fn high_confidence_recall_biases_synthesis_proposal() {
         .iter()
         .find(|f| f.id().as_str() == "synthesis:1")
         .expect("synthesis fact published");
-    let content = synthesis.content();
+    let content = synthesis.text().unwrap_or_default();
     assert!(
         content.contains("recall_count=1"),
         "expected recall to bias synthesis, got: {content}"
@@ -236,7 +236,7 @@ async fn empty_store_falls_back_to_no_recall_synthesis() {
         .iter()
         .find(|f| f.id().as_str() == "synthesis:1")
         .expect("synthesis fact published");
-    let content = synthesis.content();
+    let content = synthesis.text().unwrap_or_default();
     assert!(
         content.ends_with("|no_recall"),
         "expected no_recall fallback when store is empty, got: {content}"

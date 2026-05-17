@@ -16,7 +16,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.8.1"
+version = "1.9.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -24,32 +24,32 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.8.1" }
-organism-planning = { path = "crates/planning", version = "1.8.1" }
-organism-adversarial = { path = "crates/adversarial", version = "1.8.1" }
-organism-simulation = { path = "crates/simulation", version = "1.8.1" }
-organism-learning = { path = "crates/learning", version = "1.8.1" }
-organism-runtime = { path = "crates/runtime", version = "1.8.1" }
-organism-pack = { path = "crates/pack", version = "1.8.1" }
-organism-intelligence = { path = "crates/intelligence", version = "1.8.1" }
-organism-notes = { path = "crates/notes", version = "1.8.1" }
+organism-intent = { path = "crates/intent", version = "1.9.0" }
+organism-planning = { path = "crates/planning", version = "1.9.0" }
+organism-adversarial = { path = "crates/adversarial", version = "1.9.0" }
+organism-simulation = { path = "crates/simulation", version = "1.9.0" }
+organism-learning = { path = "crates/learning", version = "1.9.0" }
+organism-runtime = { path = "crates/runtime", version = "1.9.0" }
+organism-pack = { path = "crates/pack", version = "1.9.0" }
+organism-intelligence = { path = "crates/intelligence", version = "1.9.0" }
+organism-notes = { path = "crates/notes", version = "1.9.0" }
 
-# Converge contract (3.8.1 floor — published to crates.io)
-converge-pack     = "3.8.1"
-converge-kernel   = "3.8.1"
-converge-provider = "3.8.1"
+# Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
+converge-pack     = "3.9.1"
+converge-kernel   = "3.9.1"
+converge-provider = "3.9.1"
 
-# Converge extensions — all target Converge 3.8.1.
-# Aliased to their `[lib] name` for ergonomic `use <alias>::...`.
-arbiter          = { package = "converge-arbiter-policy",   version = "1.0" }
-atelier-domain   = { package = "converge-atelier-domain",   version = "1.0" }
-embassy-pack     = { package = "converge-embassy-pack",     version = "1.0" }
-embassy-linkedin = { package = "converge-embassy-linkedin", version = "1.0" }
-ferrox           = { package = "converge-ferrox-solver",    version = "0.4.1" }
-ferrox-server    = { package = "converge-ferrox-server",    version = "0.4.1" }
-manifold         = { package = "converge-manifold-adapters", version = "1.0" }
-mnemos           = { package = "converge-mnemos-knowledge", version = "1.0" }
-prism            = { package = "converge-prism-analytics",  version = "1.0" }
+# Converge extensions — all target the Converge 3.9 contract, resolved
+# directly from crates.io. Aliased to their `[lib] name` for ergonomic
+# `use <alias>::...`.
+arbiter          = { package = "converge-arbiter-policy",    version = "2.0.1" }
+atelier-domain   = { package = "converge-atelier-domain",    version = "1.0" }
+embassy-pack     = { package = "converge-embassy-pack",      version = "1.3.0" }
+embassy-linkedin = { package = "converge-embassy-linkedin",  version = "1.3.0" }
+ferrox           = { package = "converge-ferrox-solver",     version = "0.7.1" }
+manifold         = { package = "converge-manifold-adapters", version = "1.1.1" }
+mnemos           = { package = "converge-mnemos-knowledge",  version = "1.2.2" }
+prism            = { package = "converge-prism-analytics",   version = "2.0.0" }
 
 # Shared deps
 anyhow = "1"
@@ -87,19 +87,3 @@ cast_lossless = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
-
-# Converge 3.8.1 foundation crates publish to crates.io directly; no patches
-# needed for them. Extension crates (`publish = false`) resolve through these
-# path entries.
-[patch.crates-io]
-converge-arbiter-policy     = { path = "../../extensions/arbiter-policy/crates/arbiter" }
-converge-atelier-domain     = { path = "../../extensions/atelier-showcase/crates/atelier-domain" }
-converge-embassy-pack       = { path = "../../extensions/embassy-ports/crates/pack" }
-converge-embassy-linkedin   = { path = "../../extensions/embassy-ports/crates/linkedin" }
-converge-ferrox-solver      = { path = "../../extensions/ferrox-solvers/crates/ferrox" }
-converge-ferrox-server      = { path = "../../extensions/ferrox-solvers/crates/ferrox-server" }
-converge-ferrox-ortools-sys = { path = "../../extensions/ferrox-solvers/crates/ortools-sys" }
-converge-ferrox-highs-sys   = { path = "../../extensions/ferrox-solvers/crates/highs-sys" }
-converge-manifold-adapters  = { path = "../../extensions/manifold-adapters/crates/manifold" }
-converge-mnemos-knowledge   = { path = "../../extensions/mnemos-knowledge/crates/mnemos" }
-converge-prism-analytics    = { path = "../../extensions/prism-analytics/crates/prism" }

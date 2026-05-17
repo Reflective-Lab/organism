@@ -220,8 +220,8 @@ fn episode_from_scores(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_kernel::{AgentEffect, Context, ContextKey, ProposedFact};
-    use converge_pack::Suggestor;
+    use converge_kernel::{AgentEffect, Context, ContextKey};
+    use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
 
     struct ConvergingAgent;
 
@@ -235,6 +235,10 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
+        fn provenance(&self) -> &'static str {
+            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        }
+
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Hypotheses)
         }
@@ -242,12 +246,13 @@ mod tests {
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seeds = ctx.get(ContextKey::Seeds);
             AgentEffect::builder()
-                .proposal(ProposedFact::new(
-                    ContextKey::Hypotheses,
-                    format!("hyp-{}", seeds[0].id()),
-                    "converged hypothesis",
-                    self.name(),
-                ))
+                .proposal(
+                    crate::provenance::ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
+                        ContextKey::Hypotheses,
+                        format!("hyp-{}", seeds[0].id()),
+                        TextPayload::new("converged hypothesis"),
+                    ),
+                )
                 .build()
         }
     }

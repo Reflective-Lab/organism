@@ -47,7 +47,7 @@ just sync       # Team sync
 - Use Converge types directly (`converge-pack`, `converge-kernel`, `converge-model`). No wrapper layers.
 - `converge_kernel::Context` is the trait. `ContextState` is the concrete state. No `ContextView`, no `Context::new()`.
 - Inside Converge there is ONE in-loop contract: `Suggestor`. Do not invent side-car pipeline traits to bypass the engine.
-- Before building a core capability, check `~/dev/work/converge/CAPABILITIES.md` — Converge provides optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
+- Before building a core capability, check `~/dev/reflective/stack/bedrock-platform/converge/CAPABILITIES.md` — Converge provides optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
 - Do not depend on `converge-core`, `converge-runtime`, or other internal Converge crates.
 - No mocking Converge in integration tests; use a real instance.
 
@@ -116,7 +116,7 @@ Anytime:    /help
 ## Legacy
 
 The pre-restructure monolith has been retired. Current crates and the
-[`atelier-showcase`](../../extensions/atelier-showcase) repository are the
+[`atelier-showcase`](../../atelier-showcase) repository are the
 only supported source of truth.
 
 ## Strategy
@@ -125,4 +125,4 @@ Canonical strategy: `~/dev/brand-kb/organism-business/strategy/STRATEGY.md`.
 
 ## Milestones
 
-Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone. See `~/dev/work/EPIC.md` for the strategic context (Organism = E2) and `~/dev/work/MILESTONES.md` for the cross-project rollup.
+Read `MILESTONES.md` at the start of every session. Scope all work to the current milestone. See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for the strategic context (Organism = E2) and `~/dev/reflective/stack/bedrock-platform/MILESTONES.md` for the cross-project rollup.

@@ -6,7 +6,7 @@ user-invocable: true
 allowed-tools: Bash, Read, Edit, Grep, Glob, Agent
 ---
 # Audit
-Weekly workspace review. Runs from ~/dev/work/ level.
+Weekly workspace review. Runs from ~/dev/reflective/stack/bedrock-platform/ level.
 ## Steps
 1. **Security** — for each project (parallel agents):
    - Secrets in tracked files (sk-, AKIA, ghp_, password=, secret=, token=)

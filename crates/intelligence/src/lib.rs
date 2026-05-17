@@ -18,7 +18,7 @@
 //! - [`social`] — Normalized social profile/page extraction via web capture
 //!
 //! LinkedIn has moved to [`embassy-linkedin`](https://github.com/Reflective-Lab/embassy)
-//! — see `~/dev/extensions/embassy/crates/linkedin/`.
+//! — see `~/dev/reflective-stack/mosaic-extensions/embassy/crates/linkedin/`.
 
 pub mod provenance;
 pub mod secret;

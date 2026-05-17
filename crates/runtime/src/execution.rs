@@ -176,7 +176,8 @@ fn outcome_status(stop_reason: &StopReason, converged: bool) -> FormationOutcome
 #[cfg(test)]
 mod tests {
     use super::*;
-    use converge_kernel::{AgentEffect, Context, ContextKey, ProposedFact};
+    use converge_kernel::{AgentEffect, Context, ContextKey};
+    use converge_pack::{ProvenanceSource, TextPayload};
 
     const SEED_DEPENDENCIES: &[ContextKey] = &[ContextKey::Seeds];
 
@@ -194,6 +195,10 @@ mod tests {
             SEED_DEPENDENCIES
         }
 
+        fn provenance(&self) -> &'static str {
+            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        }
+
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Hypotheses)
         }
@@ -201,12 +206,13 @@ mod tests {
         async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
             let seed = &ctx.get(ContextKey::Seeds)[0];
             AgentEffect::builder()
-                .proposal(ProposedFact::new(
-                    ContextKey::Hypotheses,
-                    format!("{}-{}", self.name, seed.id()),
-                    "instantiated suggestor ran",
-                    self.name,
-                ))
+                .proposal(
+                    crate::provenance::ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
+                        ContextKey::Hypotheses,
+                        format!("{}-{}", self.name, seed.id()),
+                        TextPayload::new("instantiated suggestor ran"),
+                    ),
+                )
                 .build()
         }
     }
