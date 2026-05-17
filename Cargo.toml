@@ -12,6 +12,7 @@ members = [
     "crates/notes",
     "crates/catalog",
     "crates/catalog-seed",
+    "crates/dynamics",
 ]
 default-members = [
     "crates/*",
@@ -37,6 +38,7 @@ organism-intelligence = { path = "crates/intelligence", version = "1.9.0" }
 organism-notes = { path = "crates/notes", version = "1.9.0" }
 organism-catalog = { path = "crates/catalog", version = "1.9.0" }
 organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.0" }
+organism-dynamics = { path = "crates/dynamics", version = "1.9.0" }
 
 # Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
 converge-pack     = "3.9.1"

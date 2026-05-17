@@ -4832,6 +4832,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "organism-dynamics"
+version = "1.9.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "converge-kernel",
+ "converge-pack",
+ "converge-provider",
+ "organism-catalog",
+ "organism-runtime",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "organism-intelligence"
 version = "1.9.0"
 dependencies = [

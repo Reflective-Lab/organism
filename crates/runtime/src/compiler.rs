@@ -217,6 +217,10 @@ pub enum FormationCompileError {
         suggestor_id: String,
         role: SuggestorRole,
     },
+    /// A draft passed to [`FormationCompiler::compile_draft_from_catalog`]
+    /// referenced a descriptor id that does not exist in the catalog.
+    #[error("draft references unknown descriptor '{descriptor_id}'")]
+    DraftDescriptorMissing { descriptor_id: String },
 }
 
 /// Failure outcome from [`FormationCompiler::compile_from_catalog`].
@@ -434,6 +438,169 @@ impl FormationCompiler {
             selected.push(next);
         }
 
+        let mut provider_assignments = Vec::new();
+        for entry in &selected {
+            let descriptor = &entry.descriptor;
+            let Some(requirements) = &descriptor.backend_requirements else {
+                continue;
+            };
+            let Some(provider) = best_provider(providers.into_iter(), descriptor, requirements)
+            else {
+                return Err(CatalogCompileFailure {
+                    error: FormationCompileError::MissingProvider {
+                        suggestor_id: descriptor.id.clone(),
+                        role: descriptor.profile.role,
+                    },
+                    decisions,
+                });
+            };
+            trace.push(format!(
+                "assigned provider '{}' to suggestor '{}'",
+                provider.id, descriptor.id
+            ));
+            provider_assignments.push(RoleProviderAssignment {
+                suggestor_id: descriptor.id.clone(),
+                role: descriptor.profile.role,
+                provider_id: provider.id.clone(),
+                requirements: requirements.clone(),
+            });
+        }
+
+        let roster = selected
+            .into_iter()
+            .map(|entry| {
+                let descriptor = &entry.descriptor;
+                CompiledSuggestorRole {
+                    suggestor_id: descriptor.id.clone(),
+                    role: descriptor.profile.role,
+                    capabilities: descriptor.profile.capabilities.clone(),
+                    reads: descriptor.reads.clone(),
+                    writes: descriptor.profile.output_keys.clone(),
+                    input_contracts: descriptor.input_contracts.clone(),
+                    output_contracts: descriptor.output_contracts.clone(),
+                    replay_mode: descriptor.replay_mode,
+                    governance_class: descriptor.governance_class,
+                }
+            })
+            .collect();
+
+        let plan = CompiledFormationPlan {
+            plan_id: request.plan_id,
+            correlation_id: request.correlation_id,
+            tenant_id: request.tenant_id.clone(),
+            template_id: metadata.id.clone(),
+            template_kind: template.kind(),
+            roster,
+            provider_assignments,
+            trace,
+        };
+
+        Ok(CatalogCompiledFormationPlan { plan, decisions })
+    }
+
+    /// Exact-roster validator for a draft produced by an upstream
+    /// deliberation Formation (see `organism-dynamics`).
+    ///
+    /// Confirms every id in `descriptor_ids` resolves in `catalog`
+    /// (returns [`FormationCompileError::DraftDescriptorMissing`] for
+    /// the first missing one) and that the supplied roster covers the
+    /// template's required roles + capabilities (returns
+    /// [`FormationCompileError::UncoveredRequirements`] otherwise).
+    /// Does **not** greedy-reselect — the returned plan's roster is
+    /// exactly `descriptor_ids` in the supplied order.
+    ///
+    /// This is intentionally distinct from
+    /// [`Self::compile_from_catalog`]: the catalog-aware path picks
+    /// the best roster from a pool; the draft validator honors an
+    /// upstream Formation's choice and only checks admissibility.
+    ///
+    /// The returned [`CatalogCompiledFormationPlan`] carries a single
+    /// [`RoleDecision`] per chosen descriptor, with empty `considered`
+    /// (no candidate ranking happened) and `chosen_role` derived from
+    /// the descriptor's profile.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    pub fn compile_draft_from_catalog(
+        &self,
+        request: &FormationCompileRequest,
+        formation_templates: &FormationCatalog,
+        catalog: &DiscoveryCatalog,
+        providers: &ProviderDescriptorCatalog,
+        descriptor_ids: &[String],
+    ) -> Result<CatalogCompiledFormationPlan, CatalogCompileFailure> {
+        let mut decisions: Vec<RoleDecision> = Vec::new();
+
+        let template = formation_templates
+            .top_match(&request.query)
+            .ok_or_else(|| CatalogCompileFailure {
+                error: FormationCompileError::NoTemplate,
+                decisions: decisions.clone(),
+            })?;
+        let metadata = template.metadata();
+
+        // Resolve every descriptor id — first miss is the failure.
+        let mut selected: Vec<&CatalogSuggestorDescriptor> =
+            Vec::with_capacity(descriptor_ids.len());
+        for id in descriptor_ids {
+            let entry = catalog.get(id).ok_or_else(|| CatalogCompileFailure {
+                error: FormationCompileError::DraftDescriptorMissing {
+                    descriptor_id: id.clone(),
+                },
+                decisions: decisions.clone(),
+            })?;
+            selected.push(entry);
+        }
+
+        // Coverage check against the template requirements. The
+        // request may add extra required_capabilities on top of the
+        // template's; match the legacy compile and union them.
+        let mut unmatched_roles = metadata.required_roles.clone();
+        let mut unmatched_capabilities = unique_capabilities(
+            metadata
+                .required_capabilities
+                .iter()
+                .chain(request.query.required_capabilities.iter())
+                .copied(),
+        );
+        for entry in &selected {
+            remove_role(&mut unmatched_roles, entry.descriptor.profile.role);
+            remove_capabilities(
+                &mut unmatched_capabilities,
+                &entry.descriptor.profile.capabilities,
+            );
+        }
+        if !unmatched_roles.is_empty() || !unmatched_capabilities.is_empty() {
+            return Err(CatalogCompileFailure {
+                error: FormationCompileError::UncoveredRequirements {
+                    unmatched_roles,
+                    unmatched_capabilities,
+                },
+                decisions,
+            });
+        }
+
+        // Build a structured trace — one decision per chosen
+        // descriptor, in the order supplied by the draft. No
+        // `considered` candidates: the draft, not the compiler, made
+        // the selection.
+        let mut trace = vec![format!(
+            "validated draft against template '{}'",
+            metadata.id
+        )];
+        for entry in &selected {
+            trace.push(format!(
+                "draft chose suggestor '{}' for role {:?}",
+                entry.descriptor.id, entry.descriptor.profile.role
+            ));
+            decisions.push(RoleDecision {
+                unmatched_roles_at_start: Vec::new(),
+                unmatched_capabilities_at_start: Vec::new(),
+                considered: Vec::new(),
+                chosen: Some(entry.descriptor.id.clone()),
+                chosen_role: Some(entry.descriptor.profile.role),
+            });
+        }
+
+        // Provider assignment — same logic as compile_from_catalog.
         let mut provider_assignments = Vec::new();
         for entry in &selected {
             let descriptor = &entry.descriptor;
@@ -1624,6 +1791,137 @@ mod tests {
                 .and_then(|d| d.chosen.clone())
                 .unwrap(),
             baseline_signal_pick
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // compile_draft_from_catalog — exact-roster validator. These tests
+    // prove the contract that the dynamics crate relies on: drafts are
+    // honored verbatim, missing descriptors fail loudly, undercoverage
+    // fails loudly, and no greedy reselection ever silently replaces a
+    // draft's choice.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn compile_draft_rejects_unknown_descriptor() {
+        let templates = loop_demo_template_catalog();
+        let catalog = loop_demo_catalog_full();
+        let providers = ProviderDescriptorCatalog::new();
+        let request = loop_demo_query();
+
+        let descriptor_ids = vec![
+            "retrieve-suggestor".to_string(),
+            "does-not-exist".to_string(),
+            "optimize-suggestor".to_string(),
+            "authorize-suggestor".to_string(),
+        ];
+
+        let failure = FormationCompiler::new()
+            .compile_draft_from_catalog(&request, &templates, &catalog, &providers, &descriptor_ids)
+            .expect_err("unknown descriptor must be rejected");
+        assert!(matches!(
+            failure.error,
+            FormationCompileError::DraftDescriptorMissing { ref descriptor_id }
+                if descriptor_id == "does-not-exist"
+        ));
+    }
+
+    #[test]
+    fn compile_draft_rejects_undercovering_roster() {
+        let templates = loop_demo_template_catalog();
+        let catalog = loop_demo_catalog_full();
+        let providers = ProviderDescriptorCatalog::new();
+        let request = loop_demo_query();
+
+        // Drop optimize-suggestor → roster cannot cover Planning role +
+        // Optimization capability. compile_draft_from_catalog must
+        // refuse rather than silently swap in a different roster.
+        let descriptor_ids = vec![
+            "retrieve-suggestor".to_string(),
+            "score-suggestor".to_string(),
+            "authorize-suggestor".to_string(),
+        ];
+
+        let failure = FormationCompiler::new()
+            .compile_draft_from_catalog(&request, &templates, &catalog, &providers, &descriptor_ids)
+            .expect_err("undercovering draft must be rejected");
+        match failure.error {
+            FormationCompileError::UncoveredRequirements {
+                unmatched_roles,
+                unmatched_capabilities,
+            } => {
+                assert!(unmatched_roles.contains(&SuggestorRole::Planning));
+                assert!(unmatched_capabilities.contains(&SuggestorCapability::Optimization));
+            }
+            other => panic!("expected UncoveredRequirements, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn compile_draft_preserves_exact_roster_no_greedy_reselect() {
+        // Build a catalog with TWO valid descriptors for each role so
+        // a greedy reselect would change the chosen ids. compile_from_catalog
+        // would pick one set; compile_draft_from_catalog must honor a
+        // DIFFERENT set supplied by the draft.
+        let templates = loop_demo_template_catalog();
+        let providers = ProviderDescriptorCatalog::new();
+        let request = loop_demo_query();
+
+        let mut catalog = loop_demo_catalog_full();
+        // Add alternates that share the same role+capability as the originals.
+        catalog.register(catalog_entry(
+            "retrieve-alt",
+            SuggestorRole::Signal,
+            SuggestorCapability::KnowledgeRetrieval,
+            LoopContribution::Retrieve,
+            "Alternative retrieve.",
+        ));
+        catalog.register(catalog_entry(
+            "score-alt",
+            SuggestorRole::Evaluation,
+            SuggestorCapability::Analytics,
+            LoopContribution::Score,
+            "Alternative score.",
+        ));
+
+        let compiler = FormationCompiler::new();
+
+        // What greedy compile picks (baseline).
+        let greedy = compiler
+            .compile_from_catalog(&request, &templates, &catalog, &providers, None)
+            .expect("greedy compile");
+        let greedy_ids: Vec<_> = greedy
+            .plan
+            .roster
+            .iter()
+            .map(|r| r.suggestor_id.clone())
+            .collect();
+
+        // Force a different valid roster via the draft validator.
+        let draft_ids = vec![
+            "retrieve-alt".to_string(),
+            "score-alt".to_string(),
+            "optimize-suggestor".to_string(),
+            "authorize-suggestor".to_string(),
+        ];
+        assert_ne!(
+            greedy_ids, draft_ids,
+            "test fixture is wrong: greedy already matches the draft"
+        );
+
+        let validated = compiler
+            .compile_draft_from_catalog(&request, &templates, &catalog, &providers, &draft_ids)
+            .expect("valid draft must compile");
+
+        let validated_ids: Vec<_> = validated
+            .plan
+            .roster
+            .iter()
+            .map(|r| r.suggestor_id.clone())
+            .collect();
+        assert_eq!(
+            validated_ids, draft_ids,
+            "compile_draft_from_catalog must preserve the draft's exact roster — no greedy reselect"
         );
     }
 }
