@@ -122,21 +122,35 @@ pub struct CatalogCompiledFormationPlan {
     pub decisions: Vec<RoleDecision>,
 }
 
-/// What was considered, chosen, or omitted when satisfying a single role
-/// requirement during catalog-aware compilation.
+/// What was considered, chosen, or omitted when satisfying a single
+/// requirement step during catalog-aware compilation.
+///
+/// `unmatched_roles_at_start` and `unmatched_capabilities_at_start`
+/// capture the *full* outstanding requirement set at the start of the
+/// iteration, not just the first item. This matters because
+/// [`best_from_catalog`] picks globally — a candidate that covers a
+/// later role plus several capabilities can win over one that covers
+/// only the first remaining role. `chosen_role` records what was
+/// actually filled, so audit consumers don't have to infer it.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleDecision {
-    /// The role this iteration was trying to fill (None if the iteration
-    /// only sought to cover loose capabilities not tied to a specific role).
-    pub seeking_role: Option<SuggestorRole>,
-    /// Capabilities still needed at the start of this iteration.
-    pub seeking_capabilities: Vec<SuggestorCapability>,
+    /// All roles still unmatched when this iteration began. The compiler
+    /// picks a candidate that maximizes coverage globally — it may fill
+    /// any of these roles, not necessarily the first.
+    pub unmatched_roles_at_start: Vec<SuggestorRole>,
+    /// All capabilities still needed at the start of this iteration.
+    pub unmatched_capabilities_at_start: Vec<SuggestorCapability>,
     /// Every candidate the catalog surfaced for this iteration, with
     /// disposition. Includes accepted and rejected candidates.
     pub considered: Vec<CandidateConsideration>,
     /// The descriptor id selected, or None if the iteration ended in
     /// `UncoveredRequirements`.
     pub chosen: Option<String>,
+    /// The role of the chosen descriptor, if any. May or may not appear
+    /// in `unmatched_roles_at_start` — the greedy ranker can select a
+    /// descriptor whose role was already satisfied if it still covers
+    /// remaining capabilities.
+    pub chosen_role: Option<SuggestorRole>,
 }
 
 /// Disposition of a single candidate descriptor during a [`RoleDecision`].
@@ -370,8 +384,8 @@ impl FormationCompiler {
         let mut trace = vec![format!("selected template '{}'", metadata.id)];
 
         while !unmatched_roles.is_empty() || !unmatched_capabilities.is_empty() {
-            let seeking_role = unmatched_roles.first().copied();
-            let seeking_capabilities = unmatched_capabilities.clone();
+            let unmatched_roles_at_start = unmatched_roles.clone();
+            let unmatched_capabilities_at_start = unmatched_capabilities.clone();
 
             let (chosen, considered) = best_from_catalog(
                 catalog,
@@ -384,10 +398,11 @@ impl FormationCompiler {
 
             let Some(next) = chosen else {
                 decisions.push(RoleDecision {
-                    seeking_role,
-                    seeking_capabilities: seeking_capabilities.clone(),
+                    unmatched_roles_at_start,
+                    unmatched_capabilities_at_start,
                     considered,
                     chosen: None,
+                    chosen_role: None,
                 });
                 return Err(CatalogCompileFailure {
                     error: FormationCompileError::UncoveredRequirements {
@@ -403,11 +418,13 @@ impl FormationCompiler {
                 next.descriptor.id, next.descriptor.profile.role
             ));
             let chosen_id = next.descriptor.id.clone();
+            let chosen_role = next.descriptor.profile.role;
             decisions.push(RoleDecision {
-                seeking_role,
-                seeking_capabilities,
+                unmatched_roles_at_start,
+                unmatched_capabilities_at_start,
                 considered,
                 chosen: Some(chosen_id),
+                chosen_role: Some(chosen_role),
             });
             remove_role(&mut unmatched_roles, next.descriptor.profile.role);
             remove_capabilities(
@@ -1235,7 +1252,14 @@ mod tests {
             .last()
             .expect("partial trace must exist even on failure");
         assert!(final_decision.chosen.is_none());
-        assert_eq!(final_decision.seeking_role, Some(SuggestorRole::Planning));
+        // The greedy ranker may have filled Planning's role-slot before
+        // it ran out — assert via the unmatched snapshot, which is
+        // authoritative for what was still open at the failing step.
+        assert!(
+            final_decision
+                .unmatched_roles_at_start
+                .contains(&SuggestorRole::Planning)
+        );
     }
 
     #[test]
@@ -1288,7 +1312,7 @@ mod tests {
         let retrieve_decision = outcome
             .decisions
             .iter()
-            .find(|d| d.seeking_role == Some(SuggestorRole::Signal))
+            .find(|d| d.chosen_role == Some(SuggestorRole::Signal))
             .expect("Signal-role decision should exist");
         let retrieve_alt = retrieve_decision
             .considered
@@ -1320,6 +1344,98 @@ mod tests {
     }
 
     #[test]
+    fn catalog_compile_trace_reports_actual_chosen_role_when_later_role_wins() {
+        // Scenario: the greedy ranker picks a candidate whose role is
+        // NOT the first remaining role, because that candidate also
+        // covers multiple capabilities. The trace must show:
+        //   - unmatched_roles_at_start: the full snapshot at iteration start
+        //   - chosen_role: the actual role filled (not the first remaining)
+        //
+        // This guards against the prior bug where `seeking_role` was
+        // recorded as `unmatched_roles.first()`, which lied when the
+        // chosen candidate actually filled a later role.
+        let templates = loop_demo_template_catalog();
+        // narrow-signal: 1 role + 1 cap = coverage 2
+        // broad-evaluation: 1 role + 3 caps = coverage 4
+        // → broad-evaluation wins iteration 1 even though Signal is first.
+        let catalog = DiscoveryCatalog::new()
+            .with_entry(CatalogSuggestorDescriptor::new(
+                SuggestorDescriptor::new(
+                    "narrow-signal",
+                    profile(
+                        "narrow-signal",
+                        SuggestorRole::Signal,
+                        Vec::new(),
+                        vec![SuggestorCapability::KnowledgeRetrieval],
+                    ),
+                ),
+                DiscoveryMetadata::new("Narrow signal.", "Test fixture."),
+            ))
+            .with_entry(CatalogSuggestorDescriptor::new(
+                SuggestorDescriptor::new(
+                    "broad-evaluation",
+                    profile(
+                        "broad-evaluation",
+                        SuggestorRole::Evaluation,
+                        Vec::new(),
+                        vec![
+                            SuggestorCapability::Analytics,
+                            SuggestorCapability::Optimization,
+                            SuggestorCapability::PolicyEnforcement,
+                        ],
+                    ),
+                ),
+                DiscoveryMetadata::new("Broad evaluation.", "Test fixture."),
+            ))
+            .with_entry(catalog_entry(
+                "narrow-planning",
+                SuggestorRole::Planning,
+                SuggestorCapability::Optimization,
+                LoopContribution::Optimize,
+                "Narrow planning.",
+            ))
+            .with_entry(catalog_entry(
+                "narrow-constraint",
+                SuggestorRole::Constraint,
+                SuggestorCapability::PolicyEnforcement,
+                LoopContribution::Authorize,
+                "Narrow constraint.",
+            ));
+        let providers = ProviderDescriptorCatalog::new();
+        let request = loop_demo_query();
+
+        let outcome = FormationCompiler::new()
+            .compile_from_catalog(&request, &templates, &catalog, &providers, None)
+            .expect("compile should succeed");
+
+        let first = &outcome.decisions[0];
+
+        // Sanity: the trace snapshot at iteration 1 includes ALL four
+        // unfilled roles in the original order.
+        assert_eq!(
+            first.unmatched_roles_at_start,
+            vec![
+                SuggestorRole::Signal,
+                SuggestorRole::Evaluation,
+                SuggestorRole::Planning,
+                SuggestorRole::Constraint,
+            ],
+        );
+
+        // The fix: chosen_role must reflect what was filled — Evaluation,
+        // NOT the first remaining (Signal). The previous shape would
+        // have recorded seeking_role = Some(Signal), which lied about
+        // what the compiler actually did.
+        assert_eq!(first.chosen.as_deref(), Some("broad-evaluation"));
+        assert_eq!(first.chosen_role, Some(SuggestorRole::Evaluation));
+        assert_ne!(
+            first.chosen_role,
+            first.unmatched_roles_at_start.first().copied(),
+            "chosen_role must reflect actual fill, not the first remaining role"
+        );
+    }
+
+    #[test]
     fn catalog_compile_advisory_order_breaks_ties_but_not_coverage() {
         // Two equally-scoring retrieve candidates. With no advisor, deterministic
         // id ordering picks the lexicographically-later id ("retrieve-suggestor-alt"
@@ -1345,7 +1461,7 @@ mod tests {
         let baseline_signal_pick = baseline
             .decisions
             .iter()
-            .find(|d| d.seeking_role == Some(SuggestorRole::Signal))
+            .find(|d| d.chosen_role == Some(SuggestorRole::Signal))
             .and_then(|d| d.chosen.clone())
             .unwrap();
 
@@ -1362,7 +1478,7 @@ mod tests {
         let advised_signal_pick = advised
             .decisions
             .iter()
-            .find(|d| d.seeking_role == Some(SuggestorRole::Signal))
+            .find(|d| d.chosen_role == Some(SuggestorRole::Signal))
             .and_then(|d| d.chosen.clone())
             .unwrap();
         assert_eq!(advised_signal_pick, other);
@@ -1384,7 +1500,7 @@ mod tests {
             unaffected
                 .decisions
                 .iter()
-                .find(|d| d.seeking_role == Some(SuggestorRole::Signal))
+                .find(|d| d.chosen_role == Some(SuggestorRole::Signal))
                 .and_then(|d| d.chosen.clone())
                 .unwrap(),
             baseline_signal_pick

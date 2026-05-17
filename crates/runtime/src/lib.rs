@@ -35,10 +35,12 @@ pub use collaboration::{
     CollaborationParticipant, CollaborationRunner, CollaborationRunnerError, TransitionRecord,
 };
 pub use compiler::{
-    CompiledFormationPlan, CompiledSuggestorRole, DataContract, FormationCompileError,
-    FormationCompileRequest, FormationCompiler, FormationCompilerCatalogs, GovernanceClass,
-    ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode, RoleProviderAssignment,
-    SuggestorDescriptor, SuggestorDescriptorCatalog,
+    CandidateConsideration, CandidateDisposition, CatalogCompileFailure,
+    CatalogCompiledFormationPlan, CompiledFormationPlan, CompiledSuggestorRole, DataContract,
+    FormationCompileError, FormationCompileRequest, FormationCompiler, FormationCompilerCatalogs,
+    GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, RejectionReason, ReplayMode,
+    RoleDecision, RoleProviderAssignment, SelectionReason, SuggestorDescriptor,
+    SuggestorDescriptorCatalog,
 };
 pub use execution::{
     ExecutableSuggestorCatalog, FormationExecutionRecord, FormationInstantiationError,
