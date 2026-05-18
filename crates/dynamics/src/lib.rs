@@ -53,7 +53,9 @@ mod provenance;
 mod scorer;
 
 pub use compile::compile_draft;
-pub use critic::{CRITIC_PASS_COMPLETE_MARKER, DraftValidatorCriticSuggestor};
+pub use critic::{
+    CRITIC_PASS_COMPLETE_MARKER, DraftValidatorCriticSuggestor, critic_pass_complete_marker,
+};
 pub use extract::{DraftParseError, extract_draft_validations, extract_drafts};
 pub use payload::{
     DRAFT_KIND, DRAFT_VALIDATION_KIND, DraftValidation, DraftValidationPayloadError, DraftVerdict,
@@ -61,4 +63,6 @@ pub use payload::{
 };
 pub use preflight::{PreflightError, preflight_design_formation};
 pub use proposer::CatalogProposerSuggestor;
-pub use scorer::BeautyContestSuggestor;
+pub use scorer::{
+    BeautyContestSuggestor, SCORER_BATCH_COMPLETE_PREFIX, scorer_batch_complete_marker,
+};

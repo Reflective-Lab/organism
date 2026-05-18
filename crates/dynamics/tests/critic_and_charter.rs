@@ -25,7 +25,8 @@ use organism_catalog::{
 use organism_dynamics::{
     BeautyContestSuggestor, CatalogProposerSuggestor, DRAFT_VALIDATION_KIND,
     DraftValidatorCriticSuggestor, DraftVerdict, FormationDraft, PreflightError,
-    extract_draft_validations, extract_drafts, preflight_design_formation,
+    critic_pass_complete_marker, extract_draft_validations, extract_drafts,
+    preflight_design_formation,
 };
 use organism_planning::{
     CollaborationCharter, CollaborationMember, CollaborationRole, CollaborationValidationError,
@@ -224,9 +225,11 @@ impl Suggestor for BadDraftProposer {
             .any(|fact| fact.id().as_str() == marker.as_str())
     }
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
+        let batch_id = format!("bad-batch-{}", self.source_label);
         let draft_id = format!("bad-draft-{}-0", self.source_label);
         let draft = FormationDraft::new(
             draft_id.clone(),
+            batch_id,
             vec![
                 "signal-a".to_string(),
                 "definitely-not-in-catalog".to_string(),
@@ -319,6 +322,160 @@ async fn critic_blocks_bad_draft_scorer_excludes_it() {
     assert!(
         shortlist.is_empty(),
         "scorer must exclude blocked drafts; got shortlist {shortlist:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Critic + scorer: later batches are independent from earlier verdicts
+// ---------------------------------------------------------------------------
+
+const FIRST_BATCH: &str = "temporal-batch-1";
+const SECOND_BATCH: &str = "temporal-batch-2";
+const SHARED_DRAFT_ID: &str = "candidate-0";
+
+/// Emits an invalid first batch, then waits for the critic's first
+/// batch sentinel before emitting a valid second batch with the same
+/// payload `draft_id`. The fact ids differ, but the draft ids collide
+/// intentionally to prove batch-scoped routing.
+struct TwoBatchProposer;
+
+impl TwoBatchProposer {
+    fn emitted_marker(batch_id: &str) -> String {
+        format!("two-batch-proposer-emitted-{batch_id}")
+    }
+
+    fn has_diagnostic(ctx: &dyn Context, id: &str) -> bool {
+        ctx.get(ContextKey::Diagnostic)
+            .iter()
+            .any(|fact| fact.id().as_str() == id)
+    }
+
+    fn emit_batch(batch_id: &str, descriptor_ids: Vec<String>, rationale: &str) -> AgentEffect {
+        let draft = FormationDraft::new(
+            SHARED_DRAFT_ID,
+            batch_id,
+            descriptor_ids,
+            rationale,
+            "two-batch-proposer",
+        );
+        let json = serde_json::to_string(&draft).unwrap();
+        AgentEffect::builder()
+            .proposal(TestProvenance.proposed_fact(
+                ContextKey::Strategies,
+                format!("two-batch-{batch_id}-{SHARED_DRAFT_ID}"),
+                TextPayload::new(json),
+            ))
+            .proposal(TestProvenance.proposed_fact(
+                ContextKey::Diagnostic,
+                Self::emitted_marker(batch_id),
+                TextPayload::new(format!("two-batch proposer emitted {batch_id}")),
+            ))
+            .build()
+    }
+}
+
+#[async_trait]
+impl Suggestor for TwoBatchProposer {
+    fn name(&self) -> &'static str {
+        "two-batch-proposer"
+    }
+
+    fn dependencies(&self) -> &[ContextKey] {
+        &[ContextKey::Seeds, ContextKey::Diagnostic]
+    }
+
+    fn provenance(&self) -> &'static str {
+        TestProvenance.as_str()
+    }
+
+    fn accepts(&self, ctx: &dyn Context) -> bool {
+        if !ctx.has(ContextKey::Seeds) {
+            return false;
+        }
+        if !Self::has_diagnostic(ctx, &Self::emitted_marker(FIRST_BATCH)) {
+            return true;
+        }
+        Self::has_diagnostic(ctx, &critic_pass_complete_marker(FIRST_BATCH))
+            && !Self::has_diagnostic(ctx, &Self::emitted_marker(SECOND_BATCH))
+    }
+
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
+        if !Self::has_diagnostic(ctx, &Self::emitted_marker(FIRST_BATCH)) {
+            return Self::emit_batch(
+                FIRST_BATCH,
+                vec![
+                    "signal-a".to_string(),
+                    "definitely-not-in-catalog".to_string(),
+                ],
+                "invalid first batch for temporal routing regression",
+            );
+        }
+
+        Self::emit_batch(
+            SECOND_BATCH,
+            vec!["signal-a".to_string(), "constraint-a".to_string()],
+            "valid second batch with reused draft id",
+        )
+    }
+}
+
+#[tokio::test]
+async fn later_batch_shortlists_even_when_earlier_same_id_draft_was_blocked() {
+    let catalog = work_catalog();
+    let templates = work_template_catalog();
+    let providers = ProviderDescriptorCatalog::new();
+    let request = work_request();
+
+    let critic = DraftValidatorCriticSuggestor::new(
+        catalog.clone(),
+        templates.clone(),
+        providers.clone(),
+        request.clone(),
+    );
+    let scorer = BeautyContestSuggestor::new_critic_gated(5);
+
+    let formation = Formation::new("design-with-two-batches")
+        .agent_boxed(Box::new(TwoBatchProposer))
+        .agent_boxed(Box::new(critic))
+        .agent_boxed(Box::new(scorer))
+        .seed(ContextKey::Seeds, "s", "design", "test");
+
+    let result = formation.run().await.expect("should converge");
+    assert!(result.converge_result.converged);
+
+    let blocks =
+        extract_draft_validations(&result.converge_result.context, ContextKey::Constraints);
+    assert!(
+        blocks.iter().any(|v| {
+            v.verdict == DraftVerdict::Block
+                && v.draft_batch_id == FIRST_BATCH
+                && v.draft_id == SHARED_DRAFT_ID
+        }),
+        "first batch should block shared draft id; got {blocks:?}"
+    );
+
+    let passes =
+        extract_draft_validations(&result.converge_result.context, ContextKey::Evaluations);
+    assert!(
+        passes.iter().any(|v| {
+            v.verdict == DraftVerdict::Pass
+                && v.draft_batch_id == SECOND_BATCH
+                && v.draft_id == SHARED_DRAFT_ID
+        }),
+        "second batch should pass the same draft id; got {passes:?}"
+    );
+
+    let shortlist = extract_drafts(&result.converge_result.context, ContextKey::Proposals);
+    assert_eq!(
+        shortlist.len(),
+        1,
+        "only the valid second batch should be shortlisted; got {shortlist:?}"
+    );
+    assert_eq!(shortlist[0].draft_batch_id, SECOND_BATCH);
+    assert_eq!(shortlist[0].draft_id, SHARED_DRAFT_ID);
+    assert_eq!(
+        shortlist[0].descriptor_ids,
+        vec!["signal-a".to_string(), "constraint-a".to_string()]
     );
 }
 
@@ -451,4 +608,217 @@ fn preflight_fails_when_required_role_missing() {
 // IntentPacket or similar runtime-only types in its v1 surface.
 fn _ensure_dynamics_surface_is_minimal() {
     let _ = Utc::now() + Duration::hours(1);
+}
+
+// ---------------------------------------------------------------------------
+// Two-batch regression — no cross-batch contamination
+// ---------------------------------------------------------------------------
+
+/// A test-only Suggestor that proposes one [`FormationDraft`] with a
+/// bogus descriptor under a caller-supplied `batch_id`, but only AFTER
+/// a shortlist for `gate_on_shortlist_batch_id` already exists in
+/// `Proposals`. This sequences batches: the second proposer waits for
+/// the first batch to complete its full pipeline before it fires.
+struct SequencedBadProposer {
+    source_label: &'static str,
+    batch_id: &'static str,
+    gate_on_shortlist_batch_id: &'static str,
+}
+
+impl SequencedBadProposer {
+    fn marker_id(&self) -> String {
+        format!("sequenced-bad-{}-fired", self.source_label)
+    }
+}
+
+#[async_trait]
+impl Suggestor for SequencedBadProposer {
+    fn name(&self) -> &'static str {
+        "sequenced-bad-proposer"
+    }
+    fn dependencies(&self) -> &[ContextKey] {
+        // Wait on Proposals so the engine re-checks accepts() once a
+        // shortlist arrives.
+        &[
+            ContextKey::Seeds,
+            ContextKey::Proposals,
+            ContextKey::Diagnostic,
+        ]
+    }
+    fn provenance(&self) -> &'static str {
+        TestProvenance.as_str()
+    }
+    fn accepts(&self, ctx: &dyn Context) -> bool {
+        if !ctx.has(ContextKey::Seeds) {
+            return false;
+        }
+        // Fire once.
+        let marker = self.marker_id();
+        let fired = ctx
+            .get(ContextKey::Diagnostic)
+            .iter()
+            .any(|fact| fact.id().as_str() == marker.as_str());
+        if fired {
+            return false;
+        }
+        // Wait for the first batch's shortlist.
+        extract_drafts(ctx, ContextKey::Proposals)
+            .iter()
+            .any(|d| d.draft_batch_id == self.gate_on_shortlist_batch_id)
+    }
+    async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
+        let draft_id = format!("sequenced-bad-{}-0", self.source_label);
+        let draft = FormationDraft::new(
+            draft_id.clone(),
+            self.batch_id,
+            vec![
+                "signal-a".to_string(),
+                "definitely-not-in-catalog".to_string(),
+            ],
+            "bad draft proposed in a second batch after batch 1 completed",
+            self.source_label,
+        );
+        let json = serde_json::to_string(&draft).unwrap();
+        AgentEffect::builder()
+            .proposal(TestProvenance.proposed_fact(
+                ContextKey::Strategies,
+                draft_id,
+                TextPayload::new(json),
+            ))
+            .proposal(TestProvenance.proposed_fact(
+                ContextKey::Diagnostic,
+                self.marker_id(),
+                TextPayload::new(format!(
+                    "{} fired bad draft for batch {}",
+                    self.source_label, self.batch_id
+                )),
+            ))
+            .build()
+    }
+}
+
+/// Two-batch regression. The good-batch fires first (CatalogProposer
+/// with batch_id "good-batch") and is processed end-to-end (critic
+/// verdicts → critic sentinel → scorer shortlist → scorer sentinel).
+/// The bad-batch fires *after* the good-batch's shortlist exists,
+/// emitting one bad draft. The critic must process bad-batch
+/// separately (without re-validating good-batch). The scorer must
+/// shortlist good-batch with no bad-batch contamination, and must
+/// emit a scorer-completion sentinel for bad-batch with zero
+/// shortlist drafts.
+///
+/// This is the acceptance bar for round-scoped gating: temporal
+/// routing is stable across batches.
+#[tokio::test]
+async fn two_batches_no_cross_contamination_no_deadlock() {
+    let catalog = work_catalog();
+    let templates = work_template_catalog();
+    let providers = ProviderDescriptorCatalog::new();
+    let request = work_request();
+
+    // good-batch: CatalogProposer with explicit batch_id.
+    let good = CatalogProposerSuggestor::new(
+        catalog.clone(),
+        templates.clone(),
+        providers.clone(),
+        request.clone(),
+        3,
+    )
+    .with_source_label("good-proposer")
+    .with_batch_id("good-batch");
+
+    // bad-batch: sequenced after good-batch's shortlist exists.
+    let bad = SequencedBadProposer {
+        source_label: "bad-proposer",
+        batch_id: "bad-batch",
+        gate_on_shortlist_batch_id: "good-batch",
+    };
+
+    let critic = DraftValidatorCriticSuggestor::new(
+        catalog.clone(),
+        templates.clone(),
+        providers.clone(),
+        request.clone(),
+    );
+    let scorer = BeautyContestSuggestor::new_critic_gated(2);
+
+    let formation = Formation::new("two-batch-design")
+        .agent_boxed(Box::new(good))
+        .agent_boxed(Box::new(bad))
+        .agent_boxed(Box::new(critic))
+        .agent_boxed(Box::new(scorer))
+        .seed(ContextKey::Seeds, "s", "two-batch design", "test");
+
+    let result = formation.run().await.expect("should converge");
+    assert!(
+        result.converge_result.converged,
+        "two-batch Formation must converge; stop_reason = {:?}",
+        result.converge_result.stop_reason
+    );
+
+    // --- Critic verdicts are per-batch ---
+    let passes =
+        extract_draft_validations(&result.converge_result.context, ContextKey::Evaluations);
+    assert!(
+        passes.iter().all(|v| v.draft_batch_id == "good-batch"),
+        "all Pass verdicts must belong to good-batch (no good draft was in bad-batch); got {:?}",
+        passes
+            .iter()
+            .map(|v| (v.draft_id.clone(), v.draft_batch_id.clone()))
+            .collect::<Vec<_>>(),
+    );
+    let blocks: Vec<_> =
+        extract_draft_validations(&result.converge_result.context, ContextKey::Constraints)
+            .into_iter()
+            .filter(|v| v.verdict == DraftVerdict::Block)
+            .collect();
+    assert_eq!(
+        blocks.len(),
+        1,
+        "exactly one Block verdict expected (bad-batch's only draft); got {blocks:?}"
+    );
+    assert_eq!(blocks[0].draft_batch_id, "bad-batch");
+
+    // --- Per-batch sentinels: both critic markers present ---
+    for batch in ["good-batch", "bad-batch"] {
+        let marker = critic_pass_complete_marker(batch);
+        assert!(
+            result
+                .converge_result
+                .context
+                .get(ContextKey::Diagnostic)
+                .iter()
+                .any(|fact| fact.id().as_str() == marker),
+            "critic must emit per-batch sentinel for '{batch}'"
+        );
+    }
+
+    // --- Per-batch scorer sentinels: both batches recorded as scored,
+    //     including bad-batch which produced zero shortlist drafts ---
+    for batch in ["good-batch", "bad-batch"] {
+        let marker = organism_dynamics::scorer_batch_complete_marker(batch);
+        assert!(
+            result
+                .converge_result
+                .context
+                .get(ContextKey::Diagnostic)
+                .iter()
+                .any(|fact| fact.id().as_str() == marker),
+            "scorer must emit per-batch completion sentinel for '{batch}'"
+        );
+    }
+
+    // --- Shortlist contains ONLY good-batch drafts. No bad-batch
+    //     contamination, no leakage across the join key. ---
+    let shortlist = extract_drafts(&result.converge_result.context, ContextKey::Proposals);
+    assert!(
+        !shortlist.is_empty(),
+        "good-batch should produce a non-empty shortlist"
+    );
+    for draft in &shortlist {
+        assert_eq!(
+            draft.draft_batch_id, "good-batch",
+            "shortlist must contain ONLY good-batch drafts; found {draft:?}"
+        );
+    }
 }

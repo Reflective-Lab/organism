@@ -28,14 +28,30 @@ pub struct FormationDraft {
     /// Literal discriminator; must equal [`DRAFT_KIND`].
     pub kind: String,
     /// Stable identifier for this draft, assigned by the proposer.
-    /// Used by downstream Suggestors (critic verdicts, scorer
-    /// shortlist filtering) as the **routing key** — verdicts join
-    /// back to drafts by `draft_id`, not by reconstructed ordering
-    /// or source/index pairs. Must be non-empty and unique within
-    /// the design Formation's lifetime; proposers are responsible
-    /// for picking ids that won't collide across rounds or
-    /// regenerations.
+    /// Used with [`Self::draft_batch_id`] by downstream Suggestors
+    /// (critic verdicts, scorer shortlist filtering) as the routing
+    /// key — verdicts join back to drafts by `(draft_batch_id,
+    /// draft_id)`, not by reconstructed ordering or source/index
+    /// pairs. Must be non-empty and unique within its batch;
+    /// proposers are responsible for picking ids that won't collide
+    /// inside a batch.
     pub draft_id: String,
+    /// Identifier of the batch this draft belongs to. The critic
+    /// emits a per-batch sentinel and the scorer waits for that
+    /// sentinel before shortlisting drafts from that batch — so
+    /// drafts that arrive in a later batch (after the first batch's
+    /// verdicts and shortlist are already in context) can be
+    /// processed cleanly without temporal contamination.
+    ///
+    /// `draft_batch_id` is **routing/audit identity only**. The
+    /// compiler ([`organism_runtime::FormationCompiler::compile_draft_from_catalog`])
+    /// still decides admissibility — batches are not an authority
+    /// boundary and do not partition admissibility.
+    ///
+    /// Multiple drafts in the same batch share a `draft_batch_id`.
+    /// Multiple proposers can run in one Formation by using distinct
+    /// `draft_batch_id` values.
+    pub draft_batch_id: String,
     /// The proposed roster, in the order the upstream proposer
     /// intends. Each id must resolve in the catalog at compile time
     /// (see [`crate::compile_draft`]).
@@ -43,8 +59,8 @@ pub struct FormationDraft {
     /// One-sentence human-readable reason this draft was proposed.
     pub rationale: String,
     /// Name of the Suggestor (or other source) that proposed this
-    /// draft. Used for audit, not for routing — routing is
-    /// [`Self::draft_id`].
+    /// draft. Used for audit, not for routing — routing is the
+    /// `(draft_batch_id, draft_id)` pair.
     pub source: String,
 }
 
@@ -61,6 +77,9 @@ pub enum FormationDraftValidationError {
     /// The draft_id was empty or whitespace only.
     #[error("draft must carry a non-empty draft_id")]
     EmptyDraftId,
+    /// The draft_batch_id was empty or whitespace only.
+    #[error("draft must carry a non-empty draft_batch_id")]
+    EmptyDraftBatchId,
     /// The draft had no descriptor ids.
     #[error("draft must contain at least one descriptor id")]
     EmptyDescriptorIds,
@@ -81,9 +100,12 @@ pub enum FormationDraftValidationError {
 impl FormationDraft {
     /// Construct a draft with the discriminator set correctly.
     /// `draft_id` is the stable routing key — see [`Self::draft_id`].
+    /// `draft_batch_id` groups drafts for round-scoped critic and
+    /// scorer gating — see [`Self::draft_batch_id`].
     #[must_use]
     pub fn new(
         draft_id: impl Into<String>,
+        draft_batch_id: impl Into<String>,
         descriptor_ids: Vec<String>,
         rationale: impl Into<String>,
         source: impl Into<String>,
@@ -91,6 +113,7 @@ impl FormationDraft {
         Self {
             kind: DRAFT_KIND.to_string(),
             draft_id: draft_id.into(),
+            draft_batch_id: draft_batch_id.into(),
             descriptor_ids,
             rationale: rationale.into(),
             source: source.into(),
@@ -112,6 +135,9 @@ impl FormationDraft {
         }
         if self.draft_id.trim().is_empty() {
             return Err(FormationDraftValidationError::EmptyDraftId);
+        }
+        if self.draft_batch_id.trim().is_empty() {
+            return Err(FormationDraftValidationError::EmptyDraftBatchId);
         }
         if self.descriptor_ids.is_empty() {
             return Err(FormationDraftValidationError::EmptyDescriptorIds);
@@ -150,7 +176,7 @@ mod tests {
 
     #[test]
     fn new_sets_discriminator_and_id() {
-        let draft = FormationDraft::new("draft-7", vec!["a".into()], "why", "proposer");
+        let draft = FormationDraft::new("draft-7", "batch-1", vec!["a".into()], "why", "proposer");
         assert!(draft.is_well_formed());
         assert_eq!(draft.kind, DRAFT_KIND);
         assert_eq!(draft.draft_id, "draft-7");
@@ -158,7 +184,7 @@ mod tests {
 
     #[test]
     fn deserialized_with_wrong_kind_is_rejected_by_predicate() {
-        let json = r#"{"kind":"something.else","draft_id":"d","descriptor_ids":["a"],"rationale":"r","source":"s"}"#;
+        let json = r#"{"kind":"something.else","draft_id":"d","draft_batch_id":"batch-1","descriptor_ids":["a"],"rationale":"r","source":"s"}"#;
         let parsed: FormationDraft = serde_json::from_str(json).unwrap();
         assert!(!parsed.is_well_formed());
         assert!(matches!(
@@ -169,7 +195,7 @@ mod tests {
 
     #[test]
     fn empty_draft_id_is_rejected_by_predicate() {
-        let draft = FormationDraft::new(" ", vec!["a".into()], "why", "proposer");
+        let draft = FormationDraft::new(" ", "batch-1", vec!["a".into()], "why", "proposer");
         assert!(matches!(
             draft.validate(),
             Err(FormationDraftValidationError::EmptyDraftId)
@@ -178,7 +204,13 @@ mod tests {
 
     #[test]
     fn duplicate_descriptor_id_is_rejected_by_predicate() {
-        let draft = FormationDraft::new("d", vec!["a".into(), "a".into()], "why", "proposer");
+        let draft = FormationDraft::new(
+            "d",
+            "batch-1",
+            vec!["a".into(), "a".into()],
+            "why",
+            "proposer",
+        );
         assert!(!draft.is_well_formed());
         assert!(matches!(
             draft.validate(),
@@ -189,13 +221,13 @@ mod tests {
 
     #[test]
     fn empty_fields_are_rejected_by_predicate() {
-        let empty_roster = FormationDraft::new("d", Vec::new(), "why", "proposer");
+        let empty_roster = FormationDraft::new("d", "batch-1", Vec::new(), "why", "proposer");
         assert!(matches!(
             empty_roster.validate(),
             Err(FormationDraftValidationError::EmptyDescriptorIds)
         ));
 
-        let empty_source = FormationDraft::new("d", vec!["a".into()], "why", " ");
+        let empty_source = FormationDraft::new("d", "batch-1", vec!["a".into()], "why", " ");
         assert!(matches!(
             empty_source.validate(),
             Err(FormationDraftValidationError::EmptySource)
@@ -204,7 +236,13 @@ mod tests {
 
     #[test]
     fn round_trip_via_json() {
-        let draft = FormationDraft::new("d", vec!["a".into(), "b".into()], "why", "proposer");
+        let draft = FormationDraft::new(
+            "d",
+            "batch-1",
+            vec!["a".into(), "b".into()],
+            "why",
+            "proposer",
+        );
         let json = serde_json::to_string(&draft).unwrap();
         let parsed: FormationDraft = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, draft);
@@ -236,18 +274,23 @@ pub enum DraftVerdict {
 /// JSON-in-TextPayload with the [`DRAFT_VALIDATION_KIND`] literal
 /// discriminator — same shape as [`FormationDraft`].
 ///
-/// The join key from a verdict back to the draft it judged is
-/// [`Self::draft_id`] — the same `draft_id` the proposer assigned to
-/// the [`FormationDraft`]. Critics must take it from the draft they
-/// read, not reconstruct it from ordering or source labels.
+/// The join key from a verdict back to the draft it judged is the
+/// `(draft_batch_id, draft_id)` pair. Critics must take both values
+/// from the draft they read, not reconstruct them from ordering or
+/// source labels.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DraftValidation {
     /// Literal discriminator; must equal [`DRAFT_VALIDATION_KIND`].
     pub kind: String,
     /// Stable identifier of the [`FormationDraft`] this verdict
-    /// applies to. The single, authoritative join key — copied
-    /// verbatim from `FormationDraft.draft_id`.
+    /// applies to. Copied verbatim from `FormationDraft.draft_id`.
     pub draft_id: String,
+    /// Batch id of the [`FormationDraft`] this verdict applies to —
+    /// copied verbatim from `FormationDraft.draft_batch_id`. Used by
+    /// the scorer to enumerate which batches have completed
+    /// validation and which are still pending. This is part of the
+    /// authoritative join key with [`Self::draft_id`].
+    pub draft_batch_id: String,
     /// The verdict itself.
     pub verdict: DraftVerdict,
     /// Human-readable explanation. Required and non-empty.
@@ -270,6 +313,9 @@ pub enum DraftValidationPayloadError {
     /// The draft_id was empty or whitespace only.
     #[error("draft validation draft_id must not be empty")]
     EmptyDraftId,
+    /// The draft_batch_id was empty or whitespace only.
+    #[error("draft validation draft_batch_id must not be empty")]
+    EmptyDraftBatchId,
     /// The reason text was empty or whitespace only.
     #[error("draft validation reason must not be empty")]
     EmptyReason,
@@ -280,11 +326,13 @@ pub enum DraftValidationPayloadError {
 
 impl DraftValidation {
     /// Construct a verdict with the discriminator set correctly.
-    /// `draft_id` must be the same id the draft carries — no
-    /// reconstructed indices.
+    /// `draft_id` and `draft_batch_id` must be the same values the
+    /// draft carries — copied verbatim from the
+    /// [`FormationDraft`].
     #[must_use]
     pub fn new(
         draft_id: impl Into<String>,
+        draft_batch_id: impl Into<String>,
         verdict: DraftVerdict,
         reason: impl Into<String>,
         critic: impl Into<String>,
@@ -292,6 +340,7 @@ impl DraftValidation {
         Self {
             kind: DRAFT_VALIDATION_KIND.to_string(),
             draft_id: draft_id.into(),
+            draft_batch_id: draft_batch_id.into(),
             verdict,
             reason: reason.into(),
             critic: critic.into(),
@@ -309,6 +358,9 @@ impl DraftValidation {
         if self.draft_id.trim().is_empty() {
             return Err(DraftValidationPayloadError::EmptyDraftId);
         }
+        if self.draft_batch_id.trim().is_empty() {
+            return Err(DraftValidationPayloadError::EmptyDraftBatchId);
+        }
         if self.reason.trim().is_empty() {
             return Err(DraftValidationPayloadError::EmptyReason);
         }
@@ -324,11 +376,11 @@ impl DraftValidation {
     }
 
     /// True if this verdict applies to the supplied draft. The join
-    /// key is the draft's stable [`FormationDraft::draft_id`] — no
+    /// key is the draft's `(draft_batch_id, draft_id)` pair — no
     /// reconstructed indices, no source matching.
     #[must_use]
-    pub fn matches(&self, draft_id: &str) -> bool {
-        self.draft_id == draft_id
+    pub fn matches(&self, draft_batch_id: &str, draft_id: &str) -> bool {
+        self.draft_batch_id == draft_batch_id && self.draft_id == draft_id
     }
 }
 
@@ -338,15 +390,22 @@ mod validation_tests {
 
     #[test]
     fn new_sets_discriminator_and_validates() {
-        let v = DraftValidation::new("draft-a", DraftVerdict::Pass, "looks fine", "critic-x");
+        let v = DraftValidation::new(
+            "draft-a",
+            "batch-1",
+            DraftVerdict::Pass,
+            "looks fine",
+            "critic-x",
+        );
         assert!(v.is_well_formed());
         assert_eq!(v.kind, DRAFT_VALIDATION_KIND);
         assert_eq!(v.draft_id, "draft-a");
+        assert_eq!(v.draft_batch_id, "batch-1");
     }
 
     #[test]
     fn wrong_kind_rejected_by_predicate() {
-        let json = r#"{"kind":"x","draft_id":"d","verdict":"pass","reason":"r","critic":"c"}"#;
+        let json = r#"{"kind":"x","draft_id":"d","draft_batch_id":"b","verdict":"pass","reason":"r","critic":"c"}"#;
         let parsed: DraftValidation = serde_json::from_str(json).unwrap();
         assert!(matches!(
             parsed.validate(),
@@ -356,7 +415,7 @@ mod validation_tests {
 
     #[test]
     fn empty_draft_id_rejected() {
-        let v = DraftValidation::new(" ", DraftVerdict::Pass, "r", "c");
+        let v = DraftValidation::new(" ", "batch-1", DraftVerdict::Pass, "r", "c");
         assert!(matches!(
             v.validate(),
             Err(DraftValidationPayloadError::EmptyDraftId)
@@ -364,8 +423,17 @@ mod validation_tests {
     }
 
     #[test]
+    fn empty_draft_batch_id_rejected() {
+        let v = DraftValidation::new("d", " ", DraftVerdict::Pass, "r", "c");
+        assert!(matches!(
+            v.validate(),
+            Err(DraftValidationPayloadError::EmptyDraftBatchId)
+        ));
+    }
+
+    #[test]
     fn empty_fields_rejected() {
-        let v = DraftValidation::new("d", DraftVerdict::Block, " ", "c");
+        let v = DraftValidation::new("d", "batch-1", DraftVerdict::Block, " ", "c");
         assert!(matches!(
             v.validate(),
             Err(DraftValidationPayloadError::EmptyReason)
@@ -374,10 +442,11 @@ mod validation_tests {
 
     #[test]
     fn matches_joins_by_draft_id() {
-        let v = DraftValidation::new("draft-7", DraftVerdict::Pass, "r", "c");
-        assert!(v.matches("draft-7"));
-        assert!(!v.matches("draft-8"));
-        assert!(!v.matches(""));
+        let v = DraftValidation::new("draft-7", "batch-1", DraftVerdict::Pass, "r", "c");
+        assert!(v.matches("batch-1", "draft-7"));
+        assert!(!v.matches("batch-2", "draft-7"));
+        assert!(!v.matches("batch-1", "draft-8"));
+        assert!(!v.matches("", ""));
     }
 
     #[test]

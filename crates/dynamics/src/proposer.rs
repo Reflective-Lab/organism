@@ -28,6 +28,14 @@ const SUGGESTOR_NAME: &str = "organism-catalog-proposer";
 /// Holds its own copy of catalog + templates + providers + request +
 /// k so the [`Suggestor`] interface (which only sees `&dyn Context`)
 /// can produce drafts without those being available in context.
+///
+/// Each instance owns a single `draft_batch_id`. Drafts proposed by
+/// this instance carry that batch id, and the proposer's
+/// `accepts()` gates on absence of drafts for **its own** batch —
+/// not "no drafts at all" — so multiple proposers with distinct
+/// batch ids can coexist in one design Formation. Use
+/// [`Self::with_batch_id`] to override the default batch id
+/// (`{source_label}-{plan_id}`).
 pub struct CatalogProposerSuggestor {
     catalog: DiscoveryCatalog,
     formation_templates: converge_kernel::formation::FormationCatalog,
@@ -35,6 +43,7 @@ pub struct CatalogProposerSuggestor {
     request: FormationCompileRequest,
     k: usize,
     source_label: String,
+    batch_id: String,
 }
 
 impl CatalogProposerSuggestor {
@@ -46,13 +55,16 @@ impl CatalogProposerSuggestor {
         request: FormationCompileRequest,
         k: usize,
     ) -> Self {
+        let source_label = SUGGESTOR_NAME.to_string();
+        let batch_id = default_batch_id(&source_label, &request.plan_id);
         Self {
             catalog,
             formation_templates,
             providers,
             request,
             k,
-            source_label: SUGGESTOR_NAME.to_string(),
+            source_label,
+            batch_id,
         }
     }
 
@@ -60,6 +72,8 @@ impl CatalogProposerSuggestor {
     ///
     /// This lets a design Formation host multiple catalog-backed
     /// proposers without colliding on `formation-draft-*` fact ids.
+    /// Also resets the default batch id to track the new label;
+    /// call [`Self::with_batch_id`] after this to set a custom batch.
     #[must_use]
     pub fn with_source_label(mut self, source_label: impl Into<String>) -> Self {
         let source_label = source_label.into();
@@ -68,8 +82,33 @@ impl CatalogProposerSuggestor {
         } else {
             source_label
         };
+        self.batch_id = default_batch_id(&self.source_label, &self.request.plan_id);
         self
     }
+
+    /// Override the batch id this proposer stamps on every emitted
+    /// draft. Use this when running multiple proposer instances in
+    /// the same design Formation: each instance gets a distinct
+    /// `batch_id` so the critic and scorer can route their work
+    /// per-batch without temporal contamination.
+    #[must_use]
+    pub fn with_batch_id(mut self, batch_id: impl Into<String>) -> Self {
+        let batch_id = batch_id.into();
+        if !batch_id.trim().is_empty() {
+            self.batch_id = batch_id;
+        }
+        self
+    }
+
+    /// Returns the batch id this proposer stamps on its drafts.
+    #[must_use]
+    pub fn batch_id(&self) -> &str {
+        &self.batch_id
+    }
+}
+
+fn default_batch_id(source_label: &str, plan_id: &uuid::Uuid) -> String {
+    format!("{}-{plan_id}", slug(source_label))
 }
 
 impl std::fmt::Debug for CatalogProposerSuggestor {
@@ -97,9 +136,16 @@ impl Suggestor for CatalogProposerSuggestor {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        // Wait for seeds, then fire once: no existing draft facts
-        // under Strategies.
-        ctx.has(ContextKey::Seeds) && extract_drafts(ctx, ContextKey::Strategies).is_empty()
+        // Per-batch gate: fire once when seeds are present and no
+        // draft already exists for OUR batch_id. Other proposers
+        // with different batch ids can coexist without blocking
+        // each other.
+        if !ctx.has(ContextKey::Seeds) {
+            return false;
+        }
+        !extract_drafts(ctx, ContextKey::Strategies)
+            .iter()
+            .any(|d| d.draft_batch_id == self.batch_id)
     }
 
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
@@ -125,10 +171,12 @@ impl Suggestor for CatalogProposerSuggestor {
                     // emit. Single source of truth — the proposer
                     // writes the id into both the wire id and the
                     // payload field. Critics and the scorer route
-                    // off the payload field.
+                    // off the payload field by (draft_batch_id,
+                    // draft_id).
                     let draft_id = format!("{fact_prefix}-{index}");
                     let draft = FormationDraft::new(
                         draft_id.clone(),
+                        self.batch_id.clone(),
                         descriptor_ids,
                         format!(
                             "Catalog-derived candidate #{index} for template '{}'.",
