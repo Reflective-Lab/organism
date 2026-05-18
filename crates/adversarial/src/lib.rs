@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use agents::{
-    AssumptionBreakerAgent, ConstraintCheck, ConstraintCheckerAgent, EconomicSkepticAgent,
-    OperationalSkepticAgent, OrgConstraint,
+    AssumptionBreakerAgent, BudgetAmount, ConstraintCheck, ConstraintCheckerAgent,
+    EconomicSkepticAgent, OperationalSkepticAgent, OrgConstraint,
 };
 pub use anomaly_skeptic::{ANOMALY_SKEPTIC_META, AnomalySkepticAgent};
 pub use types::{AdversarialVerdict, AgentId, Complexity};

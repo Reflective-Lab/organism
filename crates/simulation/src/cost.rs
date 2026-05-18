@@ -7,19 +7,52 @@
 use crate::{DimensionResult, Sample, SimulationDimension};
 use converge_pack::UnitInterval;
 
+/// Non-negative monetary amount. Negative values are clamped to zero at
+/// construction — a budget cannot logically be negative.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct BudgetAmount(f64);
+
+impl BudgetAmount {
+    /// Construct from a non-negative amount. Negative values are clamped to 0.
+    #[must_use]
+    pub fn new(amount: f64) -> Self {
+        Self(amount.max(0.0))
+    }
+
+    #[must_use]
+    pub fn as_f64(self) -> f64 {
+        self.0
+    }
+}
+
+impl From<f64> for BudgetAmount {
+    fn from(v: f64) -> Self {
+        Self::new(v)
+    }
+}
+
+impl std::fmt::Display for BudgetAmount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.0}", self.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CostSimulatorConfig {
     pub samples: u32,
-    pub budget_ceiling: f64,
-    pub overrun_tolerance: f64,
+    /// Maximum cost before the plan is considered over-budget.
+    pub budget_ceiling: BudgetAmount,
+    /// Fraction of the ceiling that may be exceeded without failing
+    /// (e.g. 0.15 = 15% tolerance). Enforced as a `UnitInterval`.
+    pub overrun_tolerance: UnitInterval,
 }
 
 impl Default for CostSimulatorConfig {
     fn default() -> Self {
         Self {
             samples: 1000,
-            budget_ceiling: 100_000.0,
-            overrun_tolerance: 0.15,
+            budget_ceiling: BudgetAmount::new(100_000.0),
+            overrun_tolerance: UnitInterval::clamped(0.15),
         }
     }
 }
@@ -61,7 +94,8 @@ impl CostSimulator {
     fn sample(&self, total_cost: f64, avg_uncertainty: f64) -> Vec<Sample> {
         let buckets = 5;
         let mut samples = Vec::with_capacity(buckets);
-        let ratio = total_cost / self.config.budget_ceiling;
+        let ceiling = self.config.budget_ceiling.as_f64();
+        let ratio = total_cost / ceiling;
 
         for i in 0..buckets {
             let bucket_center = (f64::from(u32::try_from(i).unwrap_or(0)) + 0.5)
@@ -71,7 +105,7 @@ impl CostSimulator {
             let distance = (bucket_center - ratio.clamp(0.0, 1.0)).abs();
             let weight = (-distance * spread).exp();
             samples.push(Sample {
-                value: bucket_center * self.config.budget_ceiling,
+                value: bucket_center * ceiling,
                 probability: weight,
             });
         }
@@ -102,7 +136,8 @@ impl CostSimulator {
                 / f64::from(u32::try_from(uncertainties.len()).unwrap_or(1))
         };
 
-        let max_allowed = self.config.budget_ceiling * (1.0 + self.config.overrun_tolerance);
+        let ceiling = self.config.budget_ceiling.as_f64();
+        let max_allowed = ceiling * (1.0 + self.config.overrun_tolerance.as_f64());
         let passed = total_cost <= max_allowed;
         let confidence = if total_cost <= 0.0 {
             0.5
@@ -117,17 +152,17 @@ impl CostSimulator {
             findings.push("no cost annotations — cannot assess budget fit".into());
         } else {
             findings.push(format!(
-                "{} cost items, total {:.0} against ceiling {:.0}",
+                "{} cost items, total {:.0} against ceiling {}",
                 costs.len(),
                 total_cost,
                 self.config.budget_ceiling,
             ));
         }
-        if total_cost > self.config.budget_ceiling {
+        if total_cost > ceiling {
             findings.push(format!(
                 "overrun: {:.0} exceeds ceiling by {:.1}%",
                 total_cost,
-                ((total_cost / self.config.budget_ceiling) - 1.0) * 100.0,
+                ((total_cost / ceiling) - 1.0) * 100.0,
             ));
         }
         if avg_uncertainty > 0.5 {

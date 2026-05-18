@@ -7,9 +7,214 @@
 //! Wire-level family stays `"converge.text"`; the discriminator is
 //! explicit in the payload.
 
+use std::borrow::Borrow;
+use std::fmt;
+use std::ops::Deref;
+
 use organism_catalog::SuggestorDescriptorId;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+// ── DraftId ──────────────────────────────────────────────────────────────────
+
+/// Stable routing identity for a single draft within its batch.
+/// Reusable across batches — `(draft_batch_id, draft_id)` is the join key,
+/// not `draft_id` alone.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct DraftId(String);
+
+impl DraftId {
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl fmt::Display for DraftId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+impl AsRef<str> for DraftId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl Deref for DraftId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+impl Borrow<str> for DraftId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+impl From<&str> for DraftId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+impl From<String> for DraftId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+impl From<&String> for DraftId {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+impl From<&DraftId> for DraftId {
+    fn from(s: &DraftId) -> Self {
+        Self(s.0.clone())
+    }
+}
+impl From<DraftId> for String {
+    fn from(id: DraftId) -> Self {
+        id.0
+    }
+}
+impl PartialEq<str> for DraftId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+impl PartialEq<&str> for DraftId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_str() == *other
+    }
+}
+impl PartialEq<String> for DraftId {
+    fn eq(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+}
+impl PartialEq<DraftId> for str {
+    fn eq(&self, other: &DraftId) -> bool {
+        self == other.0.as_str()
+    }
+}
+impl PartialEq<DraftId> for &str {
+    fn eq(&self, other: &DraftId) -> bool {
+        *self == other.0.as_str()
+    }
+}
+impl PartialEq<DraftId> for String {
+    fn eq(&self, other: &DraftId) -> bool {
+        self == &other.0
+    }
+}
+
+// ── DraftBatchId ──────────────────────────────────────────────────────────────
+
+/// Groups drafts from one proposer round. The `(draft_batch_id, draft_id)`
+/// pair is the authoritative join key between drafts and verdicts.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct DraftBatchId(String);
+
+impl DraftBatchId {
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl fmt::Display for DraftBatchId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+impl AsRef<str> for DraftBatchId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl Deref for DraftBatchId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+impl Borrow<str> for DraftBatchId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+impl From<&str> for DraftBatchId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+impl From<String> for DraftBatchId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+impl From<&String> for DraftBatchId {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+impl From<&DraftBatchId> for DraftBatchId {
+    fn from(s: &DraftBatchId) -> Self {
+        Self(s.0.clone())
+    }
+}
+impl From<DraftBatchId> for String {
+    fn from(id: DraftBatchId) -> Self {
+        id.0
+    }
+}
+impl PartialEq<str> for DraftBatchId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+impl PartialEq<&str> for DraftBatchId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_str() == *other
+    }
+}
+impl PartialEq<String> for DraftBatchId {
+    fn eq(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+}
+impl PartialEq<DraftBatchId> for str {
+    fn eq(&self, other: &DraftBatchId) -> bool {
+        self == other.0.as_str()
+    }
+}
+impl PartialEq<DraftBatchId> for &str {
+    fn eq(&self, other: &DraftBatchId) -> bool {
+        *self == other.0.as_str()
+    }
+}
+impl PartialEq<DraftBatchId> for String {
+    fn eq(&self, other: &DraftBatchId) -> bool {
+        self == &other.0
+    }
+}
 
 /// The strict discriminator. Every [`FormationDraft`] carries this
 /// exact value in its `kind` field. Parsers reject any fact whose
@@ -29,21 +234,15 @@ pub const DRAFT_KIND: &str = "organism.dynamics.formation-draft";
 pub struct FormationDraft {
     /// Literal discriminator; must equal [`DRAFT_KIND`].
     pub kind: String,
-    /// Stable identifier for this draft, assigned by the proposer.
-    /// Used with [`Self::draft_batch_id`] by downstream Suggestors
-    /// (critic verdicts, scorer shortlist filtering) as the routing
-    /// key — verdicts join back to drafts by `(draft_batch_id,
-    /// draft_id)`, not by reconstructed ordering or source/index
-    /// pairs. Must be non-empty and unique within its batch;
-    /// proposers are responsible for picking ids that won't collide
-    /// inside a batch.
-    pub draft_id: String,
-    /// Identifier of the batch this draft belongs to. The critic
-    /// emits a per-batch sentinel and the scorer waits for that
-    /// sentinel before shortlisting drafts from that batch — so
-    /// drafts that arrive in a later batch (after the first batch's
-    /// verdicts and shortlist are already in context) can be
-    /// processed cleanly without temporal contamination.
+    /// Stable routing key for this draft within its batch. Reusable
+    /// across batches — `(draft_batch_id, draft_id)` is the join key,
+    /// not `draft_id` alone. Must be non-empty and unique within its
+    /// batch; proposers are responsible for avoiding collisions.
+    pub draft_id: DraftId,
+    /// Groups drafts from one proposer round. The critic emits a
+    /// per-batch sentinel and the scorer waits for that sentinel before
+    /// shortlisting drafts from that batch, so batches are processed
+    /// cleanly without temporal contamination.
     ///
     /// `draft_batch_id` is **routing/audit identity only**. The
     /// compiler ([`organism_runtime::FormationCompiler::compile_draft_from_catalog`])
@@ -53,7 +252,7 @@ pub struct FormationDraft {
     /// Multiple drafts in the same batch share a `draft_batch_id`.
     /// Multiple proposers can run in one Formation by using distinct
     /// `draft_batch_id` values.
-    pub draft_batch_id: String,
+    pub draft_batch_id: DraftBatchId,
     /// The proposed roster, in the order the upstream proposer
     /// intends. Each id must resolve in the catalog at compile time
     /// (see [`crate::compile_draft`]).
@@ -106,8 +305,8 @@ impl FormationDraft {
     /// scorer gating — see [`Self::draft_batch_id`].
     #[must_use]
     pub fn new<I, D>(
-        draft_id: impl Into<String>,
-        draft_batch_id: impl Into<String>,
+        draft_id: impl Into<DraftId>,
+        draft_batch_id: impl Into<DraftBatchId>,
         descriptor_ids: I,
         rationale: impl Into<String>,
         source: impl Into<String>,
@@ -319,15 +518,15 @@ pub enum DraftVerdict {
 pub struct DraftValidation {
     /// Literal discriminator; must equal [`DRAFT_VALIDATION_KIND`].
     pub kind: String,
-    /// Stable identifier of the [`FormationDraft`] this verdict
+    /// Stable routing key of the [`FormationDraft`] this verdict
     /// applies to. Copied verbatim from `FormationDraft.draft_id`.
-    pub draft_id: String,
+    pub draft_id: DraftId,
     /// Batch id of the [`FormationDraft`] this verdict applies to —
     /// copied verbatim from `FormationDraft.draft_batch_id`. Used by
     /// the scorer to enumerate which batches have completed
     /// validation and which are still pending. This is part of the
     /// authoritative join key with [`Self::draft_id`].
-    pub draft_batch_id: String,
+    pub draft_batch_id: DraftBatchId,
     /// The verdict itself.
     pub verdict: DraftVerdict,
     /// Human-readable explanation. Required and non-empty.
@@ -368,8 +567,8 @@ impl DraftValidation {
     /// [`FormationDraft`].
     #[must_use]
     pub fn new(
-        draft_id: impl Into<String>,
-        draft_batch_id: impl Into<String>,
+        draft_id: impl Into<DraftId>,
+        draft_batch_id: impl Into<DraftBatchId>,
         verdict: DraftVerdict,
         reason: impl Into<String>,
         critic: impl Into<String>,

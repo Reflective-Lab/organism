@@ -45,7 +45,7 @@ use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
 use crate::batch::encode_batch_id;
 use crate::extract::extract_drafts;
-use crate::payload::FormationDraft;
+use crate::payload::{DraftBatchId, FormationDraft};
 use crate::provenance::ORGANISM_DYNAMICS_PROVENANCE;
 
 const SUGGESTOR_NAME: &str = "organism-catalog-proposer";
@@ -176,13 +176,13 @@ impl CatalogProposerSuggestor {
     /// for determinism. Returns the explicit id (if no drafts) in
     /// explicit mode.
     fn open_batches(&self, ctx: &dyn Context) -> Vec<String> {
-        let existing: HashSet<String> = extract_drafts(ctx, ContextKey::Strategies)
+        let existing: HashSet<DraftBatchId> = extract_drafts(ctx, ContextKey::Strategies)
             .into_iter()
             .map(|d| d.draft_batch_id)
             .collect();
         match &self.batch_source {
             BatchSource::Explicit(id) => {
-                if existing.contains(id) {
+                if existing.contains(id.as_str()) {
                     vec![]
                 } else {
                     vec![id.clone()]

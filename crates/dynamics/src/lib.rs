@@ -62,8 +62,8 @@ pub use extract::{
     extract_drafts_for_batch, latest_completed_batch,
 };
 pub use payload::{
-    DRAFT_KIND, DRAFT_VALIDATION_KIND, DraftValidation, DraftValidationPayloadError, DraftVerdict,
-    FormationDraft, FormationDraftValidationError,
+    DRAFT_KIND, DRAFT_VALIDATION_KIND, DraftBatchId, DraftId, DraftValidation,
+    DraftValidationPayloadError, DraftVerdict, FormationDraft, FormationDraftValidationError,
 };
 pub use preflight::{PreflightError, preflight_design_formation};
 pub use proposer::CatalogProposerSuggestor;

@@ -21,7 +21,7 @@ use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
 
 use crate::batch::{decode_batch_id, encode_batch_id};
 use crate::extract::{extract_draft_validations, extract_drafts};
-use crate::payload::{DraftVerdict, FormationDraft};
+use crate::payload::{DraftBatchId, DraftId, DraftVerdict, FormationDraft};
 use crate::provenance::ORGANISM_DYNAMICS_PROVENANCE;
 
 const SUGGESTOR_NAME: &str = "organism-beauty-contest";
@@ -169,14 +169,14 @@ impl Suggestor for BeautyContestSuggestor {
         // shortlist facts so the gate flips false and the Formation
         // converges.
         let scored_batches = scored_batches(ctx);
-        let blocked_ids: HashSet<(String, String)> =
+        let blocked_ids: HashSet<(DraftBatchId, DraftId)> =
             extract_draft_validations(ctx, ContextKey::Constraints)
                 .into_iter()
                 .filter(|v| v.verdict == DraftVerdict::Block)
                 .map(|v| (v.draft_batch_id, v.draft_id))
                 .collect();
 
-        let mut by_batch: BTreeMap<String, Vec<&FormationDraft>> = BTreeMap::new();
+        let mut by_batch: BTreeMap<DraftBatchId, Vec<&FormationDraft>> = BTreeMap::new();
         for draft in &drafts {
             if scored_batches.contains(&draft.draft_batch_id) {
                 continue;
@@ -265,8 +265,8 @@ impl Suggestor for BeautyContestSuggestor {
     }
 }
 
-fn scored_batches(ctx: &dyn Context) -> HashSet<String> {
-    let mut batches: HashSet<String> = ctx
+fn scored_batches(ctx: &dyn Context) -> HashSet<DraftBatchId> {
+    let mut batches: HashSet<DraftBatchId> = ctx
         .get(ContextKey::Diagnostic)
         .iter()
         .filter_map(|fact| {
@@ -275,6 +275,7 @@ fn scored_batches(ctx: &dyn Context) -> HashSet<String> {
                 .strip_prefix(SCORER_BATCH_COMPLETE_PREFIX)
                 .and_then(|rest| rest.strip_prefix('-'))
                 .and_then(decode_batch_id)
+                .map(DraftBatchId::from)
         })
         .collect();
     batches.extend(

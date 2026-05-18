@@ -26,7 +26,7 @@ use organism_runtime::{FormationCompileRequest, FormationCompiler};
 use crate::batch::encode_batch_id;
 use crate::compile::compile_draft;
 use crate::extract::extract_drafts;
-use crate::payload::{DraftValidation, DraftVerdict};
+use crate::payload::{DraftBatchId, DraftValidation, DraftVerdict};
 use crate::provenance::ORGANISM_DYNAMICS_PROVENANCE;
 
 const SUGGESTOR_NAME: &str = "organism-draft-validator-critic";
@@ -109,7 +109,7 @@ impl Suggestor for DraftValidatorCriticSuggestor {
     }
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
-        let mut drafts_by_batch: BTreeMap<String, Vec<_>> = BTreeMap::new();
+        let mut drafts_by_batch: BTreeMap<DraftBatchId, Vec<_>> = BTreeMap::new();
         for draft in extract_drafts(ctx, ContextKey::Strategies) {
             if !critic_batch_complete(ctx, &draft.draft_batch_id) {
                 drafts_by_batch

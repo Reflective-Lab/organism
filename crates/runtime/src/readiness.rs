@@ -24,6 +24,7 @@
 //! ```
 
 use organism_pack::IntentBinding;
+use organism_simulation::BudgetAmount;
 use serde::{Deserialize, Serialize};
 
 // ── Readiness Report ───────────────────────────────────────────────
@@ -260,7 +261,7 @@ pub struct BudgetProbe {
     /// Maximum token spend allowed for this intent.
     pub token_budget: Option<u64>,
     /// Maximum dollar spend allowed.
-    pub spend_budget: Option<f64>,
+    pub spend_budget: Option<BudgetAmount>,
 }
 
 impl BudgetProbe {
@@ -279,8 +280,8 @@ impl BudgetProbe {
     }
 
     #[must_use]
-    pub fn with_spend_budget(mut self, dollars: f64) -> Self {
-        self.spend_budget = Some(dollars);
+    pub fn with_spend_budget(mut self, dollars: impl Into<BudgetAmount>) -> Self {
+        self.spend_budget = Some(dollars.into());
         self
     }
 }
@@ -323,11 +324,11 @@ impl ReadinessProbe for BudgetProbe {
             }
 
             if let Some(spend) = self.spend_budget {
-                if spend > 0.0 {
+                if spend.as_f64() > 0.0 {
                     items.push(ReadinessItem::Confirmed(ReadinessConfirmation {
                         resource: "spend_budget".into(),
                         kind: ResourceKind::Budget,
-                        detail: format!("${spend:.2} remaining"),
+                        detail: format!("${:.2} remaining", spend.as_f64()),
                     }));
                 } else {
                     items.push(ReadinessItem::Gap(ReadinessGap {

@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use causal::{CausalSimulationAgent, CausalSimulator, CausalSimulatorConfig};
-pub use cost::{CostSimulationAgent, CostSimulator, CostSimulatorConfig};
+pub use cost::{BudgetAmount, CostSimulationAgent, CostSimulator, CostSimulatorConfig};
 pub use operational::{
     OperationalSimulationAgent, OperationalSimulator, OperationalSimulatorConfig,
 };

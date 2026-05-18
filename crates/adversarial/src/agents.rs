@@ -6,6 +6,34 @@
 
 use crate::provenance::ORGANISM_ADVERSARIAL_PROVENANCE;
 use crate::{Finding, Severity};
+
+/// Non-negative monetary constraint limit. Negative values are clamped to zero.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct BudgetAmount(f64);
+
+impl BudgetAmount {
+    #[must_use]
+    pub fn new(amount: f64) -> Self {
+        Self(amount.max(0.0))
+    }
+
+    #[must_use]
+    pub fn as_f64(self) -> f64 {
+        self.0
+    }
+}
+
+impl From<f64> for BudgetAmount {
+    fn from(v: f64) -> Self {
+        Self::new(v)
+    }
+}
+
+impl std::fmt::Display for BudgetAmount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.0}", self.0)
+    }
+}
 use converge_pack::{
     AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
     TextPayload,
@@ -259,7 +287,7 @@ pub struct OrgConstraint {
 
 #[derive(Debug, Clone)]
 pub enum ConstraintCheck {
-    MaxBudget(f64),
+    MaxBudget(BudgetAmount),
     RequiredApproval(String),
     ForbiddenAction(String),
     RequiredTag(String),
@@ -318,13 +346,15 @@ impl ConstraintCheckerAgent {
         for constraint in &self.org_constraints {
             match &constraint.check {
                 ConstraintCheck::MaxBudget(limit) => {
-                    if total_cost > *limit {
+                    if total_cost > limit.as_f64() {
                         findings.push(Finding {
                             agent: "constraint-checker".into(),
                             severity: Severity::Blocker,
                             message: format!(
                                 "violates '{}': cost {:.0} exceeds limit {:.0}",
-                                constraint.name, total_cost, limit,
+                                constraint.name,
+                                total_cost,
+                                limit.as_f64(),
                             ),
                         });
                     }
@@ -896,7 +926,7 @@ mod tests {
     fn budget_constraint_blocks() {
         let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
             name: "dept-budget".into(),
-            check: ConstraintCheck::MaxBudget(50_000.0),
+            check: ConstraintCheck::MaxBudget(BudgetAmount::new(50_000.0)),
         }]);
         let plan = json!({
             "annotation": {
@@ -911,7 +941,7 @@ mod tests {
     fn within_budget_passes() {
         let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
             name: "dept-budget".into(),
-            check: ConstraintCheck::MaxBudget(100_000.0),
+            check: ConstraintCheck::MaxBudget(BudgetAmount::new(100_000.0)),
         }]);
         let plan = json!({
             "annotation": {
@@ -1125,7 +1155,7 @@ mod tests {
     fn constraint_checker_empty_plan() {
         let agent = ConstraintCheckerAgent::new(vec![OrgConstraint {
             name: "budget".into(),
-            check: ConstraintCheck::MaxBudget(100.0),
+            check: ConstraintCheck::MaxBudget(BudgetAmount::new(100.0)),
         }]);
         let findings = agent.check_plan(&json!({}));
         assert!(!findings.iter().any(|f| f.severity == Severity::Blocker));
