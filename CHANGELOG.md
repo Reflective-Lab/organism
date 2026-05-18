@@ -6,6 +6,83 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-05-18
+
+Audit clean-up release: typed identifiers across the catalog/runtime/
+dynamics surface, bounded numeric newtypes for confidence and score
+fields, batch-lifecycle ownership for the round-driven design huddle,
+and per-fact idempotency in the adversarial Suggestors. No new
+feature work — every change is structural, with the Converge 3.9.1
+contract held constant.
+
+### Added
+- **`SuggestorDescriptorId`, `FormationTemplateId`, `ProviderId`,
+  `CapabilityRequirementId`, `InvariantId`, `DraftId`, `DraftBatchId`,
+  `BudgetAmount` newtypes.** Replace bare `String`/`f64` where
+  Organism owns the concept. All are `#[serde(transparent)]`, ship
+  full conversion ergonomics (`AsRef<str>`, `Borrow<str>`,
+  `Deref<Target=str>`, `From<&str>/<String>`, reverse `PartialEq`),
+  and propagate through `CompiledFormationPlan`, `RoleDecision`,
+  `FormationOutcomeRecord`, `FormationDraft`, and the catalog
+  descriptors. Wire format is unchanged.
+- **`UnitInterval` / `NonZeroU32` adoption** for bounded numerics.
+  `CausalSimulatorConfig`, `OutcomeSimulatorConfig`,
+  `IntentComplexity`, `DerivedCharter.confidence`, `ShapeCandidate`,
+  `ShapeObservation`, `ShapeCalibration` now enforce 0..=1 / non-zero
+  invariants at the type level instead of relying on downstream
+  clamps. Property-test assertions that the values stay bounded now
+  hold by construction.
+- **Round-driven batch lifecycle.** `RoundStarter` + signals are the
+  source of truth for `draft_batch_id`; `CatalogProposerSuggestor`'s
+  new `with_round_signals(prefix)` mode consumes the open round
+  instead of inventing batches. `extract_drafts_for_batch`,
+  `completed_batches`, `latest_completed_batch` helpers in
+  `organism-dynamics` give the host an explicit compile handoff —
+  no "first proposal wins" surprises.
+- **Per-fact adversarial idempotency.** `AssumptionBreakerAgent`,
+  `ConstraintCheckerAgent`, `EconomicSkepticAgent`,
+  `OperationalSkepticAgent` now gate on per-strategy-fact judgment
+  presence (any of `<prefix>-pass-<id>` / `…-warn-…` / `…-block-…`
+  in Evaluations/Constraints) rather than the single-shot
+  `!has(Evaluations)` gate. Adversarial scrutiny now fires across
+  every round of a multi-batch huddle, not just the first.
+
+### Changed
+- **`CompiledFormationPlan`** absorbs the old
+  `CatalogCompiledFormationPlan` wrapper — `decisions:
+  Vec<RoleDecision>` is now a direct field. Legacy `compile()`
+  emits `Vec::new()`; the three catalog-aware paths populate it.
+  All `.plan.X` accesses across runtime / dynamics / catalog-seed
+  collapsed to `.X`.
+- **`organism-pack::ContextKey`** is now a `pub use
+  converge_pack::ContextKey;` re-export. The local enum mirror is
+  gone — one truth.
+- **`CONFIDENCE_STEP_*` constants** re-exported from `converge_pack`
+  3.9.1; the local copies were a pre-3.9 stopgap.
+- **`organism-notes` feature flags** dropped `cleanup` /
+  `enrichment` (they gated no optional deps and were pure
+  conditional-compile noise). The remaining `sources-apple-notes` /
+  `sources-web` flags are deliberately carved out and documented
+  as optional-dep-only gates.
+- **`organism-intelligence` Stripe carve-out.** Billing surface
+  removed; subscription/entitlement/ledger/payment-reconciliation
+  belongs to Movement; webhook transport / secret plumbing belongs
+  to Runway. See `kb/Handoffs/2026-05-18 Runway-Movement — Stripe
+  carveout.md`.
+
+### Fixed
+- **`compile_k_candidates` winner lookup safety** — `winner()` finds
+  the winner by `sc.index == winner_index`, not by array position,
+  so a partial-tournament failure that drops a lower-index candidate
+  no longer panics.
+- **`compile_k_candidates` swap-out diversity** — `has_swappable_alternative`
+  replaced with a trial-compile per descriptor (compositional check)
+  so scarce-but-broad specialists are no longer mis-classified as
+  swappable.
+- **Correctness sweep** — real SHA-256, `total_cmp` for f64 sort
+  determinism, `AtomicBool` over interior mutability, `Option`
+  winner in tournament outcomes.
+
 ### Removed
 - Removed the Stripe billing surface from `organism-intelligence`. Billing,
   subscription, entitlement, ledger, and payment-provider reconciliation
