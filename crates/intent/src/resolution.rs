@@ -15,6 +15,116 @@
 use converge_pack::UnitInterval;
 use serde::{Deserialize, Serialize};
 
+// ── Typed identifiers ──────────────────────────────────────────────
+//
+// CapabilityRequirementId and InvariantId are Organism-owned typed
+// wrappers over the human-readable strings that flow through intent
+// resolution. Same shape as `SuggestorDescriptorId`, `ProviderId`,
+// `FormationTemplateId` — `#[serde(transparent)]` so the wire form
+// stays a bare string. Conversion impls let existing string-literal
+// call sites flow through without churn.
+
+macro_rules! string_id_newtype {
+    ($name:ident, $doc:literal) => {
+        #[doc = $doc]
+        #[derive(
+            Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default,
+        )]
+        #[serde(transparent)]
+        pub struct $name(String);
+
+        impl $name {
+            #[must_use]
+            pub fn new(id: impl Into<String>) -> Self {
+                Self(id.into())
+            }
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl AsRef<str> for $name {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::borrow::Borrow<str> for $name {
+            fn borrow(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::ops::Deref for $name {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl From<&str> for $name {
+            fn from(s: &str) -> Self {
+                Self(s.to_string())
+            }
+        }
+        impl From<String> for $name {
+            fn from(s: String) -> Self {
+                Self(s)
+            }
+        }
+        impl From<&String> for $name {
+            fn from(s: &String) -> Self {
+                Self(s.clone())
+            }
+        }
+        impl From<$name> for String {
+            fn from(id: $name) -> Self {
+                id.0
+            }
+        }
+        impl PartialEq<str> for $name {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $name {
+            fn eq(&self, other: &&str) -> bool {
+                self.0.as_str() == *other
+            }
+        }
+        impl PartialEq<String> for $name {
+            fn eq(&self, other: &String) -> bool {
+                &self.0 == other
+            }
+        }
+        impl PartialEq<$name> for &str {
+            fn eq(&self, other: &$name) -> bool {
+                *self == other.0.as_str()
+            }
+        }
+        impl PartialEq<$name> for String {
+            fn eq(&self, other: &$name) -> bool {
+                self == &other.0
+            }
+        }
+    };
+}
+
+string_id_newtype!(
+    CapabilityRequirementId,
+    "Identifier of a capability requested by an intent (e.g. `\"web\"`, `\"ocr\"`, `\"vision\"`). Distinct from `converge_kernel::formation::SuggestorCapability` (a closed enum on the Suggestor profile side); this is the open-world string label that crosses intent → resolver → registry."
+);
+string_id_newtype!(
+    InvariantId,
+    "Identifier of an invariant the intent requires the convergence loop to honor (e.g. `\"lead_has_source\"`, `\"claim_has_provenance\"`). Names a check registered with the runtime, not the check itself."
+);
+
 // ── Intent Binding ─────────────────────────────────────────────────
 
 /// The output of intent resolution. Tells the runtime what to wire up.
@@ -25,7 +135,7 @@ pub struct IntentBinding {
     /// Which capabilities the intent needs (OCR, web, vision, etc.).
     pub capabilities: Vec<CapabilityRequirement>,
     /// Additional invariants to enforce beyond pack defaults.
-    pub invariants: Vec<String>,
+    pub invariants: Vec<InvariantId>,
     /// How the binding was resolved.
     pub resolution: ResolutionTrace,
 }
@@ -42,7 +152,7 @@ pub struct PackRequirement {
 /// A capability needed by the intent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityRequirement {
-    pub capability: String,
+    pub capability: CapabilityRequirementId,
     pub reason: String,
     pub confidence: UnitInterval,
     pub source: ResolutionLevel,
@@ -90,7 +200,7 @@ pub struct ResolutionTrace {
 pub struct DeclarativeBinding {
     packs: Vec<PackRequirement>,
     capabilities: Vec<CapabilityRequirement>,
-    invariants: Vec<String>,
+    invariants: Vec<InvariantId>,
 }
 
 impl DeclarativeBinding {
@@ -111,7 +221,11 @@ impl DeclarativeBinding {
     }
 
     #[must_use]
-    pub fn capability(mut self, name: impl Into<String>, reason: impl Into<String>) -> Self {
+    pub fn capability(
+        mut self,
+        name: impl Into<CapabilityRequirementId>,
+        reason: impl Into<String>,
+    ) -> Self {
         self.capabilities.push(CapabilityRequirement {
             capability: name.into(),
             reason: reason.into(),
@@ -122,7 +236,7 @@ impl DeclarativeBinding {
     }
 
     #[must_use]
-    pub fn invariant(mut self, name: impl Into<String>) -> Self {
+    pub fn invariant(mut self, name: impl Into<InvariantId>) -> Self {
         self.invariants.push(name.into());
         self
     }

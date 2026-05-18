@@ -504,7 +504,7 @@ impl IntentResolver for StructuralResolver<'_> {
 
         for (cap, reason) in needed_capabilities {
             binding.capabilities.push(CapabilityRequirement {
-                capability: cap,
+                capability: cap.into(),
                 reason,
                 confidence: converge_pack::UnitInterval::clamped(0.85),
                 source: ResolutionLevel::Structural,
