@@ -13,8 +13,12 @@ converge-kernel.workspace = true
 converge-pack.workspace = true
 converge-provider.workspace = true
 
+# Path-only dev-dep on runtime (no version) so cargo publish can
+# resolve catalog-seed without a circular dependency on runtime,
+# which itself dev-depends on catalog-seed. The version field would
+# otherwise force a same-cycle 1.9.1 resolution against crates.io.
 [dev-dependencies]
-organism-runtime.workspace = true
+organism-runtime = { path = "../runtime" }
 uuid.workspace = true
 
 [lints]

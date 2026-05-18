@@ -26,10 +26,13 @@ tokio.workspace = true
 uuid.workspace = true
 tracing.workspace = true
 
+# Path-only dev-dep on catalog-seed (no version) so cargo publish can
+# resolve runtime without a circular dependency on catalog-seed,
+# which itself dev-depends on runtime.
 [dev-dependencies]
 chrono.workspace = true
 proptest.workspace = true
-organism-catalog-seed.workspace = true
+organism-catalog-seed = { path = "../catalog-seed" }
 
 [lints]
 workspace = true
