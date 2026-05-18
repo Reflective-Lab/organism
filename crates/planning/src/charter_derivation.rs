@@ -120,8 +120,8 @@ pub fn derive_charter_with_priors(
     // Find the best-performing topology for this problem class.
     let best = relevant.iter().max_by(|a, b| {
         a.posterior_score
-            .partial_cmp(&b.posterior_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+            .as_f64()
+            .total_cmp(&b.posterior_score.as_f64())
     });
 
     if let Some(best) = best

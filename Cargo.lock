@@ -1529,7 +1529,9 @@ dependencies = [
 
 [[package]]
 name = "converge-prism-analytics"
-version = "2.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e4837690752e3748c230a247d8a37edca2f344fa0ca467da0e5cd5bcc82fe3f"
 dependencies = [
  "anyhow",
  "async-trait",

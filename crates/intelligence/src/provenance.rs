@@ -40,11 +40,13 @@ pub struct Observation<T> {
     pub raw_response: Option<String>,
 }
 
-/// SHA-256 hash for provenance tracking.
+/// SHA-256 digest of `input`, hex-encoded. Used for content-addressed provenance.
 pub fn content_hash(input: &str) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    input.hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(input.as_bytes());
+    digest.iter().fold(String::with_capacity(64), |mut acc, b| {
+        use std::fmt::Write as _;
+        let _ = write!(acc, "{b:02x}");
+        acc
+    })
 }

@@ -10,6 +10,7 @@
 //!   Converge context on the first cycle.
 //! - [`SharedBudget`] — cross-suggestor resource tracking for bounded loops.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use converge_pack::{
@@ -31,7 +32,7 @@ use crate::{Plan, ReasoningSystem};
 pub struct HuddleSeedSuggestor {
     intent: IntentPacket,
     plans: Vec<NamedPlan>,
-    seeded: Mutex<bool>,
+    seeded: AtomicBool,
 }
 
 /// A plan with a stable identifier for tracking.
@@ -45,7 +46,7 @@ impl HuddleSeedSuggestor {
         Self {
             intent,
             plans,
-            seeded: Mutex::new(false),
+            seeded: AtomicBool::new(false),
         }
     }
 
@@ -95,11 +96,11 @@ impl Suggestor for HuddleSeedSuggestor {
     }
 
     fn accepts(&self, _ctx: &dyn Context) -> bool {
-        !*self.seeded.lock().unwrap()
+        !self.seeded.load(Ordering::Acquire)
     }
 
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
-        *self.seeded.lock().unwrap() = true;
+        self.seeded.store(true, Ordering::Release);
 
         let mut effect = AgentEffect::builder();
 

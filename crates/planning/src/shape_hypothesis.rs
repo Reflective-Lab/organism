@@ -151,8 +151,8 @@ pub fn generate_candidates(
         })
         .max_by(|a, b| {
             a.posterior_score
-                .partial_cmp(&b.posterior_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .as_f64()
+                .total_cmp(&b.posterior_score.as_f64())
         });
 
     if let Some(prior) = best_prior {
@@ -236,9 +236,7 @@ pub fn select_winner(
         .max_by(|a, b| {
             let score_a = score_observation(a, competition.evaluation_metric);
             let score_b = score_observation(b, competition.evaluation_metric);
-            score_a
-                .partial_cmp(&score_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            score_a.total_cmp(&score_b)
         })
         .map(|obs| obs.candidate_id)
 }

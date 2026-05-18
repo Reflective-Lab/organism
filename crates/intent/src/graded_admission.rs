@@ -160,7 +160,7 @@ fn assess_from_output(
         .iter()
         .filter_map(|(name, k)| memberships.get(name).map(|m| (*k, *m)))
         .filter(|(_, m): &(FeasibilityKind, f64)| *m > 0.0)
-        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        .max_by(|a, b| a.1.total_cmp(&b.1));
 
     let (kind, top_membership) = chosen.unwrap_or((FeasibilityKind::Uncertain, 0.0));
 

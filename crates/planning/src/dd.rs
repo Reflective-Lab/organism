@@ -1533,12 +1533,7 @@ fn fact_priority_score(
 fn compare_candidates(left: &ConsolidationCandidate, right: &ConsolidationCandidate) -> Ordering {
     category_sort_order(left.summary.category.as_str())
         .cmp(&category_sort_order(right.summary.category.as_str()))
-        .then_with(|| {
-            right
-                .priority_score
-                .partial_cmp(&left.priority_score)
-                .unwrap_or(Ordering::Equal)
-        })
+        .then_with(|| right.priority_score.total_cmp(&left.priority_score))
         .then_with(|| right.summary.claim.len().cmp(&left.summary.claim.len()))
 }
 

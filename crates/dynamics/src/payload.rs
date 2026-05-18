@@ -25,6 +25,7 @@ pub const DRAFT_KIND: &str = "organism.dynamics.formation-draft";
 /// [`DRAFT_KIND`]; when parsing from JSON, [`Self::is_well_formed`]
 /// must hold before the value is trusted.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FormationDraft {
     /// Literal discriminator; must equal [`DRAFT_KIND`].
     pub kind: String,
@@ -314,6 +315,7 @@ pub enum DraftVerdict {
 /// from the draft they read, not reconstruct them from ordering or
 /// source labels.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DraftValidation {
     /// Literal discriminator; must equal [`DRAFT_VALIDATION_KIND`].
     pub kind: String,

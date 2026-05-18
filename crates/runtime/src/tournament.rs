@@ -129,11 +129,7 @@ impl FormationTournament {
             results.iter().map(FormationScore::from_result).collect();
 
         // Sort descending by score — first is winner.
-        scores.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        scores.sort_by(|a, b| b.score.total_cmp(&a.score));
 
         let winner = scores[0].clone();
 

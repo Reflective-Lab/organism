@@ -528,7 +528,7 @@ async fn compile_k_and_run_tournament_pairs_scores_to_candidates() {
     assert_ne!(cand_0_ids, cand_1_ids, "rosters should differ");
 
     // Winner can be looked up by index.
-    let winner = outcome.winner();
+    let winner = outcome.winner().expect("winner must be present");
     assert!(winner.score.converged);
     assert!(outcome.winner_index < outcome.scored_candidates.len());
 }

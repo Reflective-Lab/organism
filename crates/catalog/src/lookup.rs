@@ -105,11 +105,7 @@ impl CatalogLookup for KeywordLookup {
             .filter(|(score, _)| *score > 0.0)
             .collect();
 
-        scored.sort_by(|(a, ea), (b, eb)| {
-            b.partial_cmp(a)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| ea.id().cmp(eb.id()))
-        });
+        scored.sort_by(|(a, ea), (b, eb)| b.total_cmp(a).then_with(|| ea.id().cmp(eb.id())));
 
         let max_score = scored.first().map_or(1.0, |(s, _)| *s);
         Ok(scored

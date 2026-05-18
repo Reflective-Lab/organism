@@ -140,15 +140,15 @@ pub struct CatalogTournamentOutcome {
 
 impl CatalogTournamentOutcome {
     /// Returns the winning [`ScoredCatalogCandidate`] by matching
-    /// `winner_index` against each entry's `index`. Safe against
-    /// partial tournament failures where some candidates were dropped
-    /// from `scored_candidates`.
+    /// `winner_index` against each entry's `index`, or `None` if the
+    /// winning candidate was dropped from `scored_candidates` (e.g.
+    /// because its formation failed at runtime). Safe against partial
+    /// tournament failures.
     #[must_use]
-    pub fn winner(&self) -> &ScoredCatalogCandidate {
+    pub fn winner(&self) -> Option<&ScoredCatalogCandidate> {
         self.scored_candidates
             .iter()
             .find(|sc| sc.index == self.winner_index)
-            .expect("winner_index must correspond to a scored candidate")
     }
 }
 
@@ -639,7 +639,7 @@ mod tests {
 
         // Before the fix: scored_candidates[winner_index] would index
         // position 1 in a length-1 Vec → out-of-bounds panic.
-        let winner = outcome.winner();
+        let winner = outcome.winner().expect("winner must be present");
         assert_eq!(winner.index, 1);
         assert!((winner.score.score - 0.9).abs() < f64::EPSILON);
     }
