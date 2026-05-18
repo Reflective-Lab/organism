@@ -95,6 +95,11 @@ pub fn standard_formation_catalog() -> FormationCatalog {
 /// Decision: pick one option from a candidate set under stated authority and
 /// constraints. LLM reasoner proposes; constraint checker gates; economic
 /// skeptic challenges cost assumptions; synthesizer commits the choice.
+///
+/// Also routes [`ProblemClass::Incident`] intents — `template_id_for`
+/// documents Incident as falling back to `organism-decision`. The
+/// `incident` keyword keeps that fallback visible in catalog metadata
+/// rather than hidden in `FormationGuru` control flow.
 #[must_use]
 pub fn decision_formation() -> FormationTemplate {
     let metadata = FormationTemplateMetadata::new(
@@ -112,6 +117,7 @@ pub fn decision_formation() -> FormationTemplate {
     .with_keyword("select")
     .with_keyword("approve")
     .with_keyword("choose")
+    .with_keyword("incident")
     .with_entity("approval")
     .with_entity("option")
     .with_required_capability(SuggestorCapability::LlmReasoning)
@@ -122,6 +128,11 @@ pub fn decision_formation() -> FormationTemplate {
 
 /// Research: open-ended fact gathering. LLM reasoner explores, knowledge
 /// retrieval surfaces evidence, synthesizer summarizes.
+///
+/// Also routes [`ProblemClass::Strategy`] intents — `template_id_for`
+/// documents Strategy as falling back to `organism-research`. The
+/// `strategy` keyword keeps that fallback visible in catalog metadata
+/// rather than hidden in `FormationGuru` control flow.
 #[must_use]
 pub fn research_formation() -> FormationTemplate {
     let metadata = FormationTemplateMetadata::new(
@@ -138,6 +149,7 @@ pub fn research_formation() -> FormationTemplate {
     .with_keyword("explore")
     .with_keyword("discover")
     .with_keyword("study")
+    .with_keyword("strategy")
     .with_entity("topic")
     .with_entity("evidence")
     .with_required_capability(SuggestorCapability::LlmReasoning)

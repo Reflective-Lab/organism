@@ -308,6 +308,59 @@ mod tests {
         assert_eq!(selection.primary.id(), "organism-research");
     }
 
+    /// `template_id_for` documents Incident as falling back to
+    /// `organism-decision`. The fallback must be honored through the
+    /// guru's normal keyword-driven path — proved by the `incident`
+    /// keyword on the decision template's metadata, not by hidden
+    /// control flow in `FormationGuru`.
+    #[test]
+    fn picks_decision_for_incident_intent() {
+        let catalog = standard_formation_catalog();
+        let guru = FormationGuru::new(&catalog);
+        let selection = guru
+            .select(
+                &intent("respond to the production incident and stabilize the system"),
+                &caps(),
+            )
+            .expect("incident intent must match a template");
+        assert_eq!(selection.classification.class, ProblemClass::Incident);
+        assert_eq!(selection.primary.id(), "organism-decision");
+        // Trace shows keyword-driven routing, not a special-case fallback.
+        assert!(!selection.trace.defaulted);
+        assert!(
+            selection
+                .trace
+                .matched_keywords
+                .iter()
+                .any(|k| k == "incident")
+        );
+    }
+
+    /// `template_id_for` documents Strategy as falling back to
+    /// `organism-research`. Same contract as Incident → Decision —
+    /// visible as template metadata, not hidden control flow.
+    #[test]
+    fn picks_research_for_strategy_intent() {
+        let catalog = standard_formation_catalog();
+        let guru = FormationGuru::new(&catalog);
+        let selection = guru
+            .select(
+                &intent("set our 3-year strategy and define the long-term vision"),
+                &caps(),
+            )
+            .expect("strategy intent must match a template");
+        assert_eq!(selection.classification.class, ProblemClass::Strategy);
+        assert_eq!(selection.primary.id(), "organism-research");
+        assert!(!selection.trace.defaulted);
+        assert!(
+            selection
+                .trace
+                .matched_keywords
+                .iter()
+                .any(|k| k == "strategy")
+        );
+    }
+
     #[test]
     fn missing_capabilities_filters_template_out() {
         let catalog = standard_formation_catalog();
