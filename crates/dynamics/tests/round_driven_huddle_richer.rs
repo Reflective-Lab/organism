@@ -17,10 +17,12 @@
 //! - compile handoff only compiles that selected batch
 //! - context/trace makes each participant's contribution visible
 //!
-//! `AssumptionBreakerAgent` is single-shot (its `accepts` gates on
-//! `!has(Evaluations)`), so it scrutinizes round 1's drafts once and
-//! emits per-draft warnings. That is enough to clear the bar; the
-//! breaker's batch-awareness is a separate, larger refactor.
+//! `AssumptionBreakerAgent` is per-fact idempotent: its `accepts`
+//! wakes whenever there is a strategy fact it has not yet judged
+//! (one of `assumption-pass-<id>` / `…-warn-…` / `…-block-…` missing
+//! from `Evaluations`/`Constraints`). The test asserts the breaker
+//! covers drafts from both rounds — proof that adversarial scrutiny
+//! is no longer single-shot.
 
 use async_trait::async_trait;
 use converge_kernel::formation::{
@@ -392,27 +394,69 @@ async fn richer_huddle_composes_real_adversarial_and_synthesizer_with_round_driv
     assert!(diagnostic_ids.contains(&critic_pass_complete_marker("design-round-1").as_str()));
     assert!(diagnostic_ids.contains(&critic_pass_complete_marker("design-round-2").as_str()));
 
-    // --- AssumptionBreaker contribution: per-draft "warn" facts -----------
-    // The breaker fires single-shot over Strategies (gates on
-    // `!has(Evaluations)`), so it scrutinizes whichever drafts are
-    // present at first firing. The acceptance bar only requires "at
-    // least one existing adversarial Suggestor" to leave a meaningful
-    // trace; per-round adversarial firing is a separate refactor.
+    // --- AssumptionBreaker contribution: per-draft judgment per round -----
+    // After the per-fact idempotency refactor, the breaker fires on
+    // every unjudged strategy fact, in any round. The agent is
+    // generic — it scrutinizes anything in `Strategies`, including
+    // the synthesis facts that `RoundSynthesizer` emits there. We
+    // filter to draft-shaped fact ids to assert per-batch coverage.
     let breaker_outputs: Vec<&str> = context
         .get(ContextKey::Evaluations)
         .iter()
+        .chain(context.get(ContextKey::Constraints).iter())
         .map(|fact| fact.id().as_str())
         .filter(|id| id.starts_with("assumption-"))
         .collect();
-    assert!(
-        !breaker_outputs.is_empty(),
-        "AssumptionBreakerAgent must leave at least one Evaluations fact; got {:?}",
-        context
-            .get(ContextKey::Evaluations)
+    let breaker_outputs_for_drafts: Vec<&&str> = breaker_outputs
+        .iter()
+        .filter(|id| id.contains("formation-draft-"))
+        .collect();
+    assert_eq!(
+        breaker_outputs_for_drafts.len(),
+        4,
+        "breaker must judge each draft across both rounds (2 drafts × 2 rounds); got {breaker_outputs_for_drafts:?}"
+    );
+
+    // Each batch must be represented in the breaker's outputs. The
+    // breaker stamps its emit-id as `assumption-<verdict>-<strategy_fact_id>`,
+    // and the proposer's strategy fact id for a draft is
+    // `formation-draft-{encoded_batch_id}-{index}`. We can therefore
+    // recover the batch by inspecting the strategy fact ids the
+    // breaker judged.
+    for batch_id in ["design-round-1", "design-round-2"] {
+        let batch_draft_fact_ids: Vec<&str> = context
+            .get(ContextKey::Strategies)
             .iter()
             .map(|f| f.id().as_str())
-            .collect::<Vec<_>>()
-    );
+            .filter(|id| id.starts_with("formation-draft-"))
+            .filter(|id| {
+                // Strategy fact id encodes the batch in hex. Cross-check
+                // by reading the draft payload to confirm the batch.
+                extract_drafts(context, ContextKey::Strategies)
+                    .iter()
+                    .any(|d| {
+                        d.draft_batch_id == batch_id
+                            && id.ends_with(&format!(
+                                "-{idx}",
+                                idx = d.draft_id.trim_start_matches("candidate-")
+                            ))
+                    })
+            })
+            .collect();
+        assert!(
+            !batch_draft_fact_ids.is_empty(),
+            "expected at least one strategy fact id for batch {batch_id}"
+        );
+        let covered = batch_draft_fact_ids.iter().all(|sid| {
+            breaker_outputs_for_drafts
+                .iter()
+                .any(|bid| bid.ends_with(*sid))
+        });
+        assert!(
+            covered,
+            "breaker must scrutinize every draft in {batch_id}: strategy_ids={batch_draft_fact_ids:?}, breaker_outputs={breaker_outputs_for_drafts:?}"
+        );
+    }
 
     // --- BeautyContest contribution: per-batch sentinels + shortlists -----
     assert!(diagnostic_ids.contains(&scorer_batch_complete_marker("design-round-1").as_str()));

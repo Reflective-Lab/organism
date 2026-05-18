@@ -143,7 +143,7 @@ fn assess_from_output(
     let memberships: BTreeMap<&str, f64> = output
         .memberships
         .iter()
-        .filter_map(|(k, v): (&String, &f64)| k.strip_prefix(&prefix).map(|name| (name, *v)))
+        .filter_map(|(k, v)| k.strip_prefix(&prefix).map(|name| (name, v.value())))
         .collect();
 
     let kind_candidates: &[(&str, FeasibilityKind)] = &[
@@ -167,7 +167,14 @@ fn assess_from_output(
     let trace = output
         .activated_rules
         .iter()
-        .map(|r| format!("{} fires {} at {:.3}", r.id, r.consequent, r.strength))
+        .map(|r| {
+            format!(
+                "{} fires {} at {:.3}",
+                r.id,
+                r.consequent,
+                r.strength.value()
+            )
+        })
         .collect::<Vec<_>>()
         .join("; ");
 

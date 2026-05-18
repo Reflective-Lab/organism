@@ -1530,8 +1530,6 @@ dependencies = [
 [[package]]
 name = "converge-prism-analytics"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed70c08d997a3496c70afa019021234db2cd6903c4cc9e18ea4f0cd8870cca38"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1540,7 +1538,6 @@ dependencies = [
  "converge-pack",
  "ndarray 0.17.2",
  "polars",
- "proptest",
  "rand 0.8.6",
  "serde",
  "serde_json",

@@ -93,10 +93,10 @@ impl Reasoner for FuzzyReasoner {
         let impacts: Vec<Impact> = output
             .memberships
             .iter()
-            .filter(|(_, strength)| **strength > 0.0)
+            .filter(|(_, strength)| strength.value() > 0.0)
             .map(|(consequent, strength)| Impact {
                 description: format!("output {consequent}"),
-                confidence: *strength,
+                confidence: strength.value(),
             })
             .collect();
 
@@ -109,7 +109,14 @@ impl Reasoner for FuzzyReasoner {
             let trace = output
                 .activated_rules
                 .iter()
-                .map(|r| format!("{} fires {} at {:.3}", r.id, r.consequent, r.strength))
+                .map(|r| {
+                    format!(
+                        "{} fires {} at {:.3}",
+                        r.id,
+                        r.consequent,
+                        r.strength.value()
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join("; ");
             format!("fuzzy: {trace}")
@@ -128,7 +135,14 @@ impl Reasoner for FuzzyReasoner {
                 Ok((output, _)) => output
                     .activated_rules
                     .into_iter()
-                    .map(|r| format!("{} fires {} at {:.3}", r.id, r.consequent, r.strength))
+                    .map(|r| {
+                        format!(
+                            "{} fires {} at {:.3}",
+                            r.id,
+                            r.consequent,
+                            r.strength.value()
+                        )
+                    })
                     .collect(),
                 Err(_) => vec![],
             },

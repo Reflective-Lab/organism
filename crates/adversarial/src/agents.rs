@@ -23,6 +23,54 @@ fn fact_text(fact: &ContextFact) -> &str {
     fact.text().unwrap_or_default()
 }
 
+/// True if this agent has already emitted a judgment for `strategy_id`.
+///
+/// Adversarial agents are idempotent **per strategy fact**: once any
+/// of the agent's possible output ids
+/// (`<prefix>-pass-<strategy_id>` / `…-warn-…` / `…-block-…`)
+/// exists in either `Evaluations` or `Constraints`, the agent must
+/// not re-scrutinize that strategy. Per-fact gating replaces the old
+/// single-shot `!has(Evaluations)` gate so the agent fires correctly
+/// across multiple rounds / batches (a new round adds new strategy
+/// facts, which are unjudged, which wakes the agent again).
+fn strategy_already_judged(ctx: &dyn Context, judgment_ids: &[String]) -> bool {
+    let id_match = |fact: &ContextFact| {
+        let fid = fact.id().as_str();
+        judgment_ids.iter().any(|jid| jid == fid)
+    };
+    ctx.get(ContextKey::Evaluations).iter().any(id_match)
+        || ctx.get(ContextKey::Constraints).iter().any(id_match)
+}
+
+fn assumption_breaker_judgment_ids(strategy_id: &str) -> Vec<String> {
+    vec![
+        format!("assumption-pass-{strategy_id}"),
+        format!("assumption-warn-{strategy_id}"),
+        format!("assumption-block-{strategy_id}"),
+    ]
+}
+
+fn constraint_checker_judgment_ids(strategy_id: &str) -> Vec<String> {
+    vec![
+        format!("constraint-pass-{strategy_id}"),
+        format!("constraint-block-{strategy_id}"),
+    ]
+}
+
+fn economic_skeptic_judgment_ids(strategy_id: &str) -> Vec<String> {
+    vec![
+        format!("econ-eval-{strategy_id}"),
+        format!("econ-block-{strategy_id}"),
+    ]
+}
+
+fn operational_skeptic_judgment_ids(strategy_id: &str) -> Vec<String> {
+    vec![
+        format!("ops-skeptic-eval-{strategy_id}"),
+        format!("ops-skeptic-block-{strategy_id}"),
+    ]
+}
+
 // ── Assumption Breaker ────────────────────────────────────────────
 
 /// Extracts unstated assumptions from plan annotations and challenges each.
@@ -125,7 +173,12 @@ impl Suggestor for AssumptionBreakerAgent {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
+        ctx.get(ContextKey::Strategies).iter().any(|fact| {
+            !strategy_already_judged(
+                ctx,
+                &assumption_breaker_judgment_ids(fact.id().as_str()),
+            )
+        })
     }
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
@@ -133,6 +186,13 @@ impl Suggestor for AssumptionBreakerAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
+            let strategy_id = fact.id().as_str();
+            if strategy_already_judged(
+                ctx,
+                &assumption_breaker_judgment_ids(strategy_id),
+            ) {
+                continue;
+            }
             let content = fact_text(fact);
             let plan_json: serde_json::Value = serde_json::from_str(content)
                 .unwrap_or_else(|_| serde_json::json!({"description": content}));
@@ -345,7 +405,12 @@ impl Suggestor for ConstraintCheckerAgent {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
+        ctx.get(ContextKey::Strategies).iter().any(|fact| {
+            !strategy_already_judged(
+                ctx,
+                &constraint_checker_judgment_ids(fact.id().as_str()),
+            )
+        })
     }
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
@@ -353,6 +418,13 @@ impl Suggestor for ConstraintCheckerAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
+            let strategy_id = fact.id().as_str();
+            if strategy_already_judged(
+                ctx,
+                &constraint_checker_judgment_ids(strategy_id),
+            ) {
+                continue;
+            }
             let content = fact_text(fact);
             let plan_json: serde_json::Value = serde_json::from_str(content)
                 .unwrap_or_else(|_| serde_json::json!({"description": content}));
@@ -522,7 +594,12 @@ impl Suggestor for EconomicSkepticAgent {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
+        ctx.get(ContextKey::Strategies).iter().any(|fact| {
+            !strategy_already_judged(
+                ctx,
+                &economic_skeptic_judgment_ids(fact.id().as_str()),
+            )
+        })
     }
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
@@ -530,6 +607,13 @@ impl Suggestor for EconomicSkepticAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
+            let strategy_id = fact.id().as_str();
+            if strategy_already_judged(
+                ctx,
+                &economic_skeptic_judgment_ids(strategy_id),
+            ) {
+                continue;
+            }
             let content = fact_text(fact);
             let plan_json: serde_json::Value = serde_json::from_str(content)
                 .unwrap_or_else(|_| serde_json::json!({"description": content}));
@@ -714,7 +798,12 @@ impl Suggestor for OperationalSkepticAgent {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        ctx.has(ContextKey::Strategies) && !ctx.has(ContextKey::Evaluations)
+        ctx.get(ContextKey::Strategies).iter().any(|fact| {
+            !strategy_already_judged(
+                ctx,
+                &operational_skeptic_judgment_ids(fact.id().as_str()),
+            )
+        })
     }
 
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
@@ -722,6 +811,13 @@ impl Suggestor for OperationalSkepticAgent {
         let mut effect = AgentEffect::builder();
 
         for fact in strategies {
+            let strategy_id = fact.id().as_str();
+            if strategy_already_judged(
+                ctx,
+                &operational_skeptic_judgment_ids(strategy_id),
+            ) {
+                continue;
+            }
             let content = fact_text(fact);
             let plan_json: serde_json::Value = serde_json::from_str(content)
                 .unwrap_or_else(|_| serde_json::json!({"description": content}));
@@ -1169,4 +1265,5 @@ mod tests {
         );
         assert!(!findings.iter().any(|f| f.message.contains("single point")));
     }
+
 }

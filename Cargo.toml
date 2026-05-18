@@ -93,3 +93,8 @@ cast_lossless = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
+
+# Track unreleased mosaic head until v2.0.0 ships to crates.io.
+# Remove when converge-prism-analytics 2.0.0 is published.
+[patch.crates-io]
+converge-prism-analytics = { path = "../../mosaic-extensions/prism-analytics/crates/prism" }
