@@ -7,6 +7,7 @@
 //! Wire-level family stays `"converge.text"`; the discriminator is
 //! explicit in the payload.
 
+use organism_catalog::SuggestorDescriptorId;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -55,7 +56,7 @@ pub struct FormationDraft {
     /// The proposed roster, in the order the upstream proposer
     /// intends. Each id must resolve in the catalog at compile time
     /// (see [`crate::compile_draft`]).
-    pub descriptor_ids: Vec<String>,
+    pub descriptor_ids: Vec<SuggestorDescriptorId>,
     /// One-sentence human-readable reason this draft was proposed.
     pub rationale: String,
     /// Name of the Suggestor (or other source) that proposed this
@@ -103,18 +104,22 @@ impl FormationDraft {
     /// `draft_batch_id` groups drafts for round-scoped critic and
     /// scorer gating — see [`Self::draft_batch_id`].
     #[must_use]
-    pub fn new(
+    pub fn new<I, D>(
         draft_id: impl Into<String>,
         draft_batch_id: impl Into<String>,
-        descriptor_ids: Vec<String>,
+        descriptor_ids: I,
         rationale: impl Into<String>,
         source: impl Into<String>,
-    ) -> Self {
+    ) -> Self
+    where
+        I: IntoIterator<Item = D>,
+        D: Into<SuggestorDescriptorId>,
+    {
         Self {
             kind: DRAFT_KIND.to_string(),
             draft_id: draft_id.into(),
             draft_batch_id: draft_batch_id.into(),
-            descriptor_ids,
+            descriptor_ids: descriptor_ids.into_iter().map(Into::into).collect(),
             rationale: rationale.into(),
             source: source.into(),
         }
@@ -133,10 +138,10 @@ impl FormationDraft {
                 actual: self.kind.clone(),
             });
         }
-        if self.draft_id.trim().is_empty() {
+        if self.draft_id.as_str().trim().is_empty() {
             return Err(FormationDraftValidationError::EmptyDraftId);
         }
-        if self.draft_batch_id.trim().is_empty() {
+        if self.draft_batch_id.as_str().trim().is_empty() {
             return Err(FormationDraftValidationError::EmptyDraftBatchId);
         }
         if self.descriptor_ids.is_empty() {
@@ -144,12 +149,12 @@ impl FormationDraft {
         }
         let mut seen = std::collections::BTreeSet::new();
         for id in &self.descriptor_ids {
-            if id.trim().is_empty() {
+            if id.as_str().trim().is_empty() {
                 return Err(FormationDraftValidationError::EmptyDescriptorId);
             }
             if !seen.insert(id.as_str()) {
                 return Err(FormationDraftValidationError::DuplicateDescriptorId {
-                    descriptor_id: id.clone(),
+                    descriptor_id: id.to_string(),
                 });
             }
         }
@@ -176,7 +181,13 @@ mod tests {
 
     #[test]
     fn new_sets_discriminator_and_id() {
-        let draft = FormationDraft::new("draft-7", "batch-1", vec!["a".into()], "why", "proposer");
+        let draft = FormationDraft::new(
+            "draft-7",
+            "batch-1",
+            vec![SuggestorDescriptorId::from("a")],
+            "why",
+            "proposer",
+        );
         assert!(draft.is_well_formed());
         assert_eq!(draft.kind, DRAFT_KIND);
         assert_eq!(draft.draft_id, "draft-7");
@@ -195,7 +206,13 @@ mod tests {
 
     #[test]
     fn empty_draft_id_is_rejected_by_predicate() {
-        let draft = FormationDraft::new(" ", "batch-1", vec!["a".into()], "why", "proposer");
+        let draft = FormationDraft::new(
+            " ",
+            "batch-1",
+            vec![SuggestorDescriptorId::from("a")],
+            "why",
+            "proposer",
+        );
         assert!(matches!(
             draft.validate(),
             Err(FormationDraftValidationError::EmptyDraftId)
@@ -207,7 +224,10 @@ mod tests {
         let draft = FormationDraft::new(
             "d",
             "batch-1",
-            vec!["a".into(), "a".into()],
+            vec![
+                SuggestorDescriptorId::from("a"),
+                SuggestorDescriptorId::from("a"),
+            ],
             "why",
             "proposer",
         );
@@ -221,13 +241,25 @@ mod tests {
 
     #[test]
     fn empty_fields_are_rejected_by_predicate() {
-        let empty_roster = FormationDraft::new("d", "batch-1", Vec::new(), "why", "proposer");
+        let empty_roster = FormationDraft::new(
+            "d",
+            "batch-1",
+            Vec::<SuggestorDescriptorId>::new(),
+            "why",
+            "proposer",
+        );
         assert!(matches!(
             empty_roster.validate(),
             Err(FormationDraftValidationError::EmptyDescriptorIds)
         ));
 
-        let empty_source = FormationDraft::new("d", "batch-1", vec!["a".into()], "why", " ");
+        let empty_source = FormationDraft::new(
+            "d",
+            "batch-1",
+            vec![SuggestorDescriptorId::from("a")],
+            "why",
+            " ",
+        );
         assert!(matches!(
             empty_source.validate(),
             Err(FormationDraftValidationError::EmptySource)
@@ -239,7 +271,10 @@ mod tests {
         let draft = FormationDraft::new(
             "d",
             "batch-1",
-            vec!["a".into(), "b".into()],
+            vec![
+                SuggestorDescriptorId::from("a"),
+                SuggestorDescriptorId::from("b"),
+            ],
             "why",
             "proposer",
         );
@@ -355,10 +390,10 @@ impl DraftValidation {
                 actual: self.kind.clone(),
             });
         }
-        if self.draft_id.trim().is_empty() {
+        if self.draft_id.as_str().trim().is_empty() {
             return Err(DraftValidationPayloadError::EmptyDraftId);
         }
-        if self.draft_batch_id.trim().is_empty() {
+        if self.draft_batch_id.as_str().trim().is_empty() {
             return Err(DraftValidationPayloadError::EmptyDraftBatchId);
         }
         if self.reason.trim().is_empty() {

@@ -70,10 +70,7 @@ fn every_descriptor_has_non_empty_discovery_metadata() {
 #[test]
 fn descriptor_ids_are_unique_across_all_trees() {
     let catalog = seed::all();
-    let mut ids: Vec<&str> = catalog
-        .iter()
-        .map(organism_catalog::CatalogSuggestorDescriptor::id)
-        .collect();
+    let mut ids: Vec<&str> = catalog.iter().map(|d| d.id().as_str()).collect();
     let before = ids.len();
     ids.sort_unstable();
     ids.dedup();

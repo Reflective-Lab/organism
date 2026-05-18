@@ -341,7 +341,7 @@ fn compile_k_keeps_scarce_specialist_across_candidates() {
     // Each candidate must pick a different B.
     let mut chosen_bs: Vec<String> = candidates
         .iter()
-        .flat_map(|cand| cand.roster.iter().map(|r| r.suggestor_id.clone()))
+        .flat_map(|cand| cand.roster.iter().map(|r| r.suggestor_id.to_string()))
         .filter(|id| id.starts_with('b'))
         .collect();
     chosen_bs.sort();

@@ -14,7 +14,7 @@ use uuid::Uuid;
 use organism_catalog::{CatalogSuggestorDescriptor, DiscoveryCatalog};
 pub use organism_catalog::{
     DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode,
-    SuggestorDescriptor, SuggestorDescriptorCatalog,
+    SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +77,7 @@ impl FormationCompileRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompiledSuggestorRole {
-    pub suggestor_id: String,
+    pub suggestor_id: SuggestorDescriptorId,
     pub role: SuggestorRole,
     pub capabilities: Vec<SuggestorCapability>,
     pub reads: Vec<ContextKey>,
@@ -90,7 +90,7 @@ pub struct CompiledSuggestorRole {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleProviderAssignment {
-    pub suggestor_id: String,
+    pub suggestor_id: SuggestorDescriptorId,
     pub role: SuggestorRole,
     pub provider_id: String,
     pub requirements: BackendRequirements,
@@ -137,7 +137,7 @@ pub struct RoleDecision {
     pub considered: Vec<CandidateConsideration>,
     /// The descriptor id selected, or None if the iteration ended in
     /// `UncoveredRequirements`.
-    pub chosen: Option<String>,
+    pub chosen: Option<SuggestorDescriptorId>,
     /// The role of the chosen descriptor, if any. May or may not appear
     /// in `unmatched_roles_at_start` — the greedy ranker can select a
     /// descriptor whose role was already satisfied if it still covers
@@ -149,7 +149,7 @@ pub struct RoleDecision {
 /// Discriminated so trace consumers can match instead of parsing prose.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CandidateConsideration {
-    pub descriptor_id: String,
+    pub descriptor_id: SuggestorDescriptorId,
     pub disposition: CandidateDisposition,
 }
 
@@ -189,7 +189,7 @@ pub enum RejectionReason {
     NoCoverage,
     /// Outranked by another candidate with better coverage / domain affinity.
     Outranked {
-        chosen_id: String,
+        chosen_id: SuggestorDescriptorId,
         own_coverage: usize,
         own_domain_hits: usize,
     },
@@ -206,17 +206,21 @@ pub enum FormationCompileError {
     },
     #[error("no provider matched backend requirements for suggestor '{suggestor_id}'")]
     MissingProvider {
-        suggestor_id: String,
+        suggestor_id: SuggestorDescriptorId,
         role: SuggestorRole,
     },
     /// A draft passed to [`FormationCompiler::compile_draft_from_catalog`]
     /// referenced a descriptor id that does not exist in the catalog.
     #[error("draft references unknown descriptor '{descriptor_id}'")]
-    DraftDescriptorMissing { descriptor_id: String },
+    DraftDescriptorMissing {
+        descriptor_id: SuggestorDescriptorId,
+    },
     /// A draft passed to [`FormationCompiler::compile_draft_from_catalog`]
     /// referenced the same descriptor id more than once.
     #[error("draft references descriptor '{descriptor_id}' more than once")]
-    DuplicateDraftDescriptor { descriptor_id: String },
+    DuplicateDraftDescriptor {
+        descriptor_id: SuggestorDescriptorId,
+    },
 }
 
 /// Failure outcome from [`FormationCompiler::compile_from_catalog`].
@@ -522,7 +526,7 @@ impl FormationCompiler {
         formation_templates: &FormationCatalog,
         catalog: &DiscoveryCatalog,
         providers: &ProviderDescriptorCatalog,
-        descriptor_ids: &[String],
+        descriptor_ids: &[SuggestorDescriptorId],
     ) -> Result<CompiledFormationPlan, CatalogCompileFailure> {
         let mut decisions: Vec<RoleDecision> = Vec::new();
 
@@ -554,12 +558,14 @@ impl FormationCompiler {
         let mut selected: Vec<&CatalogSuggestorDescriptor> =
             Vec::with_capacity(descriptor_ids.len());
         for id in descriptor_ids {
-            let entry = catalog.get(id).ok_or_else(|| CatalogCompileFailure {
-                error: FormationCompileError::DraftDescriptorMissing {
-                    descriptor_id: id.clone(),
-                },
-                decisions: decisions.clone(),
-            })?;
+            let entry = catalog
+                .get(id.as_str())
+                .ok_or_else(|| CatalogCompileFailure {
+                    error: FormationCompileError::DraftDescriptorMissing {
+                        descriptor_id: id.clone(),
+                    },
+                    decisions: decisions.clone(),
+                })?;
             selected.push(entry);
         }
 
@@ -783,7 +789,7 @@ impl FormationCompiler {
                         // — and broad specialists whose contribution
                         // is irreplaceable — stay available.
                         let mut trial_exclude = excluded.clone();
-                        trial_exclude.push(role.suggestor_id.clone());
+                        trial_exclude.push(role.suggestor_id.to_string());
                         let trial_catalog = filter_out_ids(catalog, &trial_exclude);
                         if self
                             .compile_from_catalog(
@@ -795,7 +801,7 @@ impl FormationCompiler {
                             )
                             .is_ok()
                         {
-                            excluded.push(role.suggestor_id.clone());
+                            excluded.push(role.suggestor_id.to_string());
                         }
                     }
                     let candidate_added_no_exclusions = excluded.len() == excluded_before;
@@ -828,7 +834,7 @@ impl FormationCompiler {
 fn filter_out_ids(source: &DiscoveryCatalog, exclude_ids: &[String]) -> DiscoveryCatalog {
     let mut filtered = DiscoveryCatalog::new();
     for entry in source {
-        if !exclude_ids.iter().any(|id| id == entry.id()) {
+        if !exclude_ids.iter().any(|id| id == entry.id().as_str()) {
             filtered.register(entry.clone());
         }
     }
@@ -866,7 +872,7 @@ fn best_from_catalog<'a>(
     let mut candidate_ids: Vec<String> = Vec::new();
     let mut candidate_refs: Vec<&CatalogSuggestorDescriptor> = Vec::new();
     let mut push = |entry: &'a CatalogSuggestorDescriptor| {
-        if !candidate_ids.iter().any(|id| id == entry.id()) {
+        if !candidate_ids.iter().any(|id| id == entry.id().as_str()) {
             candidate_ids.push(entry.id().to_string());
             candidate_refs.push(entry);
         }
@@ -888,7 +894,7 @@ fn best_from_catalog<'a>(
     for entry in candidate_refs {
         if selected.iter().any(|chosen| chosen.id() == entry.id()) {
             considered.push(CandidateConsideration {
-                descriptor_id: entry.id().to_string(),
+                descriptor_id: entry.id().clone(),
                 disposition: CandidateDisposition::Rejected {
                     reason: RejectionReason::AlreadySelected,
                 },
@@ -899,7 +905,7 @@ fn best_from_catalog<'a>(
             suggestor_coverage(&entry.descriptor, unmatched_roles, unmatched_capabilities);
         if coverage == 0 {
             considered.push(CandidateConsideration {
-                descriptor_id: entry.id().to_string(),
+                descriptor_id: entry.id().clone(),
                 disposition: CandidateDisposition::Rejected {
                     reason: RejectionReason::NoCoverage,
                 },
@@ -908,7 +914,7 @@ fn best_from_catalog<'a>(
         }
         let domain_hits = domain_overlap(&entry.descriptor.domain_tags, domain_tags);
         let advisory_hit =
-            advisory_order.is_some_and(|order| order.iter().any(|id| id == entry.id()));
+            advisory_order.is_some_and(|order| order.iter().any(|id| id == entry.id().as_str()));
         ranked.push((entry, coverage, domain_hits, advisory_hit));
     }
 
@@ -940,7 +946,9 @@ fn best_from_catalog<'a>(
                         .latency_hint
                         .cmp(&left.descriptor.profile.latency_hint)
                 })
-                .then_with(|| advisory_rank(right.id()).cmp(&advisory_rank(left.id())))
+                .then_with(|| {
+                    advisory_rank(right.id().as_str()).cmp(&advisory_rank(left.id().as_str()))
+                })
                 .then_with(|| right.id().cmp(left.id()))
         })
         .map(|(entry, _, _, _)| *entry);
@@ -956,7 +964,8 @@ fn best_from_catalog<'a>(
                 },
             }
         } else {
-            let chosen_id = chosen.map(|c| c.id().to_string()).unwrap_or_default();
+            let chosen_id =
+                chosen.map_or_else(|| SuggestorDescriptorId::new(""), |c| c.id().clone());
             CandidateDisposition::Rejected {
                 reason: RejectionReason::Outranked {
                     chosen_id,
@@ -966,7 +975,7 @@ fn best_from_catalog<'a>(
             }
         };
         considered.push(CandidateConsideration {
-            descriptor_id: entry.id().to_string(),
+            descriptor_id: entry.id().clone(),
             disposition,
         });
     }
@@ -1304,7 +1313,7 @@ mod tests {
         assert_eq!(
             error,
             FormationCompileError::MissingProvider {
-                suggestor_id: "policy-gate".to_string(),
+                suggestor_id: "policy-gate".into(),
                 role: SuggestorRole::Constraint,
             }
         );
@@ -1812,10 +1821,10 @@ mod tests {
         let request = loop_demo_query();
 
         let descriptor_ids = vec![
-            "retrieve-suggestor".to_string(),
-            "does-not-exist".to_string(),
-            "optimize-suggestor".to_string(),
-            "authorize-suggestor".to_string(),
+            "retrieve-suggestor".into(),
+            "does-not-exist".into(),
+            "optimize-suggestor".into(),
+            "authorize-suggestor".into(),
         ];
 
         let failure = FormationCompiler::new()
@@ -1836,10 +1845,10 @@ mod tests {
         let request = loop_demo_query();
 
         let descriptor_ids = vec![
-            "retrieve-suggestor".to_string(),
-            "retrieve-suggestor".to_string(),
-            "optimize-suggestor".to_string(),
-            "authorize-suggestor".to_string(),
+            "retrieve-suggestor".into(),
+            "retrieve-suggestor".into(),
+            "optimize-suggestor".into(),
+            "authorize-suggestor".into(),
         ];
 
         let failure = FormationCompiler::new()
@@ -1863,9 +1872,9 @@ mod tests {
         // Optimization capability. compile_draft_from_catalog must
         // refuse rather than silently swap in a different roster.
         let descriptor_ids = vec![
-            "retrieve-suggestor".to_string(),
-            "score-suggestor".to_string(),
-            "authorize-suggestor".to_string(),
+            "retrieve-suggestor".into(),
+            "score-suggestor".into(),
+            "authorize-suggestor".into(),
         ];
 
         let failure = FormationCompiler::new()
@@ -1924,10 +1933,10 @@ mod tests {
 
         // Force a different valid roster via the draft validator.
         let draft_ids = vec![
-            "retrieve-alt".to_string(),
-            "score-alt".to_string(),
-            "optimize-suggestor".to_string(),
-            "authorize-suggestor".to_string(),
+            "retrieve-alt".into(),
+            "score-alt".into(),
+            "optimize-suggestor".into(),
+            "authorize-suggestor".into(),
         ];
         assert_ne!(
             greedy_ids, draft_ids,

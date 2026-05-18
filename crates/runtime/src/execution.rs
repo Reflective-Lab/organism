@@ -104,8 +104,8 @@ impl ExecutableSuggestorCatalog {
         let missing = plan
             .roster
             .iter()
-            .filter(|member| !self.factories.contains_key(&member.suggestor_id))
-            .map(|member| member.suggestor_id.clone())
+            .filter(|member| !self.factories.contains_key(member.suggestor_id.as_str()))
+            .map(|member| member.suggestor_id.to_string())
             .collect::<Vec<_>>();
 
         if !missing.is_empty() {
@@ -120,11 +120,12 @@ impl ExecutableSuggestorCatalog {
         }
 
         for member in &plan.roster {
-            let factory = self.factories.get(&member.suggestor_id).ok_or_else(|| {
-                FormationInstantiationError::MissingSuggestorFactories {
-                    suggestor_ids: vec![member.suggestor_id.clone()],
-                }
-            })?;
+            let factory = self
+                .factories
+                .get(member.suggestor_id.as_str())
+                .ok_or_else(|| FormationInstantiationError::MissingSuggestorFactories {
+                    suggestor_ids: vec![member.suggestor_id.to_string()],
+                })?;
             formation = formation.agent_boxed(factory());
         }
 

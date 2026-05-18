@@ -305,7 +305,7 @@ mod tests {
             .map(CatalogSuggestorDescriptor::id)
             .collect();
         // "vendor" appears in gleif-lookup's example.
-        assert!(hits.contains(&"gleif-lookup"));
+        assert!(hits.iter().any(|id| id.as_str() == "gleif-lookup"));
     }
 
     #[test]

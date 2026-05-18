@@ -133,7 +133,7 @@ impl CatalogProposerSuggestor {
     #[must_use]
     pub fn with_batch_id(mut self, batch_id: impl Into<String>) -> Self {
         let batch_id = batch_id.into();
-        if !batch_id.trim().is_empty() {
+        if !batch_id.as_str().trim().is_empty() {
             self.batch_source = BatchSource::Explicit(batch_id);
         }
         self
@@ -282,7 +282,7 @@ impl Suggestor for CatalogProposerSuggestor {
         for batch_id in open_batches {
             let encoded_batch = encode_batch_id(&batch_id);
             for (index, candidate) in candidates.iter().enumerate() {
-                let descriptor_ids: Vec<String> = candidate
+                let descriptor_ids: Vec<_> = candidate
                     .roster
                     .iter()
                     .map(|r| r.suggestor_id.clone())

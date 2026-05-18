@@ -31,7 +31,7 @@ mod registry;
 
 pub use descriptor::{
     DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode,
-    SuggestorDescriptor, SuggestorDescriptorCatalog,
+    SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
 };
 pub use discovery::{CatalogSuggestorDescriptor, DiscoveryMetadata, LoopContribution};
 pub use lookup::{CatalogLookup, ChatBackendLookup, KeywordLookup, LookupError, Suggestion};

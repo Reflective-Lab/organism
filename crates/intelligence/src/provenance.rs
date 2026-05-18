@@ -13,7 +13,7 @@
 //! flow. These types serve `organism-intelligence`'s API-call layer
 //! and are intentionally distinct: an `Observation<T>` here wraps a
 //! typed `content: T` (e.g. `SocialProfile`, `WebDocument`,
-//! `PatentResult`) together with billing-relevant metadata that the
+//! `PatentResult`) together with cost and usage metadata that the
 //! kernel does not need to model.
 
 use serde::{Deserialize, Serialize};

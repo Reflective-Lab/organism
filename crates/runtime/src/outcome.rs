@@ -136,7 +136,7 @@ impl FormationOutcomeRecord {
                 .roster
                 .iter()
                 .map(|member| OutcomeRosterMember {
-                    suggestor_id: member.suggestor_id.clone(),
+                    suggestor_id: member.suggestor_id.to_string(),
                     role: member.role,
                     capabilities: member.capabilities.clone(),
                     replay_mode: member.replay_mode,
@@ -147,7 +147,7 @@ impl FormationOutcomeRecord {
                 .provider_assignments
                 .iter()
                 .map(|assignment| OutcomeProviderAssignment {
-                    suggestor_id: assignment.suggestor_id.clone(),
+                    suggestor_id: assignment.suggestor_id.to_string(),
                     role: assignment.role,
                     provider_id: assignment.provider_id.clone(),
                 })
@@ -208,7 +208,7 @@ mod tests {
             template_id: "vendor-selection-decide".to_string(),
             template_kind: FormationKind::Static,
             roster: vec![CompiledSuggestorRole {
-                suggestor_id: "decision-synthesis".to_string(),
+                suggestor_id: "decision-synthesis".into(),
                 role: SuggestorRole::Synthesis,
                 capabilities: vec![SuggestorCapability::LlmReasoning],
                 reads: Vec::new(),
@@ -219,7 +219,7 @@ mod tests {
                 governance_class: GovernanceClass::RegulatedDecision,
             }],
             provider_assignments: vec![RoleProviderAssignment {
-                suggestor_id: "decision-synthesis".to_string(),
+                suggestor_id: "decision-synthesis".into(),
                 role: SuggestorRole::Synthesis,
                 provider_id: "reasoning-llm".to_string(),
                 requirements: converge_provider::BackendRequirements::reasoning_llm(),

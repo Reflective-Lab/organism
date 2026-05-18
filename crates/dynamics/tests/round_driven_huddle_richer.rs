@@ -265,7 +265,7 @@ impl Suggestor for ShortlistNoteEmitter {
             let shortlist = extract_drafts_for_batch(ctx, ContextKey::Proposals, &batch_id);
             let descriptors: Vec<String> = shortlist
                 .first()
-                .map(|d| d.descriptor_ids.clone())
+                .map(|d| d.descriptor_ids.iter().map(ToString::to_string).collect())
                 .unwrap_or_default();
             effect = effect.proposal(TestProvenance.proposed_fact(
                 ContextKey::Hypotheses,

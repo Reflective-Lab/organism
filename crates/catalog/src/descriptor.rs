@@ -4,10 +4,142 @@
 //! formation compiler and any lookup layer reason over. They carry no
 //! factory references and never touch live Suggestor instances.
 
+use std::borrow::Borrow;
+use std::fmt;
+
 use converge_kernel::ContextKey;
 use converge_kernel::formation::ProfileSnapshot;
 use converge_provider::BackendRequirements;
 use serde::{Deserialize, Serialize};
+
+/// Stable, human-readable identifier for a [`SuggestorDescriptor`] in
+/// the Organism catalog (e.g. `"signal-a"`, `"decision-synthesis"`).
+///
+/// This is intentionally **not** `converge_core::SuggestorId` (which
+/// is a `u32` ordering token internal to Converge's engine). Organism
+/// owns the human-readable descriptor name, so we own a typed wrapper
+/// for it. Serializes transparently as the inner string so wire
+/// format is unchanged.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SuggestorDescriptorId(String);
+
+impl SuggestorDescriptorId {
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
+    #[must_use]
+    pub fn starts_with(&self, prefix: &str) -> bool {
+        self.0.starts_with(prefix)
+    }
+
+    #[must_use]
+    pub fn ends_with(&self, suffix: &str) -> bool {
+        self.0.ends_with(suffix)
+    }
+
+    #[must_use]
+    pub fn contains(&self, needle: &str) -> bool {
+        self.0.contains(needle)
+    }
+}
+
+impl fmt::Display for SuggestorDescriptorId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<str> for SuggestorDescriptorId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for SuggestorDescriptorId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Borrow<str> for SuggestorDescriptorId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for SuggestorDescriptorId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for SuggestorDescriptorId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&String> for SuggestorDescriptorId {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+
+impl From<SuggestorDescriptorId> for String {
+    fn from(id: SuggestorDescriptorId) -> Self {
+        id.0
+    }
+}
+
+impl PartialEq<str> for SuggestorDescriptorId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<&str> for SuggestorDescriptorId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_str() == *other
+    }
+}
+
+impl PartialEq<String> for SuggestorDescriptorId {
+    fn eq(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<SuggestorDescriptorId> for str {
+    fn eq(&self, other: &SuggestorDescriptorId) -> bool {
+        self == other.0.as_str()
+    }
+}
+
+impl PartialEq<SuggestorDescriptorId> for &str {
+    fn eq(&self, other: &SuggestorDescriptorId) -> bool {
+        *self == other.0.as_str()
+    }
+}
+
+impl PartialEq<SuggestorDescriptorId> for String {
+    fn eq(&self, other: &SuggestorDescriptorId) -> bool {
+        self == &other.0
+    }
+}
 
 /// Named, versioned data contract carried alongside descriptor inputs and
 /// outputs. Used by the compiler to verify input/output shape compatibility
@@ -49,7 +181,7 @@ pub enum GovernanceClass {
 /// (reads, domain tags, contracts, replay, governance, backend).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuggestorDescriptor {
-    pub id: String,
+    pub id: SuggestorDescriptorId,
     pub profile: ProfileSnapshot,
     pub reads: Vec<ContextKey>,
     pub domain_tags: Vec<String>,
@@ -61,7 +193,7 @@ pub struct SuggestorDescriptor {
 }
 
 impl SuggestorDescriptor {
-    pub fn new(id: impl Into<String>, profile: ProfileSnapshot) -> Self {
+    pub fn new(id: impl Into<SuggestorDescriptorId>, profile: ProfileSnapshot) -> Self {
         Self {
             id: id.into(),
             profile,

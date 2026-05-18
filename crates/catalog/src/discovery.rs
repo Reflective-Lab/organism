@@ -113,7 +113,7 @@ impl CatalogSuggestorDescriptor {
 
     /// Returns the descriptor id (delegated to the inner descriptor).
     #[must_use]
-    pub fn id(&self) -> &str {
+    pub fn id(&self) -> &crate::SuggestorDescriptorId {
         &self.descriptor.id
     }
 }
