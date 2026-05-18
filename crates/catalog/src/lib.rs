@@ -30,8 +30,8 @@ mod lookup;
 mod registry;
 
 pub use descriptor::{
-    DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode,
-    SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
+    DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ProviderId,
+    ReplayMode, SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
 };
 pub use discovery::{CatalogSuggestorDescriptor, DiscoveryMetadata, LoopContribution};
 pub use lookup::{CatalogLookup, ChatBackendLookup, KeywordLookup, LookupError, Suggestion};

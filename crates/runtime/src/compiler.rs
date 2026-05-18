@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 use organism_catalog::{CatalogSuggestorDescriptor, DiscoveryCatalog};
 pub use organism_catalog::{
-    DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ReplayMode,
-    SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
+    DataContract, GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, ProviderId,
+    ReplayMode, SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
 };
 
 /// Stable, human-readable identifier for a formation template (e.g.
@@ -195,7 +195,7 @@ pub struct CompiledSuggestorRole {
 pub struct RoleProviderAssignment {
     pub suggestor_id: SuggestorDescriptorId,
     pub role: SuggestorRole,
-    pub provider_id: String,
+    pub provider_id: ProviderId,
     pub requirements: BackendRequirements,
 }
 

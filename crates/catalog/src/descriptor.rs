@@ -141,6 +141,109 @@ impl PartialEq<SuggestorDescriptorId> for String {
     }
 }
 
+/// Stable, human-readable identifier for a [`ProviderDescriptor`] in
+/// the Organism catalog (e.g. `"reasoning-llm"`, `"cedar-local"`).
+/// Same shape as [`SuggestorDescriptorId`] — wraps `String` with
+/// `#[serde(transparent)]` so wire format stays a bare string while
+/// in-memory code passes a typed handle around.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ProviderId(String);
+
+impl ProviderId {
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl fmt::Display for ProviderId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<str> for ProviderId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Borrow<str> for ProviderId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ProviderId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for ProviderId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for ProviderId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&String> for ProviderId {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+
+impl From<ProviderId> for String {
+    fn from(id: ProviderId) -> Self {
+        id.0
+    }
+}
+
+impl PartialEq<str> for ProviderId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<&str> for ProviderId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_str() == *other
+    }
+}
+
+impl PartialEq<String> for ProviderId {
+    fn eq(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<ProviderId> for &str {
+    fn eq(&self, other: &ProviderId) -> bool {
+        *self == other.0.as_str()
+    }
+}
+
+impl PartialEq<ProviderId> for String {
+    fn eq(&self, other: &ProviderId) -> bool {
+        self == &other.0
+    }
+}
+
 /// Named, versioned data contract carried alongside descriptor inputs and
 /// outputs. Used by the compiler to verify input/output shape compatibility
 /// between adjacent roles.
@@ -282,7 +385,7 @@ impl<'a> IntoIterator for &'a SuggestorDescriptorCatalog {
 /// by the compiler when matching providers to Suggestor roles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderDescriptor {
-    pub id: String,
+    pub id: ProviderId,
     pub label: String,
     pub requirements: BackendRequirements,
     pub role_affinity: Vec<converge_kernel::formation::SuggestorRole>,
@@ -291,7 +394,7 @@ pub struct ProviderDescriptor {
 
 impl ProviderDescriptor {
     pub fn new(
-        id: impl Into<String>,
+        id: impl Into<ProviderId>,
         label: impl Into<String>,
         requirements: BackendRequirements,
     ) -> Self {

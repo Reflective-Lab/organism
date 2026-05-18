@@ -149,7 +149,7 @@ impl FormationOutcomeRecord {
                 .map(|assignment| OutcomeProviderAssignment {
                     suggestor_id: assignment.suggestor_id.to_string(),
                     role: assignment.role,
-                    provider_id: assignment.provider_id.clone(),
+                    provider_id: assignment.provider_id.to_string(),
                 })
                 .collect(),
             status,
@@ -221,7 +221,7 @@ mod tests {
             provider_assignments: vec![RoleProviderAssignment {
                 suggestor_id: "decision-synthesis".into(),
                 role: SuggestorRole::Synthesis,
-                provider_id: "reasoning-llm".to_string(),
+                provider_id: "reasoning-llm".into(),
                 requirements: converge_provider::BackendRequirements::reasoning_llm(),
             }],
             trace: Vec::new(),
