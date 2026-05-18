@@ -130,7 +130,7 @@ impl FormationOutcomeRecord {
     ) -> Self {
         Self {
             scope: FormationRunScope::from_compiled_plan(plan),
-            template_id: plan.template_id.clone(),
+            template_id: plan.template_id.to_string(),
             template_kind: plan.template_kind,
             roster: plan
                 .roster
@@ -205,7 +205,7 @@ mod tests {
             plan_id: id(1),
             correlation_id: id(2),
             tenant_id: Some("tenant-a".to_string()),
-            template_id: "vendor-selection-decide".to_string(),
+            template_id: "vendor-selection-decide".into(),
             template_kind: FormationKind::Static,
             roster: vec![CompiledSuggestorRole {
                 suggestor_id: "decision-synthesis".into(),

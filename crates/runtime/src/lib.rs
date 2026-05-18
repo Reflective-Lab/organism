@@ -612,7 +612,7 @@ mod tests {
             plan_id: id(0xCAFE),
             correlation_id: id(0xBEEF),
             tenant_id: None,
-            template_id: "winner-template".to_string(),
+            template_id: "winner-template".into(),
             template_kind: converge_kernel::formation::FormationKind::Static,
             roster: Vec::new(),
             provider_assignments: Vec::new(),

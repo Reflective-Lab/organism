@@ -17,6 +17,109 @@ pub use organism_catalog::{
     SuggestorDescriptor, SuggestorDescriptorCatalog, SuggestorDescriptorId,
 };
 
+/// Stable, human-readable identifier for a formation template (e.g.
+/// `"work-template"`, `"vendor-selection-decide"`). Wraps the
+/// `FormationTemplateMetadata::id` string from `converge_pack` so
+/// Organism code passes a typed handle around instead of bare strings,
+/// while remaining wire-compatible (serializes as the bare string).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct FormationTemplateId(String);
+
+impl FormationTemplateId {
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
+        Self(id.into())
+    }
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+impl std::fmt::Display for FormationTemplateId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<str> for FormationTemplateId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<str> for FormationTemplateId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for FormationTemplateId {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for FormationTemplateId {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for FormationTemplateId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&String> for FormationTemplateId {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+
+impl From<FormationTemplateId> for String {
+    fn from(id: FormationTemplateId) -> Self {
+        id.0
+    }
+}
+
+impl PartialEq<str> for FormationTemplateId {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<&str> for FormationTemplateId {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_str() == *other
+    }
+}
+
+impl PartialEq<String> for FormationTemplateId {
+    fn eq(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<FormationTemplateId> for &str {
+    fn eq(&self, other: &FormationTemplateId) -> bool {
+        *self == other.0.as_str()
+    }
+}
+
+impl PartialEq<FormationTemplateId> for String {
+    fn eq(&self, other: &FormationTemplateId) -> bool {
+        self == &other.0
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormationCompilerCatalogs {
     pub formation_templates: FormationCatalog,
@@ -101,7 +204,7 @@ pub struct CompiledFormationPlan {
     pub plan_id: Uuid,
     pub correlation_id: Uuid,
     pub tenant_id: Option<String>,
-    pub template_id: String,
+    pub template_id: FormationTemplateId,
     pub template_kind: FormationKind,
     pub roster: Vec<CompiledSuggestorRole>,
     pub provider_assignments: Vec<RoleProviderAssignment>,
@@ -332,7 +435,7 @@ impl FormationCompiler {
             plan_id: request.plan_id,
             correlation_id: request.correlation_id,
             tenant_id: request.tenant_id.clone(),
-            template_id: metadata.id.clone(),
+            template_id: metadata.id.clone().into(),
             template_kind: template.kind(),
             roster,
             provider_assignments,
@@ -489,7 +592,7 @@ impl FormationCompiler {
             plan_id: request.plan_id,
             correlation_id: request.correlation_id,
             tenant_id: request.tenant_id.clone(),
-            template_id: metadata.id.clone(),
+            template_id: metadata.id.clone().into(),
             template_kind: template.kind(),
             roster,
             provider_assignments,
@@ -670,7 +773,7 @@ impl FormationCompiler {
             plan_id: request.plan_id,
             correlation_id: request.correlation_id,
             tenant_id: request.tenant_id.clone(),
-            template_id: metadata.id.clone(),
+            template_id: metadata.id.clone().into(),
             template_kind: template.kind(),
             roster,
             provider_assignments,
