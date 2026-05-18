@@ -477,10 +477,7 @@ fn collect_reasons(
     if let Some(age_days) = age_days {
         let (_, stale_after_days) = freshness_thresholds(note);
         match freshness_status {
-            NoteFreshnessStatus::Current => {
-                reasons.push(format!("freshness anchor is {age_days} days old"));
-            }
-            NoteFreshnessStatus::Aging => {
+            NoteFreshnessStatus::Current | NoteFreshnessStatus::Aging => {
                 reasons.push(format!("freshness anchor is {age_days} days old"));
             }
             NoteFreshnessStatus::Stale => {
@@ -598,60 +595,72 @@ fn write_summary_file(
     relative_path: &std::path::Path,
     report: &NoteValueReport,
 ) -> NoteValueResult<()> {
+    use std::fmt::Write as _;
     let mut body = String::new();
     body.push_str("# Note Value Report\n\n");
-    body.push_str(&format!(
-        "Analyzed {} visible notes into `{}`.\n\n",
+    writeln!(
+        body,
+        "Analyzed {} visible notes into `{}`.\n",
         report.note_count, report.enriched_root
-    ));
+    )
+    .expect("writing to String cannot fail");
     body.push_str("## Freshness\n\n");
-    body.push_str(&format!(
-        "- current: {}\n- aging: {}\n- stale: {}\n- unknown: {}\n\n",
+    writeln!(
+        body,
+        "- current: {}\n- aging: {}\n- stale: {}\n- unknown: {}\n",
         report.current_note_count,
         report.aging_note_count,
         report.stale_note_count,
-        report.unknown_freshness_note_count
-    ));
+        report.unknown_freshness_note_count,
+    )
+    .expect("writing to String cannot fail");
     body.push_str("## Suggested Actions\n\n");
-    body.push_str(&format!(
-        "- promote: {}\n- refresh: {}\n- demote: {}\n\n",
+    writeln!(
+        body,
+        "- promote: {}\n- refresh: {}\n- demote: {}\n",
         report.promote_candidate_count,
         report.refresh_candidate_count,
-        report.demote_candidate_count
-    ));
+        report.demote_candidate_count,
+    )
+    .expect("writing to String cannot fail");
     append_candidate_section(&mut body, "Promote Candidates", &report.promote_candidates);
     append_candidate_section(&mut body, "Refresh Candidates", &report.refresh_candidates);
     append_candidate_section(&mut body, "Demote Candidates", &report.demote_candidates);
     body.push_str("## Artifacts\n\n");
-    body.push_str(&format!(
-        "- report: `{}`\n- details: `{}`\n",
-        report.report_path, report.details_path
-    ));
+    writeln!(
+        body,
+        "- report: `{}`\n- details: `{}`",
+        report.report_path, report.details_path,
+    )
+    .expect("writing to String cannot fail");
     vault.write_text_file(relative_path, &body)?;
     Ok(())
 }
 
 fn append_candidate_section(body: &mut String, heading: &str, candidates: &[NoteValueCandidate]) {
-    body.push_str(&format!("## {heading}\n\n"));
+    use std::fmt::Write as _;
+    writeln!(body, "## {heading}\n").expect("writing to String cannot fail");
     if candidates.is_empty() {
         body.push_str("No candidates in this batch.\n\n");
         return;
     }
     for candidate in candidates.iter().take(10) {
-        body.push_str(&format!(
-            "- `{}` — {}%, {:?}, {} inbound refs, {} outbound refs{}\n",
+        let age_suffix = candidate
+            .age_days
+            .map(|age_days| format!(", {age_days} days old"))
+            .unwrap_or_default();
+        writeln!(
+            body,
+            "- `{}` — {}%, {:?}, {} inbound refs, {} outbound refs{age_suffix}",
             candidate.path,
             candidate.overall_score_bps / 100,
             candidate.freshness_status,
             candidate.inbound_reference_count,
             candidate.outgoing_reference_count,
-            candidate
-                .age_days
-                .map(|age_days| format!(", {age_days} days old"))
-                .unwrap_or_default(),
-        ));
+        )
+        .expect("writing to String cannot fail");
         for reason in &candidate.reasons {
-            body.push_str(&format!("  - {reason}\n"));
+            writeln!(body, "  - {reason}").expect("writing to String cannot fail");
         }
     }
     body.push('\n');
@@ -678,10 +687,10 @@ fn select_freshness_anchor(
     };
 
     for key in preferred_fields {
-        if let Some(value) = extract_frontmatter_value(body, key) {
-            if let Some(parsed) = parse_note_datetime(&value) {
-                return Some(parsed);
-            }
+        if let Some(value) = extract_frontmatter_value(body, key)
+            && let Some(parsed) = parse_note_datetime(&value)
+        {
+            return Some(parsed);
         }
     }
 
@@ -770,7 +779,11 @@ fn might_be_note_link(target: &str) -> bool {
 fn resolve_reference_target(target: &str, aliases: &AliasIndex) -> Option<String> {
     let cleaned = clean_reference_target(target)?;
 
-    if cleaned.contains('/') || cleaned.ends_with(".md") {
+    if cleaned.contains('/')
+        || std::path::Path::new(&cleaned)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+    {
         let path_key = normalize_path_key(&cleaned);
         if let Some(path) = resolve_unique_alias(&aliases.path_aliases, &path_key) {
             return Some(path);
@@ -898,8 +911,7 @@ mod tests {
             .write_text_file(
                 PathBuf::from("Imported/Apple Notes/iCloud/Source Fresh.md").as_path(),
                 &format!(
-                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{}\"\n---\n\nFresh imported source.\n",
-                    fresh_source_updated
+                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{fresh_source_updated}\"\n---\n\nFresh imported source.\n"
                 ),
             )
             .expect("fresh source note");
@@ -907,8 +919,7 @@ mod tests {
             .write_text_file(
                 PathBuf::from("Imported/Apple Notes/iCloud/Source Stale.md").as_path(),
                 &format!(
-                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{}\"\n---\n\nStale imported source.\n",
-                    stale_source_updated
+                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{stale_source_updated}\"\n---\n\nStale imported source.\n"
                 ),
             )
             .expect("stale source note");
@@ -916,8 +927,7 @@ mod tests {
             .write_text_file(
                 PathBuf::from("Imported/Apple Notes/iCloud/Source Dormant.md").as_path(),
                 &format!(
-                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{}\"\n---\n\nDormant imported source.\n",
-                    stale_source_updated
+                    "---\nkind: \"source_capture\"\nprovenance: \"imported_source\"\nreview_state: \"unreviewed\"\nsource_updated_at: \"{stale_source_updated}\"\n---\n\nDormant imported source.\n"
                 ),
             )
             .expect("dormant source note");

@@ -19,6 +19,11 @@
 //!
 //! LinkedIn has moved to [`embassy-linkedin`](https://github.com/Reflective-Lab/embassy)
 //! — see `~/dev/reflective-stack/mosaic-extensions/embassy/crates/linkedin/`.
+//!
+//! Each provider module sits behind a cargo feature that gates an
+//! **optional heavy dep** (HTTP/TLS, PDF parsing) — see this crate's
+//! `Cargo.toml` for the carve-out rationale. The features fork no code
+//! within a single configuration; they only widen/narrow the dep set.
 
 pub mod provenance;
 pub mod secret;

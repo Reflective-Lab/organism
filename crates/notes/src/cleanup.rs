@@ -353,10 +353,7 @@ fn jaccard_similarity(left: &HashSet<String>, right: &HashSet<String>) -> f32 {
 }
 
 fn shared_token_list(left: &HashSet<String>, right: &HashSet<String>) -> Vec<String> {
-    let mut tokens = left
-        .intersection(right)
-        .map(|token| token.to_string())
-        .collect::<Vec<_>>();
+    let mut tokens = left.intersection(right).cloned().collect::<Vec<_>>();
     tokens.sort();
     tokens.truncate(8);
     tokens
@@ -396,7 +393,7 @@ fn compare_note_priority(left: &str, right: &str) -> std::cmp::Ordering {
 }
 
 fn inbox_bias(path: &str) -> usize {
-    if path.starts_with("Inbox/") { 1 } else { 0 }
+    usize::from(path.starts_with("Inbox/"))
 }
 
 fn file_stem(path: &str) -> &str {

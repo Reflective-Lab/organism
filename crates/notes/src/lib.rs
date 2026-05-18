@@ -11,12 +11,7 @@
 //! - [`enrichment`] — Freshness and value analysis, with room for richer derived passes
 //! - `indexing` — Backlinks, chunks, embeddings, provenance (future)
 
-pub mod vault;
-
-pub mod sources;
-
-#[cfg(feature = "cleanup")]
 pub mod cleanup;
-
-#[cfg(feature = "enrichment")]
 pub mod enrichment;
+pub mod sources;
+pub mod vault;

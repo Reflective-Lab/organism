@@ -17,6 +17,23 @@ sha2 = { version = "0.11", optional = true }
 url = { version = "2", optional = true }
 pdf-extract = { version = "0.10", optional = true }
 
+# ---------------------------------------------------------------------------
+# Carve-out from the "no feature flags / no conditional compiles" rule.
+#
+# Each feature below gates an **optional heavy dep**:
+#   * ocr/vision/patent/billing/web → reqwest (HTTP client + TLS), base64, sha2, url
+#   * pdf                            → pdf-extract (PDF parsing, large native code)
+# `organism-intelligence` ships a menu of business-intelligence providers
+# and few consumers want all of them. Folding these deps into every
+# downstream build (TLS, PDF parsing, ~MB of compiled native code) would
+# be a strictly worse outcome than gating them, so the flags remain
+# deliberately in the form of optional-dep aliases only — they do not
+# fork any code path within a single configuration.
+#
+# When organism-intelligence is split into per-provider crates (the
+# longer-term direction), these gates can disappear with no consumer
+# change.
+# ---------------------------------------------------------------------------
 [features]
 default = []
 ocr = ["dep:sha2", "dep:base64", "dep:reqwest"]

@@ -13,17 +13,31 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
-# Apple Notes source adapter
+# Apple Notes source adapter — optional HTML/binary handling.
 base64 = { version = "0.22", optional = true }
 html2md = { version = "0.2", optional = true }
 
-# Web capture source adapter
+# Web capture source adapter — pulls in HTTP/TLS via organism-intelligence.
 organism-intelligence = { workspace = true, features = ["web"], optional = true }
 
+# ---------------------------------------------------------------------------
+# Carve-out from the "no feature flags / no conditional compiles" rule.
+#
+# The two source adapters below gate **real, heavy optional deps**:
+#   * sources-apple-notes → base64 + html2md (HTML→Markdown conversion)
+#   * sources-web         → organism-intelligence + reqwest/url through it
+# Forcing every consumer of `organism-notes` to pull HTML parsing and a TLS
+# HTTP client would be a worse outcome than the feature gate. These flags
+# remain deliberately, in the form of optional-dep aliases only.
+#
+# The previous `cleanup` and `enrichment` flags gated **no deps** — they
+# were pure conditional-compile gates on local modules and have been
+# removed; those modules are now always compiled. Consumers that still
+# list `features = ["cleanup", "enrichment"]` should drop those entries
+# when they upgrade to this version.
+# ---------------------------------------------------------------------------
 [features]
 default = []
-cleanup = []
-enrichment = []
 sources-apple-notes = ["dep:base64", "dep:html2md"]
 sources-web = ["dep:organism-intelligence"]
 
