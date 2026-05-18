@@ -4,7 +4,10 @@ use converge_kernel::formation::{FormationKind, SuggestorCapability, SuggestorRo
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::compiler::{CompiledFormationPlan, GovernanceClass, ReplayMode};
+use crate::compiler::{
+    CompiledFormationPlan, FormationTemplateId, GovernanceClass, ProviderId, ReplayMode,
+    SuggestorDescriptorId,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FormationRunScope {
@@ -95,7 +98,7 @@ impl BusinessQualitySignal {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OutcomeRosterMember {
-    pub suggestor_id: String,
+    pub suggestor_id: SuggestorDescriptorId,
     pub role: SuggestorRole,
     pub capabilities: Vec<SuggestorCapability>,
     pub replay_mode: ReplayMode,
@@ -104,15 +107,15 @@ pub struct OutcomeRosterMember {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OutcomeProviderAssignment {
-    pub suggestor_id: String,
+    pub suggestor_id: SuggestorDescriptorId,
     pub role: SuggestorRole,
-    pub provider_id: String,
+    pub provider_id: ProviderId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FormationOutcomeRecord {
     pub scope: FormationRunScope,
-    pub template_id: String,
+    pub template_id: FormationTemplateId,
     pub template_kind: FormationKind,
     pub roster: Vec<OutcomeRosterMember>,
     pub provider_assignments: Vec<OutcomeProviderAssignment>,
@@ -130,13 +133,13 @@ impl FormationOutcomeRecord {
     ) -> Self {
         Self {
             scope: FormationRunScope::from_compiled_plan(plan),
-            template_id: plan.template_id.to_string(),
+            template_id: plan.template_id.clone(),
             template_kind: plan.template_kind,
             roster: plan
                 .roster
                 .iter()
                 .map(|member| OutcomeRosterMember {
-                    suggestor_id: member.suggestor_id.to_string(),
+                    suggestor_id: member.suggestor_id.clone(),
                     role: member.role,
                     capabilities: member.capabilities.clone(),
                     replay_mode: member.replay_mode,
@@ -147,9 +150,9 @@ impl FormationOutcomeRecord {
                 .provider_assignments
                 .iter()
                 .map(|assignment| OutcomeProviderAssignment {
-                    suggestor_id: assignment.suggestor_id.to_string(),
+                    suggestor_id: assignment.suggestor_id.clone(),
                     role: assignment.role,
-                    provider_id: assignment.provider_id.to_string(),
+                    provider_id: assignment.provider_id.clone(),
                 })
                 .collect(),
             status,

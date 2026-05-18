@@ -4,6 +4,8 @@
 //! risks) and producing probabilistic outcome estimates via Monte Carlo
 //! sampling.
 
+use std::num::NonZeroU32;
+
 use crate::types::RiskLikelihood;
 use crate::{DimensionResult, Sample, SimulationDimension};
 use converge_pack::UnitInterval;
@@ -11,20 +13,22 @@ use converge_pack::UnitInterval;
 /// Configuration for the outcome simulator.
 #[derive(Debug, Clone)]
 pub struct OutcomeSimulatorConfig {
-    /// Number of Monte Carlo samples to draw.
-    pub samples: u32,
-    /// Minimum confidence threshold to pass.
-    pub confidence_threshold: f64,
-    /// Risk penalty weight (higher = more conservative).
-    pub risk_weight: f64,
+    /// Number of Monte Carlo samples to draw. Typed `NonZeroU32`
+    /// because zero samples would skip sampling entirely and is never
+    /// the right configuration.
+    pub samples: NonZeroU32,
+    /// Minimum confidence in `[0.0, 1.0]` a plan must reach to pass.
+    pub confidence_threshold: UnitInterval,
+    /// Risk penalty weight in `[0.0, 1.0]` (higher = more conservative).
+    pub risk_weight: UnitInterval,
 }
 
 impl Default for OutcomeSimulatorConfig {
     fn default() -> Self {
         Self {
-            samples: 1000,
-            confidence_threshold: 0.6,
-            risk_weight: 0.3,
+            samples: NonZeroU32::new(1000).expect("1000 is non-zero"),
+            confidence_threshold: UnitInterval::clamped(0.6),
+            risk_weight: UnitInterval::clamped(0.3),
         }
     }
 }
@@ -105,8 +109,9 @@ impl OutcomeSimulator {
         }
 
         // Scale sample counts for reporting
+        let n_f = f64::from(n.get());
         for s in &mut samples {
-            s.probability = (s.probability * f64::from(n)).round() / f64::from(n);
+            s.probability = (s.probability * n_f).round() / n_f;
         }
 
         samples
@@ -134,12 +139,12 @@ impl OutcomeSimulator {
         } else {
             let avg_risk =
                 risks.iter().sum::<f64>() / f64::from(u32::try_from(risk_count).unwrap_or(1));
-            avg_risk * self.config.risk_weight
+            avg_risk * self.config.risk_weight.as_f64()
         };
 
         let effective_confidence = (base_confidence - risk_penalty).clamp(0.0, 1.0);
         let samples = self.sample(base_confidence, risk_penalty);
-        let passed = effective_confidence >= self.config.confidence_threshold;
+        let passed = effective_confidence >= self.config.confidence_threshold.as_f64();
 
         let mut findings = Vec::new();
         if impacts.is_empty() {
@@ -161,7 +166,8 @@ impl OutcomeSimulator {
         if !passed {
             findings.push(format!(
                 "below threshold: {:.2} < {:.2}",
-                effective_confidence, self.config.confidence_threshold,
+                effective_confidence,
+                self.config.confidence_threshold.as_f64(),
             ));
         }
 
@@ -385,9 +391,9 @@ mod tests {
     #[test]
     fn custom_config() {
         let sim = OutcomeSimulator::new(OutcomeSimulatorConfig {
-            samples: 100,
-            confidence_threshold: 0.9,
-            risk_weight: 0.5,
+            samples: NonZeroU32::new(100).unwrap(),
+            confidence_threshold: UnitInterval::clamped(0.9),
+            risk_weight: UnitInterval::clamped(0.5),
         });
         let plan = json!({
             "annotation": {

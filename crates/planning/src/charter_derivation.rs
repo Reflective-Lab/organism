@@ -8,6 +8,7 @@
 //! derivation toward shapes that have worked for similar problem classes.
 
 use chrono::{DateTime, Utc};
+use converge_pack::UnitInterval;
 use organism_intent::{ExpiryAction, IntentPacket, Reversibility};
 use serde::{Deserialize, Serialize};
 
@@ -17,14 +18,17 @@ use crate::collaboration::{
 };
 use crate::shape_hypothesis::ShapeCalibration;
 
-/// Quantified complexity signals extracted from the intent.
+/// Quantified complexity signals extracted from the intent. Every
+/// signal is a 0..=1 normalized score; `UnitInterval` enforces the
+/// invariant at the type level instead of relying on downstream
+/// clamps.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntentComplexity {
-    pub constraint_pressure: f64,
-    pub authority_breadth: f64,
-    pub forbidden_density: f64,
-    pub time_pressure: f64,
-    pub reversibility_weight: f64,
+    pub constraint_pressure: UnitInterval,
+    pub authority_breadth: UnitInterval,
+    pub forbidden_density: UnitInterval,
+    pub time_pressure: UnitInterval,
+    pub reversibility_weight: UnitInterval,
     pub escalation_required: bool,
 }
 
@@ -45,7 +49,7 @@ pub struct DerivationRationale {
 pub struct DerivedCharter {
     pub charter: CollaborationCharter,
     pub rationale: DerivationRationale,
-    pub confidence: f64,
+    pub confidence: UnitInterval,
     pub intent_complexity: IntentComplexity,
 }
 
@@ -68,11 +72,11 @@ fn compute_complexity(intent: &IntentPacket, now: DateTime<Utc>) -> IntentComple
     let escalation_required = matches!(intent.expiry_action, ExpiryAction::Escalate);
 
     IntentComplexity {
-        constraint_pressure,
-        authority_breadth,
-        forbidden_density,
-        time_pressure,
-        reversibility_weight,
+        constraint_pressure: UnitInterval::clamped(constraint_pressure),
+        authority_breadth: UnitInterval::clamped(authority_breadth),
+        forbidden_density: UnitInterval::clamped(forbidden_density),
+        time_pressure: UnitInterval::clamped(time_pressure),
+        reversibility_weight: UnitInterval::clamped(reversibility_weight),
         escalation_required,
     }
 }
@@ -121,16 +125,22 @@ pub fn derive_charter_with_priors(
     });
 
     if let Some(best) = best
-        && best.posterior_score > derived.confidence
+        && best.posterior_score.as_f64() > derived.confidence.as_f64()
         && best.observation_count >= 3
     {
         let preset = topology_preset(best.topology);
         derived.rationale.topology_reason = format!(
             "Prior calibration favors {:?} for problem class '{}' (score {:.2}, {} observations)",
-            best.topology, problem_class, best.posterior_score, best.observation_count
+            best.topology,
+            problem_class,
+            best.posterior_score.as_f64(),
+            best.observation_count
         );
         derived.charter = preset;
-        derived.confidence = f64::midpoint(derived.confidence, best.posterior_score);
+        derived.confidence = UnitInterval::clamped(f64::midpoint(
+            derived.confidence.as_f64(),
+            best.posterior_score.as_f64(),
+        ));
     }
 
     derived
@@ -146,10 +156,10 @@ fn topology_preset(topology: CollaborationTopology) -> CollaborationCharter {
 }
 
 fn derive_from_complexity(c: &IntentComplexity) -> DerivedCharter {
-    let stakes = c.reversibility_weight * 0.4
-        + c.constraint_pressure * 0.2
-        + c.forbidden_density * 0.2
-        + c.authority_breadth * 0.2;
+    let stakes = c.reversibility_weight.as_f64() * 0.4
+        + c.constraint_pressure.as_f64() * 0.2
+        + c.forbidden_density.as_f64() * 0.2
+        + c.authority_breadth.as_f64() * 0.2;
 
     let (topology, topology_reason) = derive_topology(c, stakes);
     let (discipline, discipline_reason) = derive_discipline(c, stakes);
@@ -197,26 +207,26 @@ fn derive_from_complexity(c: &IntentComplexity) -> DerivedCharter {
     DerivedCharter {
         charter,
         rationale,
-        confidence,
+        confidence: UnitInterval::clamped(confidence),
         intent_complexity: c.clone(),
     }
 }
 
 fn derive_topology(c: &IntentComplexity, stakes: f64) -> (CollaborationTopology, String) {
-    if c.time_pressure >= 0.8 {
+    if c.time_pressure.as_f64() >= 0.8 {
         (
             CollaborationTopology::Huddle,
             format!(
                 "Tight deadline (time_pressure={:.2}) demands fast, structured collaboration",
-                c.time_pressure
+                c.time_pressure.as_f64()
             ),
         )
-    } else if c.authority_breadth >= 0.5 || stakes >= 0.7 {
+    } else if c.authority_breadth.as_f64() >= 0.5 || stakes >= 0.7 {
         (
             CollaborationTopology::Panel,
             format!(
                 "High stakes ({stakes:.2}) or multi-authority (breadth={:.2}) requires formal review with judges",
-                c.authority_breadth
+                c.authority_breadth.as_f64()
             ),
         )
     } else if stakes >= 0.4 {
@@ -231,19 +241,19 @@ fn derive_topology(c: &IntentComplexity, stakes: f64) -> (CollaborationTopology,
             CollaborationTopology::SelfOrganizing,
             format!(
                 "Low stakes ({stakes:.2}) and relaxed timeline (time_pressure={:.2}) — team can self-organize",
-                c.time_pressure
+                c.time_pressure.as_f64()
             ),
         )
     }
 }
 
 fn derive_discipline(c: &IntentComplexity, stakes: f64) -> (CollaborationDiscipline, String) {
-    if c.reversibility_weight >= 0.8 || stakes >= 0.7 {
+    if c.reversibility_weight.as_f64() >= 0.8 || stakes >= 0.7 {
         (
             CollaborationDiscipline::Enforced,
             format!(
                 "Irreversible action (rev={:.1}) or high stakes ({stakes:.2}) requires enforced discipline",
-                c.reversibility_weight
+                c.reversibility_weight.as_f64()
             ),
         )
     } else if stakes >= 0.3 {
@@ -262,25 +272,25 @@ fn derive_discipline(c: &IntentComplexity, stakes: f64) -> (CollaborationDiscipl
 }
 
 fn derive_consensus(c: &IntentComplexity, stakes: f64) -> (ConsensusRule, String) {
-    if c.reversibility_weight >= 1.0 && stakes >= 0.8 {
+    if c.reversibility_weight.as_f64() >= 1.0 && stakes >= 0.8 {
         (
             ConsensusRule::Unanimous,
             "Fully irreversible + highest stakes — all voters must agree".into(),
         )
-    } else if c.reversibility_weight >= 0.8 || stakes >= 0.7 {
+    } else if c.reversibility_weight.as_f64() >= 0.8 || stakes >= 0.7 {
         (
             ConsensusRule::Supermajority,
             format!(
                 "High reversibility weight ({:.1}) or stakes ({stakes:.2}) — supermajority required",
-                c.reversibility_weight
+                c.reversibility_weight.as_f64()
             ),
         )
-    } else if c.time_pressure >= 0.8 {
+    } else if c.time_pressure.as_f64() >= 0.8 {
         (
             ConsensusRule::LeadDecides,
             format!(
                 "Tight deadline (time_pressure={:.2}) — lead decides to avoid delay",
-                c.time_pressure
+                c.time_pressure.as_f64()
             ),
         )
     } else if stakes >= 0.3 {
@@ -297,17 +307,17 @@ fn derive_consensus(c: &IntentComplexity, stakes: f64) -> (ConsensusRule, String
 }
 
 fn derive_cadence(c: &IntentComplexity, stakes: f64) -> (TurnCadence, String) {
-    if c.time_pressure >= 0.8 {
+    if c.time_pressure.as_f64() >= 0.8 {
         (
             TurnCadence::RoundRobin,
             "Tight deadline — strict rotation for maximum throughput".into(),
         )
-    } else if c.authority_breadth >= 0.5 || stakes >= 0.7 {
+    } else if c.authority_breadth.as_f64() >= 0.5 || stakes >= 0.7 {
         (
             TurnCadence::LeadThenRoundRobin,
             format!(
                 "Formal setting (authority={:.2}, stakes={stakes:.2}) — lead frames, then rotation",
-                c.authority_breadth
+                c.authority_breadth.as_f64()
             ),
         )
     } else if stakes >= 0.3 {
@@ -324,17 +334,17 @@ fn derive_cadence(c: &IntentComplexity, stakes: f64) -> (TurnCadence, String) {
 }
 
 fn derive_formation(c: &IntentComplexity) -> (TeamFormationMode, String) {
-    if c.authority_breadth >= 0.5 || c.reversibility_weight >= 0.8 {
+    if c.authority_breadth.as_f64() >= 0.5 || c.reversibility_weight.as_f64() >= 0.8 {
         (
             TeamFormationMode::Curated,
             "High authority breadth or irreversibility — team must be hand-picked".into(),
         )
-    } else if c.constraint_pressure >= 0.5 {
+    } else if c.constraint_pressure.as_f64() >= 0.5 {
         (
             TeamFormationMode::CapabilityMatched,
             format!(
                 "Moderate constraints (pressure={:.2}) — match capabilities to requirements",
-                c.constraint_pressure
+                c.constraint_pressure.as_f64()
             ),
         )
     } else {
@@ -364,12 +374,12 @@ fn derive_roles(c: &IntentComplexity, topology: CollaborationTopology) -> (RoleL
                 CollaborationRole::Critic,
                 "Adversarial critic required for high-stakes decisions".into(),
             ));
-            if c.authority_breadth >= 0.5 {
+            if c.authority_breadth.as_f64() >= 0.5 {
                 roles.push((
                     CollaborationRole::Judge,
                     format!(
                         "Multi-authority (breadth={:.2}) needs independent judges",
-                        c.authority_breadth
+                        c.authority_breadth.as_f64()
                     ),
                 ));
             }
@@ -423,7 +433,7 @@ type FlagEntry = (String, bool, String);
 fn derive_flags(c: &IntentComplexity, stakes: f64) -> (Vec<FlagEntry>, Vec<FlagEntry>) {
     let explicit_turns = stakes >= 0.3 || c.escalation_required;
     let round_synthesis = true; // always required
-    let dissent_map = stakes >= 0.6 || c.reversibility_weight >= 0.8;
+    let dissent_map = stakes >= 0.6 || c.reversibility_weight.as_f64() >= 0.8;
     let done_gate = stakes >= 0.3 || c.escalation_required;
     let report_owner = stakes >= 0.2;
 
@@ -450,7 +460,7 @@ fn derive_flags(c: &IntentComplexity, stakes: f64) -> (Vec<FlagEntry>, Vec<FlagE
             if dissent_map {
                 format!(
                     "High stakes ({stakes:.2}) or irreversibility ({:.1}) — dissent must be visible",
-                    c.reversibility_weight
+                    c.reversibility_weight.as_f64()
                 )
             } else {
                 format!("Moderate stakes ({stakes:.2}) — dissent map optional")
@@ -486,13 +496,13 @@ fn compute_confidence(c: &IntentComplexity, stakes: f64) -> f64 {
     // High confidence when signals point strongly in one direction.
     // Low confidence when signals conflict (e.g. high stakes but tight deadline).
     let stake_clarity = (stakes - 0.5).abs() * 2.0; // 0=ambiguous, 1=clear
-    let time_clarity = (c.time_pressure - 0.5).abs() * 2.0;
-    let rev_clarity = c.reversibility_weight.abs(); // 0=reversible (clear), 1=irreversible (clear)
+    let time_clarity = (c.time_pressure.as_f64() - 0.5).abs() * 2.0;
+    let rev_clarity = c.reversibility_weight.as_f64().abs(); // 0=reversible (clear), 1=irreversible (clear)
 
     let base = (stake_clarity + time_clarity + rev_clarity) / 3.0;
 
     // Conflicting signals reduce confidence.
-    let conflict_penalty = if c.time_pressure >= 0.7 && stakes >= 0.7 {
+    let conflict_penalty = if c.time_pressure.as_f64() >= 0.7 && stakes >= 0.7 {
         0.15 // tight deadline AND high stakes = conflicting pressure
     } else {
         0.0
@@ -656,9 +666,9 @@ mod tests {
         complex.authority = vec!["board".into(), "legal".into(), "cfo".into()];
         let complex_derived = derive_charter(&complex, now);
 
-        assert!(simple_derived.confidence > 0.0);
-        assert!(complex_derived.confidence > 0.0);
-        assert!(complex_derived.confidence <= 0.95);
+        assert!(simple_derived.confidence.as_f64() > 0.0);
+        assert!(complex_derived.confidence.as_f64() > 0.0);
+        assert!(complex_derived.confidence.as_f64() <= 0.95);
     }
 
     #[test]
@@ -718,8 +728,8 @@ mod tests {
         let priors = vec![ShapeCalibration {
             problem_class: crate::shape_hypothesis::classify_problem(&intent),
             topology: CollaborationTopology::Huddle,
-            prior_score: 0.5,
-            posterior_score: 0.9,
+            prior_score: UnitInterval::clamped(0.5),
+            posterior_score: UnitInterval::clamped(0.9),
             observation_count: 5,
         }];
 
@@ -738,7 +748,7 @@ mod tests {
         let derived = derive_charter(&intent, now);
 
         // time_pressure should be 1.0 (maximally urgent)
-        assert!((derived.intent_complexity.time_pressure - 1.0).abs() < f64::EPSILON);
+        assert!((derived.intent_complexity.time_pressure.as_f64() - 1.0).abs() < f64::EPSILON);
         assert_eq!(derived.charter.topology, CollaborationTopology::Huddle);
     }
 
@@ -748,7 +758,7 @@ mod tests {
         let intent = IntentPacket::new("Immediate", now);
 
         let derived = derive_charter(&intent, now);
-        assert!(derived.intent_complexity.time_pressure >= 0.99);
+        assert!(derived.intent_complexity.time_pressure.as_f64() >= 0.99);
     }
 
     // ── Proptests ─────────────────────────────────────────────────
@@ -791,8 +801,10 @@ mod tests {
 
                 let derived = derive_charter(&intent, now);
 
-                prop_assert!(derived.confidence > 0.0);
-                prop_assert!(derived.confidence <= 1.0);
+                prop_assert!(derived.confidence.as_f64() > 0.0);
+                // UnitInterval guarantees <= 1.0 at the type level —
+                // assertion kept for readability.
+                prop_assert!(derived.confidence.as_f64() <= 1.0);
                 prop_assert!(!derived.rationale.topology_reason.is_empty());
                 prop_assert!(!derived.charter.expected_roles.is_empty());
                 prop_assert!(derived.charter.minimum_members >= 1);
@@ -816,11 +828,11 @@ mod tests {
 
                 let c = compute_complexity(&intent, now);
 
-                prop_assert!(c.constraint_pressure >= 0.0 && c.constraint_pressure <= 1.0);
-                prop_assert!(c.authority_breadth >= 0.0 && c.authority_breadth <= 1.0);
-                prop_assert!(c.forbidden_density >= 0.0 && c.forbidden_density <= 1.0);
-                prop_assert!(c.time_pressure >= 0.0 && c.time_pressure <= 1.0);
-                prop_assert!(c.reversibility_weight >= 0.0 && c.reversibility_weight <= 1.0);
+                prop_assert!(c.constraint_pressure.as_f64() >= 0.0 && c.constraint_pressure.as_f64() <= 1.0);
+                prop_assert!(c.authority_breadth.as_f64() >= 0.0 && c.authority_breadth.as_f64() <= 1.0);
+                prop_assert!(c.forbidden_density.as_f64() >= 0.0 && c.forbidden_density.as_f64() <= 1.0);
+                prop_assert!(c.time_pressure.as_f64() >= 0.0 && c.time_pressure.as_f64() <= 1.0);
+                prop_assert!(c.reversibility_weight.as_f64() >= 0.0 && c.reversibility_weight.as_f64() <= 1.0);
             }
         }
     }

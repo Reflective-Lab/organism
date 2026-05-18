@@ -5,22 +5,33 @@
 //! correlation with causation? Checks for confounders, missing links, and
 //! circular reasoning.
 
+use std::num::NonZeroU32;
+
 use crate::{DimensionResult, Sample, SimulationDimension};
 use converge_pack::UnitInterval;
 
 #[derive(Debug, Clone)]
 pub struct CausalSimulatorConfig {
-    pub min_evidence_links: u32,
-    pub confounder_penalty: f64,
-    pub confidence_threshold: f64,
+    /// Lower bound on supporting evidence links a causal claim must
+    /// declare. Typed as `NonZeroU32` because zero would defeat the
+    /// check — every claim needs at least one evidence link to merit
+    /// any consideration.
+    pub min_evidence_links: NonZeroU32,
+    /// Confidence penalty applied per detected confounder, in
+    /// `[0.0, 1.0]`. Typed so the bound is statically enforced
+    /// instead of relying on a downstream clamp.
+    pub confounder_penalty: UnitInterval,
+    /// Minimum confidence in `[0.0, 1.0]` a plan must reach to pass
+    /// this dimension. Typed for the same reason.
+    pub confidence_threshold: UnitInterval,
 }
 
 impl Default for CausalSimulatorConfig {
     fn default() -> Self {
         Self {
-            min_evidence_links: 1,
-            confounder_penalty: 0.2,
-            confidence_threshold: 0.5,
+            min_evidence_links: NonZeroU32::new(1).expect("1 is non-zero"),
+            confounder_penalty: UnitInterval::clamped(0.2),
+            confidence_threshold: UnitInterval::clamped(0.5),
         }
     }
 }
@@ -123,10 +134,13 @@ impl CausalSimulator {
         }
 
         for claim in &claims {
-            if claim.evidence_count < self.config.min_evidence_links {
+            if claim.evidence_count < self.config.min_evidence_links.get() {
                 findings.push(format!(
                     "weak: '{}' → '{}' has {} evidence link(s), need {}",
-                    claim.cause, claim.effect, claim.evidence_count, self.config.min_evidence_links,
+                    claim.cause,
+                    claim.effect,
+                    claim.evidence_count,
+                    self.config.min_evidence_links.get(),
                 ));
                 weak_claims += 1;
             }
@@ -164,16 +178,17 @@ impl CausalSimulator {
         } else {
             f64::from(weak_claims) / f64::from(total_claims)
         };
-        let confounder_penalty = f64::from(confounded_claims) * self.config.confounder_penalty;
+        let confounder_penalty =
+            f64::from(confounded_claims) * self.config.confounder_penalty.as_f64();
 
         let confidence = (1.0 - weakness_ratio - confounder_penalty).clamp(0.0, 1.0);
-        let passed = confidence >= self.config.confidence_threshold;
+        let passed = confidence >= self.config.confidence_threshold.as_f64();
         let samples = Self::sample(confidence);
 
         if !passed {
             findings.push(format!(
                 "below threshold: {confidence:.2} < {:.2}",
-                self.config.confidence_threshold,
+                self.config.confidence_threshold.as_f64(),
             ));
         }
 
@@ -326,7 +341,7 @@ mod tests {
     #[test]
     fn weak_evidence_penalized() {
         let sim = CausalSimulator::new(CausalSimulatorConfig {
-            min_evidence_links: 3,
+            min_evidence_links: NonZeroU32::new(3).unwrap(),
             ..CausalSimulatorConfig::default()
         });
         let plan = json!({

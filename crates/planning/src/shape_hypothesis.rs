@@ -9,20 +9,23 @@
 //! would design. Because learning feeds into planning priors (never
 //! authority), the governance layer catches anything that shouldn't land.
 
+use converge_pack::UnitInterval;
 use organism_intent::{IntentPacket, Reversibility};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::collaboration::{CollaborationCharter, CollaborationTopology};
 
-/// A candidate collaboration shape being tested.
+/// A candidate collaboration shape being tested. Scores are 0..=1
+/// normalized; `UnitInterval` enforces the invariant at the type
+/// level so consumers don't have to defensively clamp.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeCandidate {
     pub id: Uuid,
     pub charter: CollaborationCharter,
     pub rationale: String,
-    pub prior_score: f64,
-    pub evidence_quality: Option<f64>,
+    pub prior_score: UnitInterval,
+    pub evidence_quality: Option<UnitInterval>,
 }
 
 /// A competition between multiple candidate shapes.
@@ -44,24 +47,27 @@ pub enum ShapeMetric {
     Balanced,
 }
 
-/// Observation from a completed shape trial.
+/// Observation from a completed shape trial. Confidence and rate
+/// fields are 0..=1 normalized; the cycle count is integer but
+/// always positive in practice.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeObservation {
     pub candidate_id: Uuid,
     pub hypothesis_count: usize,
-    pub avg_confidence: f64,
-    pub contradiction_rate: f64,
+    pub avg_confidence: UnitInterval,
+    pub contradiction_rate: UnitInterval,
     pub cycles_to_stability: u32,
-    pub budget_used_fraction: f64,
+    pub budget_used_fraction: UnitInterval,
 }
 
 /// Historical calibration of shape performance for a problem class.
+/// Both scores are 0..=1 normalized.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeCalibration {
     pub problem_class: String,
     pub topology: CollaborationTopology,
-    pub prior_score: f64,
-    pub posterior_score: f64,
+    pub prior_score: UnitInterval,
+    pub posterior_score: UnitInterval,
     pub observation_count: u32,
 }
 
@@ -124,7 +130,7 @@ pub fn generate_candidates(
     let alt_prior = priors
         .iter()
         .find(|p| p.problem_class == problem_class && p.topology == alt_topology)
-        .map_or(0.3, |p| p.posterior_score);
+        .map_or(UnitInterval::clamped(0.3), |p| p.posterior_score);
 
     candidates.push(ShapeCandidate {
         id: Uuid::new_v4(),
@@ -161,7 +167,10 @@ pub fn generate_candidates(
             charter: prior_charter,
             rationale: format!(
                 "Prior-informed: {:?} scored {:.2} over {} observations for '{}'",
-                prior.topology, prior.posterior_score, prior.observation_count, problem_class
+                prior.topology,
+                prior.posterior_score.as_f64(),
+                prior.observation_count,
+                problem_class
             ),
             prior_score: prior.posterior_score,
             evidence_quality: None,
@@ -186,16 +195,16 @@ pub fn score_observation(observation: &ShapeObservation, metric: ShapeMetric) ->
     match metric {
         ShapeMetric::EvidenceQuality => {
             let quantity = (observation.hypothesis_count as f64 / 50.0).min(1.0);
-            let quality = observation.avg_confidence.clamp(0.0, 1.0);
+            let quality = observation.avg_confidence.as_f64().clamp(0.0, 1.0);
             (quantity * 0.4 + quality * 0.6).clamp(0.0, 1.0)
         }
         ShapeMetric::ConvergenceSpeed => {
             let speed = 1.0 - (f64::from(observation.cycles_to_stability) / 20.0).min(1.0);
-            let efficiency = 1.0 - observation.budget_used_fraction.clamp(0.0, 1.0);
+            let efficiency = 1.0 - observation.budget_used_fraction.as_f64().clamp(0.0, 1.0);
             (speed * 0.7 + efficiency * 0.3).clamp(0.0, 1.0)
         }
         ShapeMetric::ContradictionMinimization => {
-            (1.0 - observation.contradiction_rate.clamp(0.0, 1.0)).clamp(0.0, 1.0)
+            (1.0 - observation.contradiction_rate.as_f64().clamp(0.0, 1.0)).clamp(0.0, 1.0)
         }
         ShapeMetric::Balanced => {
             let evidence = score_observation(observation, ShapeMetric::EvidenceQuality);
@@ -246,19 +255,19 @@ pub fn calibrate_shape(
         .iter()
         .find(|c| c.problem_class == problem_class && c.topology == topology);
 
-    let (prior_score, evidence) = match prior {
-        Some(p) => (p.posterior_score, p.observation_count),
+    let (prior_score_raw, evidence) = match prior {
+        Some(p) => (p.posterior_score.as_f64(), p.observation_count),
         None => (0.5, 0),
     };
 
     let observation_weight = 1.0 / (f64::from(evidence) + 2.0);
-    let posterior = prior_score * (1.0 - observation_weight) + score * observation_weight;
+    let posterior = prior_score_raw * (1.0 - observation_weight) + score * observation_weight;
 
     ShapeCalibration {
         problem_class: problem_class.to_string(),
         topology,
-        prior_score,
-        posterior_score: posterior.clamp(0.0, 1.0),
+        prior_score: UnitInterval::clamped(prior_score_raw),
+        posterior_score: UnitInterval::clamped(posterior),
         observation_count: evidence + 1,
     }
 }
@@ -287,8 +296,8 @@ mod tests {
         let priors = vec![ShapeCalibration {
             problem_class,
             topology: CollaborationTopology::Huddle,
-            prior_score: 0.5,
-            posterior_score: 0.8,
+            prior_score: UnitInterval::clamped(0.5),
+            posterior_score: UnitInterval::clamped(0.8),
             observation_count: 5,
         }];
 
@@ -306,10 +315,10 @@ mod tests {
         let obs = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 50,
-            avg_confidence: 0.9,
-            contradiction_rate: 0.1,
+            avg_confidence: UnitInterval::clamped(0.9),
+            contradiction_rate: UnitInterval::clamped(0.1),
             cycles_to_stability: 5,
-            budget_used_fraction: 0.5,
+            budget_used_fraction: UnitInterval::clamped(0.5),
         };
 
         let score = score_observation(&obs, ShapeMetric::EvidenceQuality);
@@ -322,18 +331,18 @@ mod tests {
         let fast = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 10,
-            avg_confidence: 0.5,
-            contradiction_rate: 0.0,
+            avg_confidence: UnitInterval::clamped(0.5),
+            contradiction_rate: UnitInterval::clamped(0.0),
             cycles_to_stability: 2,
-            budget_used_fraction: 0.2,
+            budget_used_fraction: UnitInterval::clamped(0.2),
         };
         let slow = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 10,
-            avg_confidence: 0.5,
-            contradiction_rate: 0.0,
+            avg_confidence: UnitInterval::clamped(0.5),
+            contradiction_rate: UnitInterval::clamped(0.0),
             cycles_to_stability: 18,
-            budget_used_fraction: 0.9,
+            budget_used_fraction: UnitInterval::clamped(0.9),
         };
 
         assert!(
@@ -354,14 +363,14 @@ mod tests {
                     id: id_a,
                     charter: CollaborationCharter::huddle(),
                     rationale: "A".into(),
-                    prior_score: 0.5,
+                    prior_score: UnitInterval::clamped(0.5),
                     evidence_quality: None,
                 },
                 ShapeCandidate {
                     id: id_b,
                     charter: CollaborationCharter::panel(),
                     rationale: "B".into(),
-                    prior_score: 0.5,
+                    prior_score: UnitInterval::clamped(0.5),
                     evidence_quality: None,
                 },
             ],
@@ -373,18 +382,18 @@ mod tests {
             ShapeObservation {
                 candidate_id: id_a,
                 hypothesis_count: 10,
-                avg_confidence: 0.5,
-                contradiction_rate: 0.2,
+                avg_confidence: UnitInterval::clamped(0.5),
+                contradiction_rate: UnitInterval::clamped(0.2),
                 cycles_to_stability: 5,
-                budget_used_fraction: 0.5,
+                budget_used_fraction: UnitInterval::clamped(0.5),
             },
             ShapeObservation {
                 candidate_id: id_b,
                 hypothesis_count: 40,
-                avg_confidence: 0.9,
-                contradiction_rate: 0.05,
+                avg_confidence: UnitInterval::clamped(0.9),
+                contradiction_rate: UnitInterval::clamped(0.05),
                 cycles_to_stability: 3,
-                budget_used_fraction: 0.4,
+                budget_used_fraction: UnitInterval::clamped(0.4),
             },
         ];
 
@@ -421,10 +430,10 @@ mod tests {
 
         assert_eq!(cal.problem_class, "test_class");
         assert_eq!(cal.topology, CollaborationTopology::Huddle);
-        assert!((cal.prior_score - 0.5).abs() < f64::EPSILON);
+        assert!((cal.prior_score.as_f64() - 0.5).abs() < f64::EPSILON);
         assert_eq!(cal.observation_count, 1);
-        assert!(cal.posterior_score > 0.5);
-        assert!(cal.posterior_score < 0.8);
+        assert!(cal.posterior_score.as_f64() > 0.5);
+        assert!(cal.posterior_score.as_f64() < 0.8);
     }
 
     #[test]
@@ -435,7 +444,7 @@ mod tests {
             calibrations = vec![cal];
         }
 
-        assert!(calibrations[0].posterior_score > 0.75);
+        assert!(calibrations[0].posterior_score.as_f64() > 0.75);
         assert_eq!(calibrations[0].observation_count, 10);
     }
 
@@ -457,10 +466,10 @@ mod tests {
         let obs = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 0,
-            avg_confidence: 0.0,
-            contradiction_rate: 0.0,
+            avg_confidence: UnitInterval::clamped(0.0),
+            contradiction_rate: UnitInterval::clamped(0.0),
             cycles_to_stability: 0,
-            budget_used_fraction: 0.0,
+            budget_used_fraction: UnitInterval::clamped(0.0),
         };
         let score = score_observation(&obs, ShapeMetric::Balanced);
         assert!(score >= 0.0);
@@ -472,10 +481,10 @@ mod tests {
         let obs = ShapeObservation {
             candidate_id: Uuid::new_v4(),
             hypothesis_count: 10_000,
-            avg_confidence: 10.0,    // out of range, should clamp
-            contradiction_rate: 5.0, // out of range
+            avg_confidence: UnitInterval::clamped(10.0), // out of range, should clamp
+            contradiction_rate: UnitInterval::clamped(5.0), // out of range
             cycles_to_stability: 1000,
-            budget_used_fraction: 2.0, // out of range
+            budget_used_fraction: UnitInterval::clamped(2.0), // out of range
         };
 
         for metric in [
@@ -518,10 +527,10 @@ mod tests {
                 let obs = ShapeObservation {
                     candidate_id: Uuid::new_v4(),
                     hypothesis_count: hyp,
-                    avg_confidence: conf,
-                    contradiction_rate: contra,
+                    avg_confidence: UnitInterval::clamped(conf),
+                    contradiction_rate: UnitInterval::clamped(contra),
                     cycles_to_stability: cycles,
-                    budget_used_fraction: budget,
+                    budget_used_fraction: UnitInterval::clamped(budget),
                 };
 
                 for metric in [
@@ -544,14 +553,14 @@ mod tests {
                 let existing = vec![ShapeCalibration {
                     problem_class: "test".into(),
                     topology: CollaborationTopology::Huddle,
-                    prior_score,
-                    posterior_score: prior_score,
+                    prior_score: UnitInterval::clamped(prior_score),
+                    posterior_score: UnitInterval::clamped(prior_score),
                     observation_count: evidence,
                 }];
 
                 let cal = calibrate_shape("test", CollaborationTopology::Huddle, score, &existing);
-                prop_assert!(cal.posterior_score >= 0.0);
-                prop_assert!(cal.posterior_score <= 1.0);
+                prop_assert!(cal.posterior_score.as_f64() >= 0.0);
+                prop_assert!(cal.posterior_score.as_f64() <= 1.0);
                 prop_assert_eq!(cal.observation_count, evidence + 1);
             }
 
@@ -566,7 +575,7 @@ mod tests {
                     cals = vec![cal];
                 }
 
-                let posterior = cals[0].posterior_score;
+                let posterior = cals[0].posterior_score.as_f64();
                 let distance = (posterior - score).abs();
                 let initial_distance = (0.5 - score).abs();
                 if rounds >= 3 && initial_distance > 0.05 {
