@@ -121,7 +121,14 @@ impl Suggestor for CatalogProposerSuggestor {
                         .iter()
                         .map(|r| r.suggestor_id.clone())
                         .collect();
+                    // Stable draft_id = the fact id we'll use to
+                    // emit. Single source of truth — the proposer
+                    // writes the id into both the wire id and the
+                    // payload field. Critics and the scorer route
+                    // off the payload field.
+                    let draft_id = format!("{fact_prefix}-{index}");
                     let draft = FormationDraft::new(
+                        draft_id.clone(),
                         descriptor_ids,
                         format!(
                             "Catalog-derived candidate #{index} for template '{}'.",
@@ -144,7 +151,7 @@ impl Suggestor for CatalogProposerSuggestor {
                     };
                     effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                         ContextKey::Strategies,
-                        format!("{fact_prefix}-{index}"),
+                        draft_id,
                         TextPayload::new(json),
                     ));
                 }

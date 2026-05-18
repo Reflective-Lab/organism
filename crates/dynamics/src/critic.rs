@@ -74,26 +74,6 @@ impl std::fmt::Debug for DraftValidatorCriticSuggestor {
     }
 }
 
-/// Per-source index counter so verdicts can join back to drafts by
-/// `(draft_source, draft_index)`. The proposer assigns indices in the
-/// order it emits drafts; the critic recovers them by scanning the
-/// extracted drafts in order, restarting the count per source.
-fn assign_indices(
-    drafts: &[crate::payload::FormationDraft],
-) -> Vec<(usize, &crate::payload::FormationDraft)> {
-    use std::collections::HashMap;
-    let mut next: HashMap<&str, usize> = HashMap::new();
-    drafts
-        .iter()
-        .map(|d| {
-            let idx = next.entry(d.source.as_str()).or_insert(0);
-            let here = *idx;
-            *idx += 1;
-            (here, d)
-        })
-        .collect()
-}
-
 #[async_trait]
 impl Suggestor for DraftValidatorCriticSuggestor {
     fn name(&self) -> &'static str {
@@ -121,7 +101,10 @@ impl Suggestor for DraftValidatorCriticSuggestor {
         let compiler = FormationCompiler::new();
         let mut effect = AgentEffect::builder();
 
-        for (index, draft) in assign_indices(&drafts) {
+        // Route verdicts off the draft's own stable id. No
+        // reconstructed indices, no source-label routing — the
+        // proposer assigned the id and we copy it verbatim.
+        for draft in &drafts {
             let (target_key, verdict, reason) = match compile_draft(
                 &compiler,
                 &self.request,
@@ -145,17 +128,16 @@ impl Suggestor for DraftValidatorCriticSuggestor {
                     format!("Draft rejected by exact validator: {}", failure.error),
                 ),
             };
-            let validation =
-                DraftValidation::new(&draft.source, index, verdict, reason, SUGGESTOR_NAME);
+            let validation = DraftValidation::new(&draft.draft_id, verdict, reason, SUGGESTOR_NAME);
             let json = match serde_json::to_string(&validation) {
                 Ok(s) => s,
                 Err(err) => {
                     effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                         ContextKey::Diagnostic,
-                        format!("draft-validation-serialize-error-{}-{index}", draft.source),
+                        format!("draft-validation-serialize-error-{}", draft.draft_id),
                         TextPayload::new(format!(
-                            "{SUGGESTOR_NAME}: failed to serialize verdict for ({}, {index}): {err}",
-                            draft.source
+                            "{SUGGESTOR_NAME}: failed to serialize verdict for {}: {err}",
+                            draft.draft_id
                         )),
                     ));
                     continue;
@@ -163,7 +145,7 @@ impl Suggestor for DraftValidatorCriticSuggestor {
             };
             effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                 target_key,
-                format!("draft-validation-{}-{index}", draft.source),
+                format!("draft-validation-{}", draft.draft_id),
                 TextPayload::new(json),
             ));
         }

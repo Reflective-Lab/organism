@@ -13,7 +13,7 @@
 //! domain-tag overlap, learned priors). The Suggestor *proposes*
 //! shortlist facts; Converge admits and may promote.
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
@@ -116,61 +116,41 @@ impl Suggestor for BeautyContestSuggestor {
     async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let drafts = extract_drafts(ctx, ContextKey::Strategies);
 
-        // Read critic verdicts (if any) and build a set of
-        // `(draft_source, draft_index)` pairs that were blocked.
-        // Drafts without an explicit Block verdict are eligible; this
-        // means: no critic wired → all drafts eligible; critic wired
-        // and explicit Pass → eligible; critic wired and explicit
-        // Block → excluded. This matches the "additive verdicts"
-        // contract — the critic surfaces verdicts, the scorer honors
-        // explicit blocks.
-        let blocked = extract_draft_validations(ctx, ContextKey::Constraints);
-        let is_blocked = |source: &str, index: usize| -> bool {
-            blocked
-                .iter()
-                .filter(|v| v.verdict == DraftVerdict::Block)
-                .any(|v| v.matches(source, index))
-        };
-
-        // Reconstruct each draft's index within its proposer's
-        // emission (drafts share the source field; index is the order
-        // they appeared from that source).
-        let mut next_index: HashMap<&str, usize> = HashMap::new();
-        let indexed: Vec<(usize, &FormationDraft)> = drafts
-            .iter()
-            .map(|d| {
-                let idx = next_index.entry(d.source.as_str()).or_insert(0);
-                let here = *idx;
-                *idx += 1;
-                (here, d)
-            })
-            .collect();
-
-        // Drop blocked drafts before scoring.
-        let eligible: Vec<(usize, &FormationDraft)> = indexed
+        // Build the set of draft_ids that the critic blocked. The
+        // join key is `draft_id` — the proposer's stable identifier,
+        // not a reconstructed index. Drafts without an explicit Block
+        // verdict are eligible; this means: no critic wired → all
+        // drafts eligible; critic wired and explicit Pass → eligible;
+        // critic wired and explicit Block → excluded.
+        let blocked_ids: HashSet<String> = extract_draft_validations(ctx, ContextKey::Constraints)
             .into_iter()
-            .filter(|(idx, d)| !is_blocked(&d.source, *idx))
+            .filter(|v| v.verdict == DraftVerdict::Block)
+            .map(|v| v.draft_id)
+            .collect();
+        let eligible: Vec<&FormationDraft> = drafts
+            .iter()
+            .filter(|d| !blocked_ids.contains(&d.draft_id))
             .collect();
 
         // Score: v1 uses unique-descriptor count as the scalar — more
         // comprehensive rosters win ties. Stable secondary sort by
-        // source then by serialized id list keeps order deterministic.
-        let mut scored: Vec<(usize, usize, &FormationDraft)> = eligible
-            .into_iter()
-            .map(|(idx, d)| (score_draft(d), idx, d))
-            .collect();
+        // draft_id keeps order deterministic.
+        let mut scored: Vec<(usize, &FormationDraft)> =
+            eligible.into_iter().map(|d| (score_draft(d), d)).collect();
         scored.sort_by(|a, b| {
             b.0.cmp(&a.0)
-                .then_with(|| a.2.source.cmp(&b.2.source))
-                .then_with(|| a.2.descriptor_ids.cmp(&b.2.descriptor_ids))
+                .then_with(|| a.1.draft_id.cmp(&b.1.draft_id))
+                .then_with(|| a.1.descriptor_ids.cmp(&b.1.descriptor_ids))
         });
 
         let mut effect = AgentEffect::builder();
-        for (index, (_score, _src_idx, draft)) in scored.into_iter().take(self.top_n).enumerate() {
+        for (index, (_score, draft)) in scored.into_iter().take(self.top_n).enumerate() {
             // Rebuild with a fresh rationale that records the
-            // shortlist position; the source stays as whoever
-            // originally proposed the draft.
+            // shortlist position; preserve the original proposer's
+            // draft_id and source so downstream consumers can still
+            // join back to the originating draft.
             let shortlist = FormationDraft::new(
+                draft.draft_id.clone(),
                 draft.descriptor_ids.clone(),
                 format!(
                     "Shortlisted #{index}/{} by {SUGGESTOR_NAME} (source: {}).",

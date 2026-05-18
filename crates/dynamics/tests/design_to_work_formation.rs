@@ -278,6 +278,7 @@ fn compile_draft_rejects_bogus_descriptor_no_silent_replacement() {
     // validator must error rather than silently replace it with a
     // valid greedy roster.
     let bad_draft = FormationDraft::new(
+        "bad-draft-bogus-descriptor",
         vec!["signal-a".to_string(), "does-not-exist".to_string()],
         "bogus draft to prove exactness",
         "test",
@@ -306,6 +307,7 @@ fn compile_draft_rejects_duplicate_descriptor_no_score_gaming() {
     // A draft cannot repeat the same descriptor to inflate beauty-contest
     // score or instantiate the same Suggestor twice in a work Formation.
     let duplicate_draft = FormationDraft::new(
+        "duplicate-descriptor-draft",
         vec![
             "signal-a".to_string(),
             "signal-a".to_string(),
@@ -344,6 +346,7 @@ fn compile_draft_rejects_undercovering_roster_no_silent_completion() {
     // template's Constraint role. The validator must error, not
     // silently pick a constraint descriptor to "fix" the draft.
     let partial_draft = FormationDraft::new(
+        "partial-draft",
         vec!["signal-a".to_string()],
         "intentionally undercovering",
         "test",
@@ -397,12 +400,14 @@ async fn extract_drafts_ignores_non_draft_facts_on_same_key() {
         }
         async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
             let draft = FormationDraft::new(
+                "well-formed-draft",
                 vec!["signal-a".to_string(), "constraint-a".to_string()],
                 "well-formed",
                 "mixed-emitter",
             );
             let draft_json = serde_json::to_string(&draft).unwrap();
             let duplicate_draft = FormationDraft::new(
+                "duplicate-ids-draft",
                 vec!["signal-a".to_string(), "signal-a".to_string()],
                 "duplicate ids should be ignored by extraction",
                 "mixed-emitter",

@@ -27,6 +27,15 @@ pub const DRAFT_KIND: &str = "organism.dynamics.formation-draft";
 pub struct FormationDraft {
     /// Literal discriminator; must equal [`DRAFT_KIND`].
     pub kind: String,
+    /// Stable identifier for this draft, assigned by the proposer.
+    /// Used by downstream Suggestors (critic verdicts, scorer
+    /// shortlist filtering) as the **routing key** — verdicts join
+    /// back to drafts by `draft_id`, not by reconstructed ordering
+    /// or source/index pairs. Must be non-empty and unique within
+    /// the design Formation's lifetime; proposers are responsible
+    /// for picking ids that won't collide across rounds or
+    /// regenerations.
+    pub draft_id: String,
     /// The proposed roster, in the order the upstream proposer
     /// intends. Each id must resolve in the catalog at compile time
     /// (see [`crate::compile_draft`]).
@@ -34,7 +43,8 @@ pub struct FormationDraft {
     /// One-sentence human-readable reason this draft was proposed.
     pub rationale: String,
     /// Name of the Suggestor (or other source) that proposed this
-    /// draft. Used for audit, not for routing.
+    /// draft. Used for audit, not for routing — routing is
+    /// [`Self::draft_id`].
     pub source: String,
 }
 
@@ -48,6 +58,9 @@ pub enum FormationDraftValidationError {
         expected: &'static str,
         actual: String,
     },
+    /// The draft_id was empty or whitespace only.
+    #[error("draft must carry a non-empty draft_id")]
+    EmptyDraftId,
     /// The draft had no descriptor ids.
     #[error("draft must contain at least one descriptor id")]
     EmptyDescriptorIds,
@@ -67,14 +80,17 @@ pub enum FormationDraftValidationError {
 
 impl FormationDraft {
     /// Construct a draft with the discriminator set correctly.
+    /// `draft_id` is the stable routing key — see [`Self::draft_id`].
     #[must_use]
     pub fn new(
+        draft_id: impl Into<String>,
         descriptor_ids: Vec<String>,
         rationale: impl Into<String>,
         source: impl Into<String>,
     ) -> Self {
         Self {
             kind: DRAFT_KIND.to_string(),
+            draft_id: draft_id.into(),
             descriptor_ids,
             rationale: rationale.into(),
             source: source.into(),
@@ -93,6 +109,9 @@ impl FormationDraft {
                 expected: DRAFT_KIND,
                 actual: self.kind.clone(),
             });
+        }
+        if self.draft_id.trim().is_empty() {
+            return Err(FormationDraftValidationError::EmptyDraftId);
         }
         if self.descriptor_ids.is_empty() {
             return Err(FormationDraftValidationError::EmptyDescriptorIds);
@@ -130,16 +149,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_sets_discriminator() {
-        let draft = FormationDraft::new(vec!["a".into()], "why", "proposer");
+    fn new_sets_discriminator_and_id() {
+        let draft = FormationDraft::new("draft-7", vec!["a".into()], "why", "proposer");
         assert!(draft.is_well_formed());
         assert_eq!(draft.kind, DRAFT_KIND);
+        assert_eq!(draft.draft_id, "draft-7");
     }
 
     #[test]
     fn deserialized_with_wrong_kind_is_rejected_by_predicate() {
-        let json =
-            r#"{"kind":"something.else","descriptor_ids":["a"],"rationale":"r","source":"s"}"#;
+        let json = r#"{"kind":"something.else","draft_id":"d","descriptor_ids":["a"],"rationale":"r","source":"s"}"#;
         let parsed: FormationDraft = serde_json::from_str(json).unwrap();
         assert!(!parsed.is_well_formed());
         assert!(matches!(
@@ -149,8 +168,17 @@ mod tests {
     }
 
     #[test]
+    fn empty_draft_id_is_rejected_by_predicate() {
+        let draft = FormationDraft::new(" ", vec!["a".into()], "why", "proposer");
+        assert!(matches!(
+            draft.validate(),
+            Err(FormationDraftValidationError::EmptyDraftId)
+        ));
+    }
+
+    #[test]
     fn duplicate_descriptor_id_is_rejected_by_predicate() {
-        let draft = FormationDraft::new(vec!["a".into(), "a".into()], "why", "proposer");
+        let draft = FormationDraft::new("d", vec!["a".into(), "a".into()], "why", "proposer");
         assert!(!draft.is_well_formed());
         assert!(matches!(
             draft.validate(),
@@ -161,13 +189,13 @@ mod tests {
 
     #[test]
     fn empty_fields_are_rejected_by_predicate() {
-        let empty_roster = FormationDraft::new(Vec::new(), "why", "proposer");
+        let empty_roster = FormationDraft::new("d", Vec::new(), "why", "proposer");
         assert!(matches!(
             empty_roster.validate(),
             Err(FormationDraftValidationError::EmptyDescriptorIds)
         ));
 
-        let empty_source = FormationDraft::new(vec!["a".into()], "why", " ");
+        let empty_source = FormationDraft::new("d", vec!["a".into()], "why", " ");
         assert!(matches!(
             empty_source.validate(),
             Err(FormationDraftValidationError::EmptySource)
@@ -176,7 +204,7 @@ mod tests {
 
     #[test]
     fn round_trip_via_json() {
-        let draft = FormationDraft::new(vec!["a".into(), "b".into()], "why", "proposer");
+        let draft = FormationDraft::new("d", vec!["a".into(), "b".into()], "why", "proposer");
         let json = serde_json::to_string(&draft).unwrap();
         let parsed: FormationDraft = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, draft);
@@ -208,20 +236,18 @@ pub enum DraftVerdict {
 /// JSON-in-TextPayload with the [`DRAFT_VALIDATION_KIND`] literal
 /// discriminator — same shape as [`FormationDraft`].
 ///
-/// The join key from a verdict back to the draft it judged is the pair
-/// `(draft_source, draft_index)`. The proposer that emitted the draft
-/// is the source of truth for those values — critics must take them
-/// from the draft they read, not invent them.
+/// The join key from a verdict back to the draft it judged is
+/// [`Self::draft_id`] — the same `draft_id` the proposer assigned to
+/// the [`FormationDraft`]. Critics must take it from the draft they
+/// read, not reconstruct it from ordering or source labels.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DraftValidation {
     /// Literal discriminator; must equal [`DRAFT_VALIDATION_KIND`].
     pub kind: String,
-    /// The `source` field of the [`FormationDraft`] this verdict
-    /// applies to.
-    pub draft_source: String,
-    /// The position of the draft within its proposer's emission. Used
-    /// with `draft_source` to join a verdict back to a draft.
-    pub draft_index: usize,
+    /// Stable identifier of the [`FormationDraft`] this verdict
+    /// applies to. The single, authoritative join key — copied
+    /// verbatim from `FormationDraft.draft_id`.
+    pub draft_id: String,
     /// The verdict itself.
     pub verdict: DraftVerdict,
     /// Human-readable explanation. Required and non-empty.
@@ -241,31 +267,31 @@ pub enum DraftValidationPayloadError {
         expected: &'static str,
         actual: String,
     },
+    /// The draft_id was empty or whitespace only.
+    #[error("draft validation draft_id must not be empty")]
+    EmptyDraftId,
     /// The reason text was empty or whitespace only.
     #[error("draft validation reason must not be empty")]
     EmptyReason,
     /// The critic label was empty or whitespace only.
     #[error("draft validation critic must not be empty")]
     EmptyCritic,
-    /// The draft_source was empty or whitespace only.
-    #[error("draft validation draft_source must not be empty")]
-    EmptyDraftSource,
 }
 
 impl DraftValidation {
     /// Construct a verdict with the discriminator set correctly.
+    /// `draft_id` must be the same id the draft carries — no
+    /// reconstructed indices.
     #[must_use]
     pub fn new(
-        draft_source: impl Into<String>,
-        draft_index: usize,
+        draft_id: impl Into<String>,
         verdict: DraftVerdict,
         reason: impl Into<String>,
         critic: impl Into<String>,
     ) -> Self {
         Self {
             kind: DRAFT_VALIDATION_KIND.to_string(),
-            draft_source: draft_source.into(),
-            draft_index,
+            draft_id: draft_id.into(),
             verdict,
             reason: reason.into(),
             critic: critic.into(),
@@ -280,8 +306,8 @@ impl DraftValidation {
                 actual: self.kind.clone(),
             });
         }
-        if self.draft_source.trim().is_empty() {
-            return Err(DraftValidationPayloadError::EmptyDraftSource);
+        if self.draft_id.trim().is_empty() {
+            return Err(DraftValidationPayloadError::EmptyDraftId);
         }
         if self.reason.trim().is_empty() {
             return Err(DraftValidationPayloadError::EmptyReason);
@@ -297,12 +323,12 @@ impl DraftValidation {
         self.validate().is_ok()
     }
 
-    /// True if this verdict applies to the supplied draft (matches
-    /// both `source` and the draft's index within its proposer's
-    /// emission).
+    /// True if this verdict applies to the supplied draft. The join
+    /// key is the draft's stable [`FormationDraft::draft_id`] — no
+    /// reconstructed indices, no source matching.
     #[must_use]
-    pub fn matches(&self, draft_source: &str, draft_index: usize) -> bool {
-        self.draft_source == draft_source && self.draft_index == draft_index
+    pub fn matches(&self, draft_id: &str) -> bool {
+        self.draft_id == draft_id
     }
 }
 
@@ -312,20 +338,15 @@ mod validation_tests {
 
     #[test]
     fn new_sets_discriminator_and_validates() {
-        let v = DraftValidation::new(
-            "proposer-a",
-            0,
-            DraftVerdict::Pass,
-            "looks fine",
-            "critic-x",
-        );
+        let v = DraftValidation::new("draft-a", DraftVerdict::Pass, "looks fine", "critic-x");
         assert!(v.is_well_formed());
         assert_eq!(v.kind, DRAFT_VALIDATION_KIND);
+        assert_eq!(v.draft_id, "draft-a");
     }
 
     #[test]
     fn wrong_kind_rejected_by_predicate() {
-        let json = r#"{"kind":"x","draft_source":"p","draft_index":0,"verdict":"pass","reason":"r","critic":"c"}"#;
+        let json = r#"{"kind":"x","draft_id":"d","verdict":"pass","reason":"r","critic":"c"}"#;
         let parsed: DraftValidation = serde_json::from_str(json).unwrap();
         assert!(matches!(
             parsed.validate(),
@@ -334,8 +355,17 @@ mod validation_tests {
     }
 
     #[test]
+    fn empty_draft_id_rejected() {
+        let v = DraftValidation::new(" ", DraftVerdict::Pass, "r", "c");
+        assert!(matches!(
+            v.validate(),
+            Err(DraftValidationPayloadError::EmptyDraftId)
+        ));
+    }
+
+    #[test]
     fn empty_fields_rejected() {
-        let v = DraftValidation::new("p", 0, DraftVerdict::Block, " ", "c");
+        let v = DraftValidation::new("d", DraftVerdict::Block, " ", "c");
         assert!(matches!(
             v.validate(),
             Err(DraftValidationPayloadError::EmptyReason)
@@ -343,11 +373,11 @@ mod validation_tests {
     }
 
     #[test]
-    fn matches_pairs_source_and_index() {
-        let v = DraftValidation::new("p", 2, DraftVerdict::Pass, "r", "c");
-        assert!(v.matches("p", 2));
-        assert!(!v.matches("p", 3));
-        assert!(!v.matches("other", 2));
+    fn matches_joins_by_draft_id() {
+        let v = DraftValidation::new("draft-7", DraftVerdict::Pass, "r", "c");
+        assert!(v.matches("draft-7"));
+        assert!(!v.matches("draft-8"));
+        assert!(!v.matches(""));
     }
 
     #[test]

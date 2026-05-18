@@ -224,7 +224,9 @@ impl Suggestor for BadDraftProposer {
             .any(|fact| fact.id().as_str() == marker.as_str())
     }
     async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
+        let draft_id = format!("bad-draft-{}-0", self.source_label);
         let draft = FormationDraft::new(
+            draft_id.clone(),
             vec![
                 "signal-a".to_string(),
                 "definitely-not-in-catalog".to_string(),
@@ -236,7 +238,7 @@ impl Suggestor for BadDraftProposer {
         AgentEffect::builder()
             .proposal(TestProvenance.proposed_fact(
                 ContextKey::Strategies,
-                format!("bad-draft-{}-0", self.source_label),
+                draft_id,
                 TextPayload::new(json),
             ))
             // Marker so we don't re-fire on subsequent cycles.
@@ -294,8 +296,7 @@ async fn critic_blocks_bad_draft_scorer_excludes_it() {
         1,
         "critic must emit one Block verdict; got {blocks:?}"
     );
-    assert_eq!(bad_blocks[0].draft_source, "bad-proposer");
-    assert_eq!(bad_blocks[0].draft_index, 0);
+    assert_eq!(bad_blocks[0].draft_id, "bad-draft-bad-proposer-0");
     assert!(
         bad_blocks[0].reason.contains("DraftDescriptorMissing")
             || bad_blocks[0]
