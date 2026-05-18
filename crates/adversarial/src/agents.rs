@@ -174,10 +174,7 @@ impl Suggestor for AssumptionBreakerAgent {
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.get(ContextKey::Strategies).iter().any(|fact| {
-            !strategy_already_judged(
-                ctx,
-                &assumption_breaker_judgment_ids(fact.id().as_str()),
-            )
+            !strategy_already_judged(ctx, &assumption_breaker_judgment_ids(fact.id().as_str()))
         })
     }
 
@@ -187,10 +184,7 @@ impl Suggestor for AssumptionBreakerAgent {
 
         for fact in strategies {
             let strategy_id = fact.id().as_str();
-            if strategy_already_judged(
-                ctx,
-                &assumption_breaker_judgment_ids(strategy_id),
-            ) {
+            if strategy_already_judged(ctx, &assumption_breaker_judgment_ids(strategy_id)) {
                 continue;
             }
             let content = fact_text(fact);
@@ -406,10 +400,7 @@ impl Suggestor for ConstraintCheckerAgent {
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.get(ContextKey::Strategies).iter().any(|fact| {
-            !strategy_already_judged(
-                ctx,
-                &constraint_checker_judgment_ids(fact.id().as_str()),
-            )
+            !strategy_already_judged(ctx, &constraint_checker_judgment_ids(fact.id().as_str()))
         })
     }
 
@@ -419,10 +410,7 @@ impl Suggestor for ConstraintCheckerAgent {
 
         for fact in strategies {
             let strategy_id = fact.id().as_str();
-            if strategy_already_judged(
-                ctx,
-                &constraint_checker_judgment_ids(strategy_id),
-            ) {
+            if strategy_already_judged(ctx, &constraint_checker_judgment_ids(strategy_id)) {
                 continue;
             }
             let content = fact_text(fact);
@@ -595,10 +583,7 @@ impl Suggestor for EconomicSkepticAgent {
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.get(ContextKey::Strategies).iter().any(|fact| {
-            !strategy_already_judged(
-                ctx,
-                &economic_skeptic_judgment_ids(fact.id().as_str()),
-            )
+            !strategy_already_judged(ctx, &economic_skeptic_judgment_ids(fact.id().as_str()))
         })
     }
 
@@ -608,10 +593,7 @@ impl Suggestor for EconomicSkepticAgent {
 
         for fact in strategies {
             let strategy_id = fact.id().as_str();
-            if strategy_already_judged(
-                ctx,
-                &economic_skeptic_judgment_ids(strategy_id),
-            ) {
+            if strategy_already_judged(ctx, &economic_skeptic_judgment_ids(strategy_id)) {
                 continue;
             }
             let content = fact_text(fact);
@@ -799,10 +781,7 @@ impl Suggestor for OperationalSkepticAgent {
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.get(ContextKey::Strategies).iter().any(|fact| {
-            !strategy_already_judged(
-                ctx,
-                &operational_skeptic_judgment_ids(fact.id().as_str()),
-            )
+            !strategy_already_judged(ctx, &operational_skeptic_judgment_ids(fact.id().as_str()))
         })
     }
 
@@ -812,10 +791,7 @@ impl Suggestor for OperationalSkepticAgent {
 
         for fact in strategies {
             let strategy_id = fact.id().as_str();
-            if strategy_already_judged(
-                ctx,
-                &operational_skeptic_judgment_ids(strategy_id),
-            ) {
+            if strategy_already_judged(ctx, &operational_skeptic_judgment_ids(strategy_id)) {
                 continue;
             }
             let content = fact_text(fact);
@@ -1265,5 +1241,4 @@ mod tests {
         );
         assert!(!findings.iter().any(|f| f.message.contains("single point")));
     }
-
 }
