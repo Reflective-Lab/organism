@@ -114,13 +114,11 @@ fn compile_k_candidates_produces_distinct_rosters() {
     for i in 0..candidates.len() {
         for j in (i + 1)..candidates.len() {
             let ids_i: Vec<&str> = candidates[i]
-                .plan
                 .roster
                 .iter()
                 .map(|r| r.suggestor_id.as_str())
                 .collect();
             let ids_j: Vec<&str> = candidates[j]
-                .plan
                 .roster
                 .iter()
                 .map(|r| r.suggestor_id.as_str())
@@ -163,13 +161,11 @@ fn compile_k_one_matches_single_compile_from_catalog() {
 
     assert_eq!(k1.len(), 1);
     let k1_ids: Vec<_> = k1[0]
-        .plan
         .roster
         .iter()
         .map(|r| r.suggestor_id.clone())
         .collect();
     let single_ids: Vec<_> = single
-        .plan
         .roster
         .iter()
         .map(|r| r.suggestor_id.clone())
@@ -332,7 +328,6 @@ fn compile_k_keeps_scarce_specialist_across_candidates() {
     // Every candidate must contain a1 (it's the only valid A).
     for (i, cand) in candidates.iter().enumerate() {
         let ids: Vec<&str> = cand
-            .plan
             .roster
             .iter()
             .map(|r| r.suggestor_id.as_str())
@@ -346,7 +341,7 @@ fn compile_k_keeps_scarce_specialist_across_candidates() {
     // Each candidate must pick a different B.
     let mut chosen_bs: Vec<String> = candidates
         .iter()
-        .flat_map(|cand| cand.plan.roster.iter().map(|r| r.suggestor_id.clone()))
+        .flat_map(|cand| cand.roster.iter().map(|r| r.suggestor_id.clone()))
         .filter(|id| id.starts_with('b'))
         .collect();
     chosen_bs.sort();
@@ -502,11 +497,7 @@ async fn compile_k_and_run_tournament_pairs_scores_to_candidates() {
     // pair shape makes the join trivial (no label parsing required by
     // consumers).
     for sc in &outcome.scored_candidates {
-        assert_eq!(
-            sc.candidate.plan.roster.len(),
-            2,
-            "each candidate fills 2 roles"
-        );
+        assert_eq!(sc.candidate.roster.len(), 2, "each candidate fills 2 roles");
         assert!(
             !sc.candidate.decisions.is_empty(),
             "per-candidate decision trace must survive into ScoredCatalogCandidate"
@@ -524,14 +515,12 @@ async fn compile_k_and_run_tournament_pairs_scores_to_candidates() {
     // The two candidates picked disjoint rosters (HIGH #2 fix).
     let cand_0_ids: Vec<_> = outcome.scored_candidates[0]
         .candidate
-        .plan
         .roster
         .iter()
         .map(|r| r.suggestor_id.clone())
         .collect();
     let cand_1_ids: Vec<_> = outcome.scored_candidates[1]
         .candidate
-        .plan
         .roster
         .iter()
         .map(|r| r.suggestor_id.clone())
@@ -650,7 +639,6 @@ fn compile_k_does_not_exclude_broad_descriptor_when_no_compositional_replacement
     // it available across iterations.
     for (i, cand) in candidates.iter().enumerate() {
         let ids: Vec<&str> = cand
-            .plan
             .roster
             .iter()
             .map(|r| r.suggestor_id.as_str())

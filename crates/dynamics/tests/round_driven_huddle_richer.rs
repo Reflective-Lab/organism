@@ -466,6 +466,6 @@ async fn richer_huddle_composes_real_adversarial_and_synthesizer_with_round_driv
         &batch_b_shortlist[0],
     )
     .expect("batch B's shortlisted draft must compile");
-    assert_eq!(plan.plan.template_id, "work-template");
-    assert!(!plan.plan.roster.is_empty());
+    assert_eq!(plan.template_id, "work-template");
+    assert!(!plan.roster.is_empty());
 }

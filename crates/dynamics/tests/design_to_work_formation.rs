@@ -240,7 +240,7 @@ async fn design_formation_emits_drafts_validator_compiles_winner_work_formation_
     // --- Run the winning work Formation in Converge ---
     let executables = work_executables();
     let work = executables
-        .instantiate(&winning_plan.plan, [seed()])
+        .instantiate(&winning_plan, [seed()])
         .expect("instantiation should succeed");
     let work_result = work.run().await.expect("work formation should converge");
     assert!(

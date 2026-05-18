@@ -141,8 +141,8 @@ impl Suggestor for DraftValidatorCriticSuggestor {
                         DraftVerdict::Pass,
                         format!(
                             "Validated against template '{}': {} descriptor(s) compiled.",
-                            plan.plan.template_id,
-                            plan.plan.roster.len()
+                            plan.template_id,
+                            plan.roster.len()
                         ),
                     ),
                     Err(failure) => (

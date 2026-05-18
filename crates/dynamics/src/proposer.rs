@@ -283,7 +283,6 @@ impl Suggestor for CatalogProposerSuggestor {
             let encoded_batch = encode_batch_id(&batch_id);
             for (index, candidate) in candidates.iter().enumerate() {
                 let descriptor_ids: Vec<String> = candidate
-                    .plan
                     .roster
                     .iter()
                     .map(|r| r.suggestor_id.clone())
@@ -300,7 +299,7 @@ impl Suggestor for CatalogProposerSuggestor {
                     descriptor_ids,
                     format!(
                         "Catalog-derived candidate #{index} for template '{}' (batch: {batch_id}).",
-                        candidate.plan.template_id
+                        candidate.template_id
                     ),
                     self.source_label.clone(),
                 );

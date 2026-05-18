@@ -428,6 +428,6 @@ async fn round_starter_owns_batch_lifecycle_and_compile_handoff_picks_a_specific
         &batch_b_shortlist[0],
     )
     .expect("batch B's shortlisted draft must compile");
-    assert_eq!(plan.plan.template_id, "work-template");
-    assert!(!plan.plan.roster.is_empty());
+    assert_eq!(plan.template_id, "work-template");
+    assert!(!plan.roster.is_empty());
 }

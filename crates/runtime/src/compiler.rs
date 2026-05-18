@@ -106,19 +106,11 @@ pub struct CompiledFormationPlan {
     pub roster: Vec<CompiledSuggestorRole>,
     pub provider_assignments: Vec<RoleProviderAssignment>,
     pub trace: Vec<String>,
-}
-
-/// Catalog-aware compile output. Wraps an unchanged
-/// [`CompiledFormationPlan`] with the structured per-role decision trace
-/// that the catalog-aware path produces.
-///
-/// This is a wrapper rather than a new field on
-/// [`CompiledFormationPlan`] to keep that type's public surface stable
-/// (it is a public struct with public fields, so adding a field would
-/// break struct-literal consumers).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CatalogCompiledFormationPlan {
-    pub plan: CompiledFormationPlan,
+    /// Per-role decision trace from the catalog-aware compile path
+    /// ([`FormationCompiler::compile_from_catalog`],
+    /// [`FormationCompiler::compile_draft_from_catalog`],
+    /// [`FormationCompiler::compile_k_candidates`]). Empty when this
+    /// plan was produced by the legacy non-catalog [`FormationCompiler::compile`].
     pub decisions: Vec<RoleDecision>,
 }
 
@@ -341,6 +333,7 @@ impl FormationCompiler {
             roster,
             provider_assignments,
             trace,
+            decisions: Vec::new(),
         })
     }
 
@@ -350,10 +343,10 @@ impl FormationCompiler {
     /// [`DiscoveryCatalog::find_by_capability`]), then applies the same
     /// deterministic coverage-and-affinity ranking as [`Self::compile`].
     ///
-    /// The returned [`CatalogCompiledFormationPlan`] wraps an unchanged
-    /// [`CompiledFormationPlan`] with a structured per-role decision
-    /// trace, so callers can see why each capability was satisfied or
-    /// left uncovered.
+    /// The returned [`CompiledFormationPlan`] carries a structured
+    /// per-role decision trace under [`CompiledFormationPlan::decisions`],
+    /// so callers can see why each capability was satisfied or left
+    /// uncovered.
     ///
     /// `advisory_order` is an optional ranked list of descriptor IDs from
     /// an out-of-band advisor (e.g. an LLM-backed [`CatalogLookup`]). The
@@ -369,7 +362,7 @@ impl FormationCompiler {
         catalog: &DiscoveryCatalog,
         providers: &ProviderDescriptorCatalog,
         advisory_order: Option<&[String]>,
-    ) -> Result<CatalogCompiledFormationPlan, CatalogCompileFailure> {
+    ) -> Result<CompiledFormationPlan, CatalogCompileFailure> {
         let mut decisions: Vec<RoleDecision> = Vec::new();
 
         let template = formation_templates
@@ -488,7 +481,7 @@ impl FormationCompiler {
             })
             .collect();
 
-        let plan = CompiledFormationPlan {
+        Ok(CompiledFormationPlan {
             plan_id: request.plan_id,
             correlation_id: request.correlation_id,
             tenant_id: request.tenant_id.clone(),
@@ -497,9 +490,8 @@ impl FormationCompiler {
             roster,
             provider_assignments,
             trace,
-        };
-
-        Ok(CatalogCompiledFormationPlan { plan, decisions })
+            decisions,
+        })
     }
 
     /// Exact-roster validator for a draft produced by an upstream
@@ -519,10 +511,10 @@ impl FormationCompiler {
     /// the best roster from a pool; the draft validator honors an
     /// upstream Formation's choice and only checks admissibility.
     ///
-    /// The returned [`CatalogCompiledFormationPlan`] carries a single
-    /// [`RoleDecision`] per chosen descriptor, with empty `considered`
-    /// (no candidate ranking happened) and `chosen_role` derived from
-    /// the descriptor's profile.
+    /// The returned [`CompiledFormationPlan`] carries a single
+    /// [`RoleDecision`] per chosen descriptor under its `decisions`
+    /// field, with empty `considered` (no candidate ranking happened)
+    /// and `chosen_role` derived from the descriptor's profile.
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     pub fn compile_draft_from_catalog(
         &self,
@@ -531,7 +523,7 @@ impl FormationCompiler {
         catalog: &DiscoveryCatalog,
         providers: &ProviderDescriptorCatalog,
         descriptor_ids: &[String],
-    ) -> Result<CatalogCompiledFormationPlan, CatalogCompileFailure> {
+    ) -> Result<CompiledFormationPlan, CatalogCompileFailure> {
         let mut decisions: Vec<RoleDecision> = Vec::new();
 
         let template = formation_templates
@@ -668,7 +660,7 @@ impl FormationCompiler {
             })
             .collect();
 
-        let plan = CompiledFormationPlan {
+        Ok(CompiledFormationPlan {
             plan_id: request.plan_id,
             correlation_id: request.correlation_id,
             tenant_id: request.tenant_id.clone(),
@@ -677,9 +669,8 @@ impl FormationCompiler {
             roster,
             provider_assignments,
             trace,
-        };
-
-        Ok(CatalogCompiledFormationPlan { plan, decisions })
+            decisions,
+        })
     }
 }
 
@@ -767,8 +758,8 @@ impl FormationCompiler {
         catalog: &DiscoveryCatalog,
         providers: &ProviderDescriptorCatalog,
         k: usize,
-    ) -> Result<Vec<CatalogCompiledFormationPlan>, CatalogCompileFailure> {
-        let mut candidates: Vec<CatalogCompiledFormationPlan> = Vec::new();
+    ) -> Result<Vec<CompiledFormationPlan>, CatalogCompileFailure> {
+        let mut candidates: Vec<CompiledFormationPlan> = Vec::new();
         let mut excluded: Vec<String> = Vec::new();
 
         for _ in 0..k {
@@ -782,7 +773,7 @@ impl FormationCompiler {
             ) {
                 Ok(plan) => {
                     let excluded_before = excluded.len();
-                    for role in &plan.plan.roster {
+                    for role in &plan.roster {
                         // Trial-compile against the catalog minus the
                         // current exclude set AND this descriptor. If
                         // the trial succeeds, the descriptor is
@@ -1455,8 +1446,8 @@ mod tests {
             .compile_from_catalog(&request, &templates, &catalog, &providers, None)
             .expect("4-entry catalog should satisfy the loop-demo template");
 
-        assert_eq!(outcome.plan.template_id, "loop-demo");
-        assert_eq!(outcome.plan.roster.len(), 4);
+        assert_eq!(outcome.template_id, "loop-demo");
+        assert_eq!(outcome.roster.len(), 4);
         assert_eq!(outcome.decisions.len(), 4);
 
         let chosen: Vec<&str> = outcome
@@ -1583,18 +1574,8 @@ mod tests {
             .compile_from_catalog(&loop_demo_query(), &templates, &catalog, &providers, None)
             .expect("compile b");
 
-        let ids_a: Vec<_> = a
-            .plan
-            .roster
-            .iter()
-            .map(|r| r.suggestor_id.clone())
-            .collect();
-        let ids_b: Vec<_> = b
-            .plan
-            .roster
-            .iter()
-            .map(|r| r.suggestor_id.clone())
-            .collect();
+        let ids_a: Vec<_> = a.roster.iter().map(|r| r.suggestor_id.clone()).collect();
+        let ids_b: Vec<_> = b.roster.iter().map(|r| r.suggestor_id.clone()).collect();
         assert_eq!(ids_a, ids_b);
     }
 
@@ -1936,7 +1917,6 @@ mod tests {
             .compile_from_catalog(&request, &templates, &catalog, &providers, None)
             .expect("greedy compile");
         let greedy_ids: Vec<_> = greedy
-            .plan
             .roster
             .iter()
             .map(|r| r.suggestor_id.clone())
@@ -1959,7 +1939,6 @@ mod tests {
             .expect("valid draft must compile");
 
         let validated_ids: Vec<_> = validated
-            .plan
             .roster
             .iter()
             .map(|r| r.suggestor_id.clone())

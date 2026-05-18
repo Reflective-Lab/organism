@@ -6,7 +6,7 @@
 use converge_kernel::formation::FormationCatalog;
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{
-    CatalogCompileFailure, CatalogCompiledFormationPlan, FormationCompileRequest, FormationCompiler,
+    CatalogCompileFailure, CompiledFormationPlan, FormationCompileRequest, FormationCompiler,
 };
 
 use crate::payload::FormationDraft;
@@ -23,7 +23,7 @@ pub fn compile_draft(
     catalog: &DiscoveryCatalog,
     providers: &ProviderDescriptorCatalog,
     draft: &FormationDraft,
-) -> Result<CatalogCompiledFormationPlan, CatalogCompileFailure> {
+) -> Result<CompiledFormationPlan, CatalogCompileFailure> {
     compiler.compile_draft_from_catalog(
         request,
         formation_templates,

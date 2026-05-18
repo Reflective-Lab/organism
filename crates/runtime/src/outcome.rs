@@ -225,6 +225,7 @@ mod tests {
                 requirements: converge_provider::BackendRequirements::reasoning_llm(),
             }],
             trace: Vec::new(),
+            decisions: Vec::new(),
         };
 
         let record =

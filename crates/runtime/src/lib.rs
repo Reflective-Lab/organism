@@ -35,12 +35,11 @@ pub use collaboration::{
     CollaborationParticipant, CollaborationRunner, CollaborationRunnerError, TransitionRecord,
 };
 pub use compiler::{
-    CandidateConsideration, CandidateDisposition, CatalogCompileFailure,
-    CatalogCompiledFormationPlan, CompiledFormationPlan, CompiledSuggestorRole, DataContract,
-    FormationCompileError, FormationCompileRequest, FormationCompiler, FormationCompilerCatalogs,
-    GovernanceClass, ProviderDescriptor, ProviderDescriptorCatalog, RejectionReason, ReplayMode,
-    RoleDecision, RoleProviderAssignment, SelectionReason, SuggestorDescriptor,
-    SuggestorDescriptorCatalog,
+    CandidateConsideration, CandidateDisposition, CatalogCompileFailure, CompiledFormationPlan,
+    CompiledSuggestorRole, DataContract, FormationCompileError, FormationCompileRequest,
+    FormationCompiler, FormationCompilerCatalogs, GovernanceClass, ProviderDescriptor,
+    ProviderDescriptorCatalog, RejectionReason, ReplayMode, RoleDecision, RoleProviderAssignment,
+    SelectionReason, SuggestorDescriptor, SuggestorDescriptorCatalog,
 };
 pub use execution::{
     ExecutableSuggestorCatalog, FormationExecutionRecord, FormationInstantiationError,
@@ -110,7 +109,7 @@ pub struct ScoredCatalogCandidate {
     /// instantiation so the tournament's `FormationScore.label` can be
     /// joined back here unambiguously.
     pub index: usize,
-    pub candidate: CatalogCompiledFormationPlan,
+    pub candidate: CompiledFormationPlan,
     pub score: FormationScore,
 }
 
@@ -366,7 +365,7 @@ impl Runtime {
         catalog: &DiscoveryCatalog,
         providers: &ProviderDescriptorCatalog,
         advisory_order: Option<&[String]>,
-    ) -> Result<CatalogCompiledFormationPlan, PipelineError> {
+    ) -> Result<CompiledFormationPlan, PipelineError> {
         gate_admission(intent)?;
         Ok(FormationCompiler::new().compile_from_catalog(
             request,
@@ -390,7 +389,7 @@ impl Runtime {
         executables: &ExecutableSuggestorCatalog,
         seeds: impl IntoIterator<Item = Seed>,
         advisory_order: Option<&[String]>,
-    ) -> Result<(CatalogCompiledFormationPlan, Formation), PipelineError> {
+    ) -> Result<(CompiledFormationPlan, Formation), PipelineError> {
         let outcome = self.compile_formation_from_catalog(
             intent,
             request,
@@ -399,7 +398,7 @@ impl Runtime {
             providers,
             advisory_order,
         )?;
-        let formation = executables.instantiate(&outcome.plan, seeds)?;
+        let formation = executables.instantiate(&outcome, seeds)?;
         Ok((outcome, formation))
     }
 
@@ -411,8 +410,9 @@ impl Runtime {
     /// diversity — see [`FormationCompiler::compile_k_candidates`]).
     /// The returned [`CatalogTournamentOutcome`] carries both the
     /// tournament result (winner + scores + priors) and each candidate's
-    /// [`CatalogCompiledFormationPlan`] so the audit trail shows
-    /// selection rationale AND score outcome side-by-side.
+    /// [`CompiledFormationPlan`] (with its `decisions` trace) so the
+    /// audit trail shows selection rationale AND score outcome
+    /// side-by-side.
     ///
     /// `seeds_fn` is called once per candidate to produce its seed
     /// inventory — formations consume their seeds when run, so each
@@ -430,7 +430,7 @@ impl Runtime {
         k: usize,
     ) -> Result<CatalogTournamentOutcome, PipelineError>
     where
-        F: Fn(usize, &CatalogCompiledFormationPlan) -> Vec<Seed>,
+        F: Fn(usize, &CompiledFormationPlan) -> Vec<Seed>,
     {
         gate_admission(intent)?;
 
@@ -454,8 +454,8 @@ impl Runtime {
             // Unique label per candidate so the tournament's
             // FormationScore.label is the join key back to the
             // originating candidate. Format: "{template_id}#{index}".
-            let label = format!("{}#{index}", candidate.plan.template_id);
-            let formation = executables.instantiate_with_label(&candidate.plan, seeds, label)?;
+            let label = format!("{}#{index}", candidate.template_id);
+            let formation = executables.instantiate_with_label(candidate, seeds, label)?;
             formations.push(formation);
         }
 
@@ -608,7 +608,7 @@ mod tests {
         // Construct an outcome that mimics: candidate 0 was dropped,
         // candidate 1 won. scored_candidates has length 1 with
         // index = 1; winner_index = 1.
-        let plan = CompiledFormationPlan {
+        let candidate = CompiledFormationPlan {
             plan_id: id(0xCAFE),
             correlation_id: id(0xBEEF),
             tenant_id: None,
@@ -617,9 +617,6 @@ mod tests {
             roster: Vec::new(),
             provider_assignments: Vec::new(),
             trace: Vec::new(),
-        };
-        let candidate = CatalogCompiledFormationPlan {
-            plan,
             decisions: Vec::new(),
         };
         let score = FormationScore {

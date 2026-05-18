@@ -125,11 +125,11 @@ fn mosaic_only_satisfies_vendor_due_diligence_formation() {
         .compile_from_catalog(&request, &templates, &catalog, &providers, None)
         .expect("mosaic_only should satisfy vendor-due-diligence");
 
-    assert_eq!(outcome.plan.roster.len(), 4);
+    assert_eq!(outcome.roster.len(), 4);
 
     // Every chosen descriptor must come from the mosaic tree (id prefix
     // is one of the family conventions).
-    for role in &outcome.plan.roster {
+    for role in &outcome.roster {
         let id = &role.suggestor_id;
         let known = id.starts_with("arbiter-")
             || id.starts_with("embassy-")
