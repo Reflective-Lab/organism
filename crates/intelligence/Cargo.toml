@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Business intelligence providers for Organism — OCR, Vision, Patent, Billing, Web, Social. (LinkedIn extracted to embassy-linkedin.)"
+description = "Business intelligence providers for Organism — OCR, Vision, Patent, Web, Social. (LinkedIn extracted to embassy-linkedin.)"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -21,7 +21,7 @@ pdf-extract = { version = "0.10", optional = true }
 # Carve-out from the "no feature flags / no conditional compiles" rule.
 #
 # Each feature below gates an **optional heavy dep**:
-#   * ocr/vision/patent/billing/web → reqwest (HTTP client + TLS), base64, sha2, url
+#   * ocr/vision/patent/web → reqwest (HTTP client + TLS), base64, sha2, url
 #   * pdf                            → pdf-extract (PDF parsing, large native code)
 # `organism-intelligence` ships a menu of business-intelligence providers
 # and few consumers want all of them. Folding these deps into every
@@ -39,7 +39,6 @@ default = []
 ocr = ["dep:sha2", "dep:base64", "dep:reqwest"]
 vision = ["dep:reqwest", "dep:base64"]
 patent = ["dep:reqwest", "dep:base64"]
-billing = ["dep:reqwest"]
 web = ["dep:reqwest", "dep:url"]
 social = ["web"]
 pdf = ["dep:pdf-extract"]

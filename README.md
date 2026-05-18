@@ -199,7 +199,6 @@ Provider-shaped data acquisition from the world. Every result wrapped in `Observ
 | **Social** | LinkedIn, X, Instagram, Facebook (normalized profiles) |
 | **Patent** | USPTO, EPO, WIPO, Google Patents, Lens |
 | **PDF** | Text extraction, chunking, metadata capture |
-| **Billing** | Stripe ACP (checkout, payments, metering) |
 
 ## Crates
 
@@ -209,7 +208,7 @@ Provider-shaped data acquisition from the world. Every result wrapped in `Observ
 |---|---|
 | [`organism-pack`](crates/pack) | Curated planning contract — one import, full pipeline semantics |
 | [`organism-runtime`](crates/runtime) | Embedding API — registry, resolution, readiness, and Formation execution |
-| [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, billing |
+| [`organism-intelligence`](crates/intelligence) | Provider-shaped capabilities: OCR, vision, web, social, patent, PDF |
 | [`organism-notes`](crates/notes) | Vault lifecycle: ingestion, cleanup, enrichment |
 | [`organism-domain`](../../atelier-showcase/crates/organism-domain) | Organizational pack library and blueprints |
 

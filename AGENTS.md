@@ -76,7 +76,7 @@ Default downstream rule:
 ### Capabilities (provider-shaped)
 | Crate | Responsibility |
 |---|---|
-| `intelligence` | OCR, vision, web, social, patent, linkedin, billing |
+| `intelligence` | OCR, vision, web, social, patent, linkedin |
 | `notes` | Vault management, source adapters, cleanup, enrichment |
 
 ### Domain packs (pack-shaped)

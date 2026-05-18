@@ -10,22 +10,12 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Context key partitions — mirrors converge-pack's ContextKey.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ContextKey {
-    Seeds,
-    Signals,
-    Proposals,
-    Evaluations,
-    Strategies,
-    Constraints,
-    Hypotheses,
-    Diagnostic,
-    Votes,
-    Disagreements,
-    ConsensusOutcomes,
-}
+/// Context key partitions. Re-exported from `converge_pack` so the
+/// pack framework and Converge share one truth — no parallel
+/// definition, no drift on which variants exist or how they
+/// serialize. This crate intentionally adds nothing here; pack
+/// metadata that needs a typed key reaches through this re-export.
+pub use converge_pack::ContextKey;
 
 /// Invariant severity class.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,45 +76,6 @@ pub struct PackProfile {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn context_key_serde_roundtrip() {
-        for key in [
-            ContextKey::Seeds,
-            ContextKey::Signals,
-            ContextKey::Proposals,
-            ContextKey::Evaluations,
-            ContextKey::Strategies,
-            ContextKey::Constraints,
-            ContextKey::Hypotheses,
-            ContextKey::Diagnostic,
-            ContextKey::Votes,
-            ContextKey::Disagreements,
-            ContextKey::ConsensusOutcomes,
-        ] {
-            let json = serde_json::to_string(&key).unwrap();
-            let back: ContextKey = serde_json::from_str(&json).unwrap();
-            assert_eq!(key, back);
-        }
-    }
-
-    #[test]
-    fn context_key_snake_case_serialization() {
-        assert_eq!(
-            serde_json::to_string(&ContextKey::Seeds).unwrap(),
-            "\"seeds\""
-        );
-        assert_eq!(
-            serde_json::to_string(&ContextKey::ConsensusOutcomes).unwrap(),
-            "\"consensus_outcomes\""
-        );
-    }
-
-    #[test]
-    fn context_key_rejects_unknown_variant() {
-        let result = serde_json::from_str::<ContextKey>("\"nonexistent\"");
-        assert!(result.is_err());
-    }
 
     #[test]
     fn invariant_class_serde_roundtrip() {

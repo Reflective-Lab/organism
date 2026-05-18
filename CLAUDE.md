@@ -37,7 +37,7 @@ Human intent → Organism (form, reason, debate, simulate) → Converge (run, pr
 | `simulation` | Outcome / cost / policy / causal / operational simulation |
 | `learning` | Planning priors, calibration, strategy adaptation |
 | `runtime` | Formation assembly, runtime wiring, readiness, Converge execution |
-| `intelligence` | OCR, vision, web, social, patent, linkedin, billing |
+| `intelligence` | OCR, vision, web, social, patent, linkedin |
 | `notes` | Vault management, source adapters, cleanup, enrichment |
 | `domain` | 13 org packs + knowledge lifecycle + 8 blueprints (lives in `atelier-showcase`) |
 

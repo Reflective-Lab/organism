@@ -79,7 +79,7 @@ Purpose:
 - provide provider-shaped data acquisition capabilities
 
 What downstream code should use it for:
-- OCR, vision, web, social, linkedin, patent, and billing adapters
+- OCR, vision, web, social, linkedin, and patent adapters
 - provenance and secret helpers
 
 Status:

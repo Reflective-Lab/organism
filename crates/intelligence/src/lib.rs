@@ -13,7 +13,6 @@
 //! - [`ocr`] — Document understanding (Tesseract, Mistral, DeepSeek, LightOn)
 //! - [`patent`] — IP landscape, competitive intelligence
 //! - [`vision`] — Scene understanding and object detection (Claude, GPT-4o, Gemini, Pixtral)
-//! - [`billing`] — Stripe ACP integration for SaaS products
 //! - [`web`] — URL capture and metadata extraction for public pages
 //! - [`social`] — Normalized social profile/page extraction via web capture
 //!
@@ -39,9 +38,6 @@ pub mod vision;
 
 #[cfg(feature = "patent")]
 pub mod patent;
-
-#[cfg(feature = "billing")]
-pub mod billing;
 
 #[cfg(feature = "web")]
 pub mod web;

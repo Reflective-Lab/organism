@@ -1,10 +1,20 @@
 // Copyright 2024-2026 Reflective Labs
 // SPDX-License-Identifier: MIT
 
-//! Provenance types for intelligence observations.
+//! Provenance types for intelligence-provider calls.
 //!
-//! These are local equivalents of the converge-provider contract types,
-//! decoupled from Converge internals.
+//! These describe a third-party provider call and the audit metadata
+//! that comes back with the response: vendor, model, latency, cost
+//! estimate, token usage, raw payload. They are **not** the same
+//! concept as `converge_core::Observation` (which is a
+//! content-addressed kernel observation tied to `ObservationId` /
+//! `ContentHash` / `CaptureContext`) or anything in
+//! `converge_provider` — those serve the kernel's audit and capture
+//! flow. These types serve `organism-intelligence`'s API-call layer
+//! and are intentionally distinct: an `Observation<T>` here wraps a
+//! typed `content: T` (e.g. `SocialProfile`, `WebDocument`,
+//! `PatentResult`) together with billing-relevant metadata that the
+//! kernel does not need to model.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

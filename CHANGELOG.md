@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Removed
+- Removed the Stripe billing surface from `organism-intelligence`. Billing,
+  subscription, entitlement, ledger, and payment-provider reconciliation
+  semantics belong to Movement; Stripe webhook transport and secret/runtime
+  plumbing belong to Runway.
+
 ## [1.9.0] - 2026-05-17
 
 First release on the Converge 3.9 contract, and the first crates.io publish
