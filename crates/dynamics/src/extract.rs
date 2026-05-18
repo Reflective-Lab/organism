@@ -11,7 +11,9 @@ use converge_kernel::{Context, ContextKey};
 use converge_pack::TextPayload;
 use thiserror::Error;
 
+use crate::batch::decode_batch_id;
 use crate::payload::{DraftValidation, FormationDraft, FormationDraftValidationError};
+use crate::scorer::SCORER_BATCH_COMPLETE_PREFIX;
 
 /// Why a single fact failed to parse as a [`FormationDraft`]. Returned
 /// from [`extract_drafts_strict`] for diagnostic use; the default
@@ -62,6 +64,57 @@ pub fn extract_drafts_strict(
             Ok(parsed)
         })
         .collect()
+}
+
+/// Extract drafts at `context_key` that belong to a specific
+/// `draft_batch_id`. Convenience wrapper over [`extract_drafts`] for
+/// callers that need to drive a compile handoff off one batch only —
+/// "round 2's drafts," "the synthesizer-selected batch's drafts" —
+/// without picking among facts from other batches.
+#[must_use]
+pub fn extract_drafts_for_batch(
+    context: &dyn Context,
+    context_key: ContextKey,
+    draft_batch_id: &str,
+) -> Vec<FormationDraft> {
+    extract_drafts(context, context_key)
+        .into_iter()
+        .filter(|d| d.draft_batch_id == draft_batch_id)
+        .collect()
+}
+
+/// Every `draft_batch_id` for which the
+/// [`crate::scorer::BeautyContestSuggestor`] has emitted a scorer
+/// completion sentinel under [`ContextKey::Diagnostic`], in fact
+/// iteration order — earliest completion first. Use as the audit of
+/// which rounds have actually finished, not as a "shortlist exists"
+/// check.
+#[must_use]
+pub fn completed_batches(context: &dyn Context) -> Vec<String> {
+    context
+        .get(ContextKey::Diagnostic)
+        .iter()
+        .filter_map(|fact| {
+            fact.id()
+                .as_str()
+                .strip_prefix(SCORER_BATCH_COMPLETE_PREFIX)
+                .and_then(|rest| rest.strip_prefix('-'))
+                .and_then(decode_batch_id)
+        })
+        .collect()
+}
+
+/// The most recently completed draft batch — the last entry in
+/// [`completed_batches`]. Returns `None` if no batch has finished
+/// scoring yet.
+///
+/// "Latest" here means "last to emit its scorer sentinel," not "highest
+/// round number" — caller code that wants explicit round selection
+/// should match on `draft_batch_id` directly via
+/// [`extract_drafts_for_batch`] instead of relying on this helper.
+#[must_use]
+pub fn latest_completed_batch(context: &dyn Context) -> Option<String> {
+    completed_batches(context).pop()
 }
 
 /// Extract every well-formed [`DraftValidation`] fact from `context`

@@ -43,6 +43,7 @@
 //! proposes a shortlist. The shortlist becomes promoted only if
 //! Converge accepts the proposals.
 
+mod batch;
 mod compile;
 mod critic;
 mod extract;
@@ -56,7 +57,10 @@ pub use compile::compile_draft;
 pub use critic::{
     CRITIC_PASS_COMPLETE_MARKER, DraftValidatorCriticSuggestor, critic_pass_complete_marker,
 };
-pub use extract::{DraftParseError, extract_draft_validations, extract_drafts};
+pub use extract::{
+    DraftParseError, completed_batches, extract_draft_validations, extract_drafts,
+    extract_drafts_for_batch, latest_completed_batch,
+};
 pub use payload::{
     DRAFT_KIND, DRAFT_VALIDATION_KIND, DraftValidation, DraftValidationPayloadError, DraftVerdict,
     FormationDraft, FormationDraftValidationError,

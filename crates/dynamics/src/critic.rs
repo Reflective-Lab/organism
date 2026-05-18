@@ -23,6 +23,7 @@ use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
+use crate::batch::encode_batch_id;
 use crate::compile::compile_draft;
 use crate::extract::extract_drafts;
 use crate::payload::{DraftValidation, DraftVerdict};
@@ -205,13 +206,4 @@ fn critic_batch_complete(ctx: &dyn Context, draft_batch_id: &str) -> bool {
     ctx.get(ContextKey::Diagnostic)
         .iter()
         .any(|fact| fact.id().as_str() == marker)
-}
-
-fn encode_batch_id(draft_batch_id: &str) -> String {
-    let mut encoded = String::with_capacity(draft_batch_id.len() * 2);
-    for byte in draft_batch_id.as_bytes() {
-        use std::fmt::Write as _;
-        write!(&mut encoded, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    encoded
 }

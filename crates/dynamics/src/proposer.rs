@@ -4,12 +4,38 @@
 //! [`FormationCompiler::compile_k_candidates`] to produce up to `k`
 //! distinct candidate rosters from a [`DiscoveryCatalog`], and
 //! proposes one draft fact per candidate under
-//! `ContextKey::Strategies` as JSON-in-TextPayload. Single-pass:
-//! `accepts` returns true only when no draft fact has been emitted
-//! yet under `Strategies`.
+//! `ContextKey::Strategies` as JSON-in-TextPayload.
+//!
+//! ## Batch lifecycle
+//!
+//! Each emitted draft carries a `draft_batch_id`. Two modes pick that
+//! id:
+//!
+//! - **Explicit** ([`Self::new`] / [`Self::with_batch_id`]): the
+//!   proposer owns a single `draft_batch_id` and fires once for that
+//!   batch when seeds are present. Use for one-shot tests or when the
+//!   host wants total control of batching.
+//! - **Round-driven** ([`Self::with_round_signals`]): the proposer
+//!   watches [`ContextKey::Signals`] for facts whose ids start with a
+//!   configured prefix and treats each fact id as the
+//!   `draft_batch_id` for one open round. Pair with the
+//!   `organism_runtime::huddle::RoundStarter` configured with a
+//!   matching `round_signal_prefix` (and `round_signal_key` set to
+//!   `Signals`) so the design huddle Formation owns its own batch
+//!   lifecycle — round 1 produces batch A, round 2 produces batch B,
+//!   and so on.
+//!
+//! In both modes the proposer's `accepts` is per-batch: drafts for one
+//! batch never block drafts for another, and there is no global
+//! "drafts exist anywhere" gate. The draft id stored in each draft's
+//! payload is `candidate-{index}` and is **reusable across batches** —
+//! `(draft_batch_id, draft_id)` is the join key. Fact ids on the wire
+//! remain globally unique by hex-encoding the batch id.
 //!
 //! This Suggestor *proposes* — Converge admits each proposal and
 //! promotes those it accepts. The Suggestor itself does not promote.
+
+use std::collections::HashSet;
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
@@ -17,25 +43,28 @@ use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
+use crate::batch::encode_batch_id;
 use crate::extract::extract_drafts;
 use crate::payload::FormationDraft;
 use crate::provenance::ORGANISM_DYNAMICS_PROVENANCE;
 
 const SUGGESTOR_NAME: &str = "organism-catalog-proposer";
 
+/// How [`CatalogProposerSuggestor`] picks the `draft_batch_id` to
+/// stamp on each emitted draft.
+#[derive(Debug, Clone)]
+enum BatchSource {
+    /// Single fixed batch id; one-shot per proposer instance.
+    Explicit(String),
+    /// Watch [`ContextKey::Signals`] for facts whose id starts with
+    /// `signal_prefix` and treat each fact id as an open batch id.
+    /// Pair with `organism_runtime::huddle::RoundStarter` configured
+    /// with the same `round_signal_prefix` and `round_signal_key =
+    /// Signals`.
+    RoundSignals { signal_prefix: &'static str },
+}
+
 /// Catalog-backed deterministic proposer of [`FormationDraft`]s.
-///
-/// Holds its own copy of catalog + templates + providers + request +
-/// k so the [`Suggestor`] interface (which only sees `&dyn Context`)
-/// can produce drafts without those being available in context.
-///
-/// Each instance owns a single `draft_batch_id`. Drafts proposed by
-/// this instance carry that batch id, and the proposer's
-/// `accepts()` gates on absence of drafts for **its own** batch —
-/// not "no drafts at all" — so multiple proposers with distinct
-/// batch ids can coexist in one design Formation. Use
-/// [`Self::with_batch_id`] to override the default batch id
-/// (`{source_label}-{plan_id}`).
 pub struct CatalogProposerSuggestor {
     catalog: DiscoveryCatalog,
     formation_templates: converge_kernel::formation::FormationCatalog,
@@ -43,8 +72,15 @@ pub struct CatalogProposerSuggestor {
     request: FormationCompileRequest,
     k: usize,
     source_label: String,
-    batch_id: String,
+    batch_source: BatchSource,
 }
+
+// Declared statically so [`Suggestor::dependencies`] can return a
+// borrow. Round-driven instances must wake when new round signals
+// land under `ContextKey::Signals`, so it is declared unconditionally
+// — declaring more keys than strictly needed is harmless (Converge
+// just re-checks `accepts` more often).
+const PROPOSER_DEPENDENCIES: &[ContextKey] = &[ContextKey::Seeds, ContextKey::Signals];
 
 impl CatalogProposerSuggestor {
     #[must_use]
@@ -64,16 +100,16 @@ impl CatalogProposerSuggestor {
             request,
             k,
             source_label,
-            batch_id,
+            batch_source: BatchSource::Explicit(batch_id),
         }
     }
 
-    /// Override the source label recorded in emitted drafts and fact ids.
+    /// Override the source label recorded in emitted drafts.
     ///
-    /// This lets a design Formation host multiple catalog-backed
-    /// proposers without colliding on `formation-draft-*` fact ids.
-    /// Also resets the default batch id to track the new label;
-    /// call [`Self::with_batch_id`] after this to set a custom batch.
+    /// In explicit-batch mode this also resets the batch id to track
+    /// the new label; call [`Self::with_batch_id`] after this to set a
+    /// custom batch. In round-driven mode the source label is purely
+    /// audit metadata.
     #[must_use]
     pub fn with_source_label(mut self, source_label: impl Into<String>) -> Self {
         let source_label = source_label.into();
@@ -82,28 +118,94 @@ impl CatalogProposerSuggestor {
         } else {
             source_label
         };
-        self.batch_id = default_batch_id(&self.source_label, &self.request.plan_id);
-        self
-    }
-
-    /// Override the batch id this proposer stamps on every emitted
-    /// draft. Use this when running multiple proposer instances in
-    /// the same design Formation: each instance gets a distinct
-    /// `batch_id` so the critic and scorer can route their work
-    /// per-batch without temporal contamination.
-    #[must_use]
-    pub fn with_batch_id(mut self, batch_id: impl Into<String>) -> Self {
-        let batch_id = batch_id.into();
-        if !batch_id.trim().is_empty() {
-            self.batch_id = batch_id;
+        if matches!(self.batch_source, BatchSource::Explicit(_)) {
+            self.batch_source =
+                BatchSource::Explicit(default_batch_id(&self.source_label, &self.request.plan_id));
         }
         self
     }
 
-    /// Returns the batch id this proposer stamps on its drafts.
+    /// Switch to explicit-batch mode with the given `batch_id`. Use
+    /// when running multiple proposer instances in the same design
+    /// Formation: each instance gets a distinct `batch_id` so the
+    /// critic and scorer can route per-batch without temporal
+    /// contamination.
     #[must_use]
-    pub fn batch_id(&self) -> &str {
-        &self.batch_id
+    pub fn with_batch_id(mut self, batch_id: impl Into<String>) -> Self {
+        let batch_id = batch_id.into();
+        if !batch_id.trim().is_empty() {
+            self.batch_source = BatchSource::Explicit(batch_id);
+        }
+        self
+    }
+
+    /// Switch to round-driven mode. The proposer will read facts at
+    /// [`ContextKey::Signals`] and, for every fact id that starts
+    /// with `signal_prefix` and has no drafts yet, propose a draft
+    /// batch using that fact id as the `draft_batch_id`.
+    ///
+    /// Pair with `organism_runtime::huddle::RoundStarter::with_conventions`
+    /// configured so its `round_signal_key` is `Signals` and its
+    /// `round_signal_prefix` matches `signal_prefix`. The design
+    /// huddle Formation then owns its own batch lifecycle: round N
+    /// produces batch N, with no caller-supplied batch ids.
+    ///
+    /// Only `Signals` is accepted as the source key — `Suggestor`
+    /// dependencies are static so wiring an arbitrary key would make
+    /// Converge silently skip wakeups for that key. Use a custom
+    /// `round_signal_prefix` if you need to distinguish multiple
+    /// round streams on the same key.
+    #[must_use]
+    pub fn with_round_signals(mut self, signal_prefix: &'static str) -> Self {
+        self.batch_source = BatchSource::RoundSignals { signal_prefix };
+        self
+    }
+
+    /// Returns the proposer's explicit batch id, or `None` if it is in
+    /// round-driven mode (where batch ids are taken from incoming
+    /// round signals).
+    #[must_use]
+    pub fn batch_id(&self) -> Option<&str> {
+        match &self.batch_source {
+            BatchSource::Explicit(id) => Some(id),
+            BatchSource::RoundSignals { .. } => None,
+        }
+    }
+
+    /// Batch ids that have a round signal but no drafts yet. Sorted
+    /// for determinism. Returns the explicit id (if no drafts) in
+    /// explicit mode.
+    fn open_batches(&self, ctx: &dyn Context) -> Vec<String> {
+        let existing: HashSet<String> = extract_drafts(ctx, ContextKey::Strategies)
+            .into_iter()
+            .map(|d| d.draft_batch_id)
+            .collect();
+        match &self.batch_source {
+            BatchSource::Explicit(id) => {
+                if existing.contains(id) {
+                    vec![]
+                } else {
+                    vec![id.clone()]
+                }
+            }
+            BatchSource::RoundSignals { signal_prefix } => {
+                let mut open: Vec<String> = ctx
+                    .get(ContextKey::Signals)
+                    .iter()
+                    .filter_map(|fact| {
+                        let id = fact.id().as_str();
+                        if id.starts_with(*signal_prefix) && !existing.contains(id) {
+                            Some(id.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                open.sort();
+                open.dedup();
+                open
+            }
+        }
     }
 }
 
@@ -117,6 +219,7 @@ impl std::fmt::Debug for CatalogProposerSuggestor {
             .field("k", &self.k)
             .field("catalog_entries", &self.catalog.len())
             .field("source_label", &self.source_label)
+            .field("batch_source", &self.batch_source)
             .finish_non_exhaustive()
     }
 }
@@ -128,7 +231,7 @@ impl Suggestor for CatalogProposerSuggestor {
     }
 
     fn dependencies(&self) -> &[ContextKey] {
-        &[ContextKey::Seeds]
+        PROPOSER_DEPENDENCIES
     }
 
     fn provenance(&self) -> &'static str {
@@ -136,96 +239,94 @@ impl Suggestor for CatalogProposerSuggestor {
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
-        // Per-batch gate: fire once when seeds are present and no
-        // draft already exists for OUR batch_id. Other proposers
-        // with different batch ids can coexist without blocking
-        // each other.
         if !ctx.has(ContextKey::Seeds) {
             return false;
         }
-        !extract_drafts(ctx, ContextKey::Strategies)
-            .iter()
-            .any(|d| d.draft_batch_id == self.batch_id)
+        !self.open_batches(ctx).is_empty()
     }
 
-    async fn execute(&self, _ctx: &dyn Context) -> AgentEffect {
+    async fn execute(&self, ctx: &dyn Context) -> AgentEffect {
         let mut effect = AgentEffect::builder();
-        let fact_prefix = fact_id_prefix(&self.source_label, &self.request.plan_id);
+        let open_batches = self.open_batches(ctx);
 
-        match FormationCompiler::new().compile_k_candidates(
+        // Compile once per execute. The catalog/templates/request are
+        // immutable on the proposer, so the candidate set is the same
+        // for every batch in this call. The batch id is what
+        // distinguishes them on the wire.
+        let candidates = match FormationCompiler::new().compile_k_candidates(
             &self.request,
             &self.formation_templates,
             &self.catalog,
             &self.providers,
             self.k,
         ) {
-            Ok(candidates) => {
-                for (index, candidate) in candidates.iter().enumerate() {
-                    let descriptor_ids: Vec<String> = candidate
-                        .plan
-                        .roster
-                        .iter()
-                        .map(|r| r.suggestor_id.clone())
-                        .collect();
-                    // Stable draft_id = the fact id we'll use to
-                    // emit. Single source of truth — the proposer
-                    // writes the id into both the wire id and the
-                    // payload field. Critics and the scorer route
-                    // off the payload field by (draft_batch_id,
-                    // draft_id).
-                    let draft_id = format!("{fact_prefix}-{index}");
-                    let draft = FormationDraft::new(
-                        draft_id.clone(),
-                        self.batch_id.clone(),
-                        descriptor_ids,
-                        format!(
-                            "Catalog-derived candidate #{index} for template '{}'.",
-                            candidate.plan.template_id
-                        ),
-                        self.source_label.clone(),
-                    );
-                    let json = match serde_json::to_string(&draft) {
-                        Ok(s) => s,
-                        Err(err) => {
-                            effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
-                                ContextKey::Diagnostic,
-                                format!("{fact_prefix}-serialize-error-{index}"),
-                                TextPayload::new(format!(
-                                    "{SUGGESTOR_NAME}: failed to serialize draft {index}: {err}"
-                                )),
-                            ));
-                            continue;
-                        }
-                    };
+            Ok(candidates) => candidates,
+            Err(failure) => {
+                // Surface the failure once per open batch so the audit
+                // trail records which rounds saw no proposals.
+                for batch_id in open_batches {
+                    let encoded = encode_batch_id(&batch_id);
                     effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
-                        ContextKey::Strategies,
-                        draft_id,
-                        TextPayload::new(json),
+                        ContextKey::Diagnostic,
+                        format!("{SUGGESTOR_NAME}-failed-{encoded}"),
+                        TextPayload::new(format!(
+                            "{SUGGESTOR_NAME}: catalog cannot satisfy template for batch {batch_id} — {}",
+                            failure.error
+                        )),
                     ));
                 }
+                return effect.build();
             }
-            Err(failure) => {
-                // Surface the failure as a diagnostic fact so the
-                // design Formation can see why no drafts were
-                // proposed. This is informational only; it does not
-                // promote anything.
+        };
+
+        for batch_id in open_batches {
+            let encoded_batch = encode_batch_id(&batch_id);
+            for (index, candidate) in candidates.iter().enumerate() {
+                let descriptor_ids: Vec<String> = candidate
+                    .plan
+                    .roster
+                    .iter()
+                    .map(|r| r.suggestor_id.clone())
+                    .collect();
+                // Per-batch draft id — reusable across batches so
+                // round-driven huddles can compare "round 1's
+                // candidate-0" against "round 2's candidate-0". The
+                // join key is the (draft_batch_id, draft_id) pair;
+                // global uniqueness lives on the wire fact id.
+                let draft_id = format!("candidate-{index}");
+                let draft = FormationDraft::new(
+                    draft_id.clone(),
+                    batch_id.clone(),
+                    descriptor_ids,
+                    format!(
+                        "Catalog-derived candidate #{index} for template '{}' (batch: {batch_id}).",
+                        candidate.plan.template_id
+                    ),
+                    self.source_label.clone(),
+                );
+                let json = match serde_json::to_string(&draft) {
+                    Ok(s) => s,
+                    Err(err) => {
+                        effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
+                            ContextKey::Diagnostic,
+                            format!("formation-draft-serialize-error-{encoded_batch}-{index}"),
+                            TextPayload::new(format!(
+                                "{SUGGESTOR_NAME}: failed to serialize draft {index} for batch {batch_id}: {err}"
+                            )),
+                        ));
+                        continue;
+                    }
+                };
                 effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
-                    ContextKey::Diagnostic,
-                    format!("{fact_prefix}-failed"),
-                    TextPayload::new(format!(
-                        "{SUGGESTOR_NAME}: catalog cannot satisfy template — {}",
-                        failure.error
-                    )),
+                    ContextKey::Strategies,
+                    format!("formation-draft-{encoded_batch}-{index}"),
+                    TextPayload::new(json),
                 ));
             }
         }
 
         effect.build()
     }
-}
-
-fn fact_id_prefix(source_label: &str, plan_id: &uuid::Uuid) -> String {
-    format!("formation-draft-{}-{plan_id}", slug(source_label))
 }
 
 fn slug(input: &str) -> String {

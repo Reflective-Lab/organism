@@ -22,6 +22,7 @@ uuid.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
+organism-adversarial.workspace = true
 tokio.workspace = true
 
 [lints]

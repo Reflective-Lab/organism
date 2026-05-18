@@ -4840,6 +4840,7 @@ dependencies = [
  "converge-kernel",
  "converge-pack",
  "converge-provider",
+ "organism-adversarial",
  "organism-catalog",
  "organism-planning",
  "organism-runtime",
