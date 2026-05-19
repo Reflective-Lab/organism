@@ -18,6 +18,7 @@ pub mod collaboration;
 pub mod compiler;
 pub mod execution;
 pub mod experience;
+pub mod factories;
 pub mod formation;
 pub mod guru;
 pub mod huddle;
@@ -45,6 +46,7 @@ pub use execution::{
     ExecutableSuggestorCatalog, FormationExecutionRecord, FormationInstantiationError,
 };
 pub use experience::{ExperienceEnvelopeSink, FormationExperienceObserver};
+pub use factories::register_default_factories;
 pub use formation::{Formation, FormationError, FormationResult, Seed};
 pub use guru::{CandidateScore, FormationGuru, GuruError, GuruSelection, SelectionTrace};
 pub use huddle::{
