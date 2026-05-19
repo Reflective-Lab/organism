@@ -271,11 +271,12 @@ fn converge_pinned_to_matches_published_versions() {
 #[test]
 fn organism_pinned_to_matches_workspace() {
     let pins: Vec<_> = seed::organism::pinned_to().to_vec();
-    assert!(pins.contains(&("organism-adversarial", "1.9.0")));
-    assert!(pins.contains(&("organism-learning", "1.9.0")));
-    assert!(pins.contains(&("organism-planning", "1.9.0")));
-    assert!(pins.contains(&("organism-runtime", "1.9.0")));
-    assert!(pins.contains(&("organism-simulation", "1.9.0")));
+    assert!(pins.contains(&("organism-adversarial", "1.9.1")));
+    assert!(pins.contains(&("organism-dynamics", "1.9.1")));
+    assert!(pins.contains(&("organism-learning", "1.9.1")));
+    assert!(pins.contains(&("organism-planning", "1.9.1")));
+    assert!(pins.contains(&("organism-runtime", "1.9.1")));
+    assert!(pins.contains(&("organism-simulation", "1.9.1")));
 }
 
 #[test]
