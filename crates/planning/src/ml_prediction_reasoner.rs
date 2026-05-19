@@ -18,6 +18,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use converge_pack::gate::{ObjectiveSpec, ProblemSpec};
 use organism_intent::IntentPacket;
+use prism::UnitFraction;
 use prism::packs::classification::{ClassificationInput, LogisticClassifier};
 use prism::packs::regression::{LinearRegressionSolver, RegressionInput};
 
@@ -32,7 +33,7 @@ pub enum MlPredictionMode {
     Classification {
         weights: Arc<Vec<f64>>,
         bias: f64,
-        threshold: f64,
+        threshold: UnitFraction,
     },
 }
 
@@ -62,7 +63,7 @@ impl MlPredictionReasoner {
         name: impl Into<String>,
         weights: Vec<f64>,
         bias: f64,
-        threshold: f64,
+        threshold: UnitFraction,
     ) -> Self {
         Self {
             name: name.into(),
@@ -152,7 +153,8 @@ impl MlPredictionReasoner {
                     .predictions
                     .first()
                     .ok_or_else(|| anyhow::anyhow!("classification produced no predictions"))?;
-                let positive = prediction.probability >= *threshold;
+                let threshold_value = threshold.value();
+                let positive = prediction.probability >= threshold_value;
                 let label = if positive { "positive" } else { "negative" };
                 let confidence = if positive {
                     prediction.probability
@@ -162,7 +164,7 @@ impl MlPredictionReasoner {
                 Ok((
                     format!(
                         "classification: predicted {label} (p={:.4}, threshold={:.2})",
-                        prediction.probability, threshold
+                        prediction.probability, threshold_value
                     ),
                     confidence,
                 ))
@@ -269,7 +271,12 @@ mod tests {
     async fn classification_reasoner_predicts_positive() {
         // Model: sigmoid(3*x1 + 0*x2 - 1.5)
         // Features [1, 0] → 3 - 1.5 = 1.5 → sigmoid(1.5) ≈ 0.8176 → positive (>= 0.5)
-        let reasoner = MlPredictionReasoner::classification("test-cls", vec![3.0, 0.0], -1.5, 0.5);
+        let reasoner = MlPredictionReasoner::classification(
+            "test-cls",
+            vec![3.0, 0.0],
+            -1.5,
+            UnitFraction::new(0.5).unwrap(),
+        );
         let intent = IntentPacket::new("classify", Utc::now() + chrono::Duration::hours(1))
             .with_context(serde_json::json!({ "features": [1.0, 0.0] }));
 
@@ -285,7 +292,12 @@ mod tests {
     #[tokio::test]
     async fn classification_reasoner_predicts_negative() {
         // Features [0, 0] → 0 - 1.5 = -1.5 → sigmoid(-1.5) ≈ 0.1824 → negative
-        let reasoner = MlPredictionReasoner::classification("test-cls", vec![3.0, 0.0], -1.5, 0.5);
+        let reasoner = MlPredictionReasoner::classification(
+            "test-cls",
+            vec![3.0, 0.0],
+            -1.5,
+            UnitFraction::new(0.5).unwrap(),
+        );
         let intent = IntentPacket::new("classify", Utc::now() + chrono::Duration::hours(1))
             .with_context(serde_json::json!({ "features": [0.0, 0.0] }));
 

@@ -16,6 +16,7 @@ use converge_pack::{
     AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
     TextPayload,
 };
+use prism::ZScoreThreshold;
 use prism::packs::anomaly_detection::{AnomalyDetectionInput, ZScoreSolver};
 
 use crate::provenance::ORGANISM_ADVERSARIAL_PROVENANCE;
@@ -36,7 +37,7 @@ fn fact_text(fact: &ContextFact) -> &str {
 /// Z-score skeptic over the active strategy set.
 pub struct AnomalySkepticAgent {
     /// |z| above which a plan is flagged.
-    threshold: f64,
+    threshold: ZScoreThreshold,
     /// JSON path inside the plan to the numeric metric to test. Defaults
     /// to `annotation.total_cost`. Falls back to summed `annotation.costs[*].estimate`
     /// if the direct path is absent.
@@ -48,7 +49,7 @@ pub struct AnomalySkepticAgent {
 
 impl AnomalySkepticAgent {
     #[must_use]
-    pub fn new(threshold: f64) -> Self {
+    pub fn new(threshold: ZScoreThreshold) -> Self {
         Self {
             threshold,
             metric_field: "total_cost".into(),
@@ -58,7 +59,7 @@ impl AnomalySkepticAgent {
 
     #[must_use]
     pub fn default_config() -> Self {
-        Self::new(2.0)
+        Self::new(ZScoreThreshold::new(2.0).expect("2.0 is a valid ZScoreThreshold"))
     }
 
     #[must_use]
@@ -176,6 +177,7 @@ impl Suggestor for AnomalySkepticAgent {
         // whose metric was None, so we walk parsed and consume from output as
         // we go.
         let mut metric_idx = 0usize;
+        let threshold_value = self.threshold.value();
         for (id, _plan, metric) in &parsed {
             if metric.is_none() {
                 effect.push(proposed_text_fact(
@@ -208,7 +210,7 @@ impl Suggestor for AnomalySkepticAgent {
                 Some(z_score) => {
                     let f = Finding {
                         agent: "anomaly-skeptic".into(),
-                        severity: if z_score.abs() > self.threshold * 1.5 {
+                        severity: if z_score.abs() > threshold_value * 1.5 {
                             Severity::Blocker
                         } else {
                             Severity::Warning
@@ -325,7 +327,7 @@ mod tests {
 
     #[test]
     fn default_config_threshold_is_two() {
-        assert!((agent_default().threshold - 2.0).abs() < f64::EPSILON);
+        assert!((agent_default().threshold.value() - 2.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -358,7 +360,8 @@ mod tests {
 
     #[test]
     fn metric_field_override_works() {
-        let agent = AnomalySkepticAgent::new(2.0).with_metric_field("custom_score");
+        let agent = AnomalySkepticAgent::new(ZScoreThreshold::new(2.0).unwrap())
+            .with_metric_field("custom_score");
         let plan = json!({"annotation": {"custom_score": 99.0}});
         assert!((agent.extract_metric(&plan).unwrap() - 99.0).abs() < 1e-9);
     }

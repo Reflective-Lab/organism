@@ -45,9 +45,9 @@ converge-pack     = "3.9.1"
 converge-kernel   = "3.9.1"
 converge-provider = "3.9.1"
 
-# Converge extensions — all target the Converge 3.9 contract, resolved
-# directly from crates.io. Aliased to their `[lib] name` for ergonomic
-# `use <alias>::...`.
+# Converge extensions — all target the Converge 3.9 contract. Local stack
+# development resolves touched own crates from the checked-out source so API
+# corrections are consumed directly instead of waiting for a release tag.
 arbiter          = { package = "converge-arbiter-policy",    version = "2.0.1" }
 atelier-domain   = { package = "converge-atelier-domain",    version = "1.0" }
 embassy-pack     = { package = "converge-embassy-pack",      version = "1.3.0" }
@@ -55,7 +55,7 @@ embassy-linkedin = { package = "converge-embassy-linkedin",  version = "1.3.0" }
 ferrox           = { package = "converge-ferrox-solver",     version = "0.7.1" }
 manifold         = { package = "converge-manifold-adapters", version = "1.1.1" }
 mnemos           = { package = "converge-mnemos-knowledge",  version = "1.2.2" }
-prism            = { package = "converge-prism-analytics",   version = "2.0.1" }
+prism            = { package = "converge-prism-analytics",   path = "../../mosaic-extensions/prism-analytics/crates/prism" }
 
 # Shared deps
 anyhow = "1"
