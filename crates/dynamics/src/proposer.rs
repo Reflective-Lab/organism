@@ -36,19 +36,39 @@
 //! promotes those it accepts. The Suggestor itself does not promote.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{AgentEffectBuilder, ProvenanceSource, Suggestor, TextPayload};
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
 use crate::batch::encode_batch_id;
+use crate::exclusion::RoundExclusionPolicy;
 use crate::extract::extract_drafts;
 use crate::payload::{DraftBatchId, FormationDraft};
 use crate::provenance::ORGANISM_DYNAMICS_PROVENANCE;
 
 const SUGGESTOR_NAME: &str = "organism-catalog-proposer";
+
+/// Diagnostic-fact prefix where [`CatalogProposerSuggestor`] records
+/// its per-batch exclusion choice when an exclusion policy is
+/// attached. Use [`proposer_exclusions_marker`] to build the full id.
+pub const PROPOSER_EXCLUSIONS_PREFIX: &str = "organism-catalog-proposer-exclusions";
+
+/// Returns the diagnostic fact id where [`CatalogProposerSuggestor`]
+/// records its per-batch exclusion decision for `draft_batch_id`
+/// when a [`RoundExclusionPolicy`](crate::RoundExclusionPolicy) is
+/// attached. Always emitted in policy mode — even when the exclusion
+/// set is empty, so the trace shows the choice was considered.
+#[must_use]
+pub fn proposer_exclusions_marker(draft_batch_id: &str) -> String {
+    format!(
+        "{PROPOSER_EXCLUSIONS_PREFIX}-{}",
+        encode_batch_id(draft_batch_id)
+    )
+}
 
 /// How [`CatalogProposerSuggestor`] picks the `draft_batch_id` to
 /// stamp on each emitted draft.
@@ -73,6 +93,8 @@ pub struct CatalogProposerSuggestor {
     k: usize,
     source_label: String,
     batch_source: BatchSource,
+    exclusion_policy: Option<Arc<dyn RoundExclusionPolicy>>,
+    halt_marker: Option<String>,
 }
 
 // Declared statically so [`Suggestor::dependencies`] can return a
@@ -101,7 +123,57 @@ impl CatalogProposerSuggestor {
             k,
             source_label,
             batch_source: BatchSource::Explicit(batch_id),
+            exclusion_policy: None,
+            halt_marker: None,
         }
+    }
+
+    /// Attach a diagnostic-fact halt marker. When a fact with the
+    /// given id is present under [`ContextKey::Diagnostic`], the
+    /// proposer's `accepts` returns false even if open batches exist
+    /// — no drafts are produced for the remaining signals.
+    ///
+    /// Use to bind the proposer to an external stop signal: a
+    /// convergence judge ending the deliberation early, a budget
+    /// guard halting on quota exhaustion, a human-in-the-loop pause,
+    /// or any other Suggestor that emits a marker fact under
+    /// `Diagnostic`. The marker is read but never written by this
+    /// proposer — it is the host's job to emit and (optionally) clear.
+    #[must_use]
+    pub fn with_halt_marker(mut self, marker_fact_id: impl Into<String>) -> Self {
+        let marker = marker_fact_id.into();
+        self.halt_marker = if marker.trim().is_empty() {
+            None
+        } else {
+            Some(marker)
+        };
+        self
+    }
+
+    /// Attach a per-batch [`RoundExclusionPolicy`]. When set, the
+    /// proposer filters its catalog per open batch by removing the
+    /// descriptor ids the policy returns, then compiles candidates
+    /// against the filtered catalog. Each batch gets its own
+    /// `evolving-proposer-exclusions-{batch_id}` diagnostic fact
+    /// documenting the choice — the trace shows what changed.
+    ///
+    /// Without a policy (the default) the proposer compiles once
+    /// against the unfiltered catalog and reuses the candidate set
+    /// across all open batches — the historical behavior.
+    ///
+    /// Compile failure under exclusions emits a `Diagnostic` fact and
+    /// skips that batch — no silent fallback to the unfiltered
+    /// catalog. The honest exit means a host can detect when the
+    /// policy has over-pruned (template no longer satisfiable) and
+    /// react (loosen the policy, swap descriptors into the seed
+    /// catalog, surface to a human).
+    #[must_use]
+    pub fn with_round_exclusion_policy<P: RoundExclusionPolicy + 'static>(
+        mut self,
+        policy: P,
+    ) -> Self {
+        self.exclusion_policy = Some(Arc::new(policy));
+        self
     }
 
     /// Override the source label recorded in emitted drafts.
@@ -242,6 +314,14 @@ impl Suggestor for CatalogProposerSuggestor {
         if !ctx.has(ContextKey::Seeds) {
             return false;
         }
+        if let Some(marker) = &self.halt_marker
+            && ctx
+                .get(ContextKey::Diagnostic)
+                .iter()
+                .any(|f| f.id().as_str() == marker.as_str())
+        {
+            return false;
+        }
         !self.open_batches(ctx).is_empty()
     }
 
@@ -249,83 +329,168 @@ impl Suggestor for CatalogProposerSuggestor {
         let mut effect = AgentEffect::builder();
         let open_batches = self.open_batches(ctx);
 
-        // Compile once per execute. The catalog/templates/request are
-        // immutable on the proposer, so the candidate set is the same
-        // for every batch in this call. The batch id is what
-        // distinguishes them on the wire.
-        let candidates = match FormationCompiler::new().compile_k_candidates(
-            &self.request,
-            &self.formation_templates,
-            &self.catalog,
-            &self.providers,
-            self.k,
-        ) {
-            Ok(candidates) => candidates,
-            Err(failure) => {
-                // Surface the failure once per open batch so the audit
-                // trail records which rounds saw no proposals.
-                for batch_id in open_batches {
-                    let encoded = encode_batch_id(&batch_id);
+        // Fast path: no exclusion policy → compile once for all open
+        // batches (catalog/templates/request are immutable on the
+        // proposer, so the candidate set is identical per batch).
+        // Policy path: compile per batch against a per-batch filtered
+        // catalog — the catalog depends on prior-batch verdicts
+        // captured in the policy's read of `ctx`.
+        if self.exclusion_policy.is_none() {
+            let candidates = match FormationCompiler::new().compile_k_candidates(
+                &self.request,
+                &self.formation_templates,
+                &self.catalog,
+                &self.providers,
+                self.k,
+            ) {
+                Ok(candidates) => candidates,
+                Err(failure) => {
+                    for batch_id in open_batches {
+                        let encoded = encode_batch_id(&batch_id);
+                        effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
+                            ContextKey::Diagnostic,
+                            format!("{SUGGESTOR_NAME}-failed-{encoded}"),
+                            TextPayload::new(format!(
+                                "{SUGGESTOR_NAME}: catalog cannot satisfy template for batch {batch_id} — {}",
+                                failure.error
+                            )),
+                        ));
+                    }
+                    return effect.build();
+                }
+            };
+
+            for batch_id in open_batches {
+                effect = self.emit_drafts_for_batch(effect, &batch_id, &candidates, "");
+            }
+            return effect.build();
+        }
+
+        let policy = self
+            .exclusion_policy
+            .as_ref()
+            .expect("policy presence checked above");
+        for batch_id in open_batches {
+            let exclusions = policy.exclusions(ctx, &batch_id);
+            let exclusions_text = if exclusions.is_empty() {
+                "(no prior-round exclusions)".to_string()
+            } else {
+                exclusions
+                    .iter()
+                    .map(|id| id.as_str().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            let encoded_batch = encode_batch_id(&batch_id);
+            effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
+                ContextKey::Diagnostic,
+                proposer_exclusions_marker(&batch_id),
+                TextPayload::new(format!(
+                    "{SUGGESTOR_NAME}: exclusions for {batch_id} ({}) = [{exclusions_text}]",
+                    policy.name(),
+                )),
+            ));
+
+            let filtered = filter_out(&self.catalog, &exclusions);
+            let candidates = match FormationCompiler::new().compile_k_candidates(
+                &self.request,
+                &self.formation_templates,
+                &filtered,
+                &self.providers,
+                self.k,
+            ) {
+                Ok(c) => c,
+                Err(failure) => {
                     effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
                         ContextKey::Diagnostic,
-                        format!("{SUGGESTOR_NAME}-failed-{encoded}"),
+                        format!("{SUGGESTOR_NAME}-failed-{encoded_batch}"),
                         TextPayload::new(format!(
-                            "{SUGGESTOR_NAME}: catalog cannot satisfy template for batch {batch_id} — {}",
+                            "{SUGGESTOR_NAME}: catalog cannot satisfy template for batch {batch_id} with exclusions [{exclusions_text}] — {}",
                             failure.error
                         )),
                     ));
+                    continue;
                 }
-                return effect.build();
-            }
-        };
-
-        for batch_id in open_batches {
-            let encoded_batch = encode_batch_id(&batch_id);
-            for (index, candidate) in candidates.iter().enumerate() {
-                let descriptor_ids: Vec<_> = candidate
-                    .roster
-                    .iter()
-                    .map(|r| r.suggestor_id.clone())
-                    .collect();
-                // Per-batch draft id — reusable across batches so
-                // round-driven huddles can compare "round 1's
-                // candidate-0" against "round 2's candidate-0". The
-                // join key is the (draft_batch_id, draft_id) pair;
-                // global uniqueness lives on the wire fact id.
-                let draft_id = format!("candidate-{index}");
-                let draft = FormationDraft::new(
-                    draft_id.clone(),
-                    batch_id.clone(),
-                    descriptor_ids,
-                    format!(
-                        "Catalog-derived candidate #{index} for template '{}' (batch: {batch_id}).",
-                        candidate.template_id
-                    ),
-                    self.source_label.clone(),
-                );
-                let json = match serde_json::to_string(&draft) {
-                    Ok(s) => s,
-                    Err(err) => {
-                        effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
-                            ContextKey::Diagnostic,
-                            format!("formation-draft-serialize-error-{encoded_batch}-{index}"),
-                            TextPayload::new(format!(
-                                "{SUGGESTOR_NAME}: failed to serialize draft {index} for batch {batch_id}: {err}"
-                            )),
-                        ));
-                        continue;
-                    }
-                };
-                effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
-                    ContextKey::Strategies,
-                    format!("formation-draft-{encoded_batch}-{index}"),
-                    TextPayload::new(json),
-                ));
-            }
+            };
+            effect = self.emit_drafts_for_batch(effect, &batch_id, &candidates, &exclusions_text);
         }
 
         effect.build()
     }
+}
+
+impl CatalogProposerSuggestor {
+    fn emit_drafts_for_batch(
+        &self,
+        mut effect: AgentEffectBuilder,
+        batch_id: &str,
+        candidates: &[organism_runtime::CompiledFormationPlan],
+        exclusions_note: &str,
+    ) -> AgentEffectBuilder {
+        let encoded_batch = encode_batch_id(batch_id);
+        for (index, candidate) in candidates.iter().enumerate() {
+            let descriptor_ids: Vec<_> = candidate
+                .roster
+                .iter()
+                .map(|r| r.suggestor_id.clone())
+                .collect();
+            let draft_id = format!("candidate-{index}");
+            let rationale = if exclusions_note.is_empty() {
+                format!(
+                    "Catalog-derived candidate #{index} for template '{}' (batch: {batch_id}).",
+                    candidate.template_id
+                )
+            } else {
+                format!(
+                    "Catalog-derived candidate #{index} for template '{}' (batch: {batch_id}, exclusions: [{exclusions_note}]).",
+                    candidate.template_id
+                )
+            };
+            let draft = FormationDraft::new(
+                draft_id.clone(),
+                batch_id.to_string(),
+                descriptor_ids,
+                rationale,
+                self.source_label.clone(),
+            );
+            let json = match serde_json::to_string(&draft) {
+                Ok(s) => s,
+                Err(err) => {
+                    effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
+                        ContextKey::Diagnostic,
+                        format!("formation-draft-serialize-error-{encoded_batch}-{index}"),
+                        TextPayload::new(format!(
+                            "{SUGGESTOR_NAME}: failed to serialize draft {index} for batch {batch_id}: {err}"
+                        )),
+                    ));
+                    continue;
+                }
+            };
+            effect = effect.proposal(ORGANISM_DYNAMICS_PROVENANCE.proposed_fact(
+                ContextKey::Strategies,
+                format!("formation-draft-{encoded_batch}-{index}"),
+                TextPayload::new(json),
+            ));
+        }
+        effect
+    }
+}
+
+fn filter_out(
+    catalog: &DiscoveryCatalog,
+    exclusions: &[organism_catalog::SuggestorDescriptorId],
+) -> DiscoveryCatalog {
+    if exclusions.is_empty() {
+        return catalog.clone();
+    }
+    let mut filtered = DiscoveryCatalog::new();
+    for entry in catalog {
+        let id_str = entry.id().as_str();
+        if !exclusions.iter().any(|e| e.as_str() == id_str) {
+            filtered.register(entry.clone());
+        }
+    }
+    filtered
 }
 
 fn slug(input: &str) -> String {

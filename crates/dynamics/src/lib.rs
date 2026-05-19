@@ -46,6 +46,7 @@
 mod batch;
 mod compile;
 mod critic;
+mod exclusion;
 mod extract;
 mod payload;
 mod preflight;
@@ -57,6 +58,7 @@ pub use compile::compile_draft;
 pub use critic::{
     CRITIC_PASS_COMPLETE_MARKER, DraftValidatorCriticSuggestor, critic_pass_complete_marker,
 };
+pub use exclusion::{BlockedMinusPassedPolicy, RoundExclusionPolicy};
 pub use extract::{
     DraftParseError, completed_batches, extract_draft_validations, extract_drafts,
     extract_drafts_for_batch, latest_completed_batch,
@@ -66,7 +68,9 @@ pub use payload::{
     DraftValidationPayloadError, DraftVerdict, FormationDraft, FormationDraftValidationError,
 };
 pub use preflight::{PreflightError, preflight_design_formation};
-pub use proposer::CatalogProposerSuggestor;
+pub use proposer::{
+    CatalogProposerSuggestor, PROPOSER_EXCLUSIONS_PREFIX, proposer_exclusions_marker,
+};
 pub use scorer::{
     BeautyContestSuggestor, SCORER_BATCH_COMPLETE_PREFIX, scorer_batch_complete_marker,
 };
