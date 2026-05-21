@@ -25,6 +25,7 @@ Human intent → Organism (reason, plan, debate, simulate) → Converge (authori
 - [[Concepts/Simulation Swarm]] — outcome, cost, policy, causal, operational simulation
 - [[Concepts/Intent Resolution]] — 4-level mapping from intent to packs, capabilities, invariants
 - [[Concepts/Organizational Learning]] — calibrating planning priors from execution outcomes
+- [[Concepts/Fuzzy Suggestors]] — Prism fuzzy inference as normal in-loop Suggestors
 - [[Concepts/Vendor Selection Lifecycle]] — first decision wedge for the formation compiler
 - [[Concepts/Spend Approval Lifecycle]] — reusable autonomous-org approval Suggestors
 

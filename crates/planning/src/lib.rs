@@ -12,6 +12,7 @@ pub mod collaboration;
 pub mod dd;
 pub mod debate;
 pub mod fuzzy_reasoner;
+pub mod fuzzy_suggestor;
 pub mod huddle;
 pub mod huddle_invocation;
 pub mod kb;
@@ -22,9 +23,15 @@ pub mod suggestor;
 pub mod topology_transition;
 
 pub use fuzzy_reasoner::FuzzyReasoner;
+pub use fuzzy_suggestor::{
+    FuzzyInferenceSuggestor, FuzzyInferenceTrace, FuzzyRuleActivationTrace, FuzzySuggestorError,
+};
 pub use ml_prediction_reasoner::{
     ML_PREDICTION_REASONER_META, MlPredictionMode, MlPredictionReasoner,
     MlPredictionReasonerDescriptor,
+};
+pub use prism::fuzzy::{
+    FuzzyConsequent, FuzzyExpression, FuzzyRule, FuzzySet, LinguisticVariable, MembershipFunction,
 };
 
 use converge_pack::FactId;
