@@ -7,11 +7,13 @@
 //! - [`decomposition`] — breaks intents into governed intent trees
 
 pub mod admission;
+pub mod convergence;
 pub mod decomposition;
 pub mod graded_admission;
 pub mod problem;
 pub mod resolution;
 
+pub use convergence::{ConvergenceCriteria, ConvergenceSignal};
 pub use graded_admission::{DimensionRulebook, GradedAdmissionController};
 
 use chrono::{DateTime, Utc};
@@ -37,6 +39,8 @@ pub struct IntentPacket {
     pub reversibility: Reversibility,
     pub expires: DateTime<Utc>,
     pub expiry_action: ExpiryAction,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub convergence: Option<ConvergenceCriteria>,
 }
 
 impl IntentPacket {
@@ -51,6 +55,7 @@ impl IntentPacket {
             reversibility: Reversibility::Reversible,
             expires,
             expiry_action: ExpiryAction::Halt,
+            convergence: None,
         }
     }
 
@@ -75,6 +80,11 @@ impl IntentPacket {
 
     pub fn with_expiry_action(mut self, action: ExpiryAction) -> Self {
         self.expiry_action = action;
+        self
+    }
+
+    pub fn with_convergence_criteria(mut self, criteria: ConvergenceCriteria) -> Self {
+        self.convergence = Some(criteria);
         self
     }
 }
@@ -273,6 +283,7 @@ mod tests {
         assert!(intent.forbidden.is_empty());
         assert_eq!(intent.reversibility, Reversibility::Reversible);
         assert_eq!(intent.expiry_action, ExpiryAction::Halt);
+        assert_eq!(intent.convergence, None);
     }
 
     #[test]
@@ -330,6 +341,16 @@ mod tests {
     }
 
     #[test]
+    fn with_convergence_criteria() {
+        let intent = IntentPacket::new("conv", future())
+            .with_convergence_criteria(ConvergenceCriteria::MaxRounds { rounds: 4 });
+        assert_eq!(
+            intent.convergence,
+            Some(ConvergenceCriteria::MaxRounds { rounds: 4 })
+        );
+    }
+
+    #[test]
     fn builder_chain() {
         let intent = IntentPacket::new("full", future())
             .with_context(serde_json::json!(null))
@@ -356,6 +377,44 @@ mod tests {
         assert_eq!(back.authority, vec!["ops"]);
         assert_eq!(back.reversibility, Reversibility::Partial);
         assert_eq!(back.expiry_action, ExpiryAction::Escalate);
+        assert_eq!(back.convergence, None);
+    }
+
+    #[test]
+    fn convergence_criteria_roundtrip_on_intent_packet() {
+        let intent = IntentPacket::new("roundtrip convergence", future())
+            .with_convergence_criteria(ConvergenceCriteria::ConsensusAmongMembers);
+
+        let json = serde_json::to_string(&intent).unwrap();
+        assert!(json.contains("consensus_among_members"));
+
+        let back: IntentPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            back.convergence,
+            Some(ConvergenceCriteria::ConsensusAmongMembers)
+        );
+    }
+
+    #[test]
+    fn older_intent_json_defaults_to_no_convergence_criteria() {
+        let id = Uuid::new_v4();
+        let expires = future().to_rfc3339();
+        let json = format!(
+            r#"{{
+                "id": "{id}",
+                "outcome": "old packet",
+                "context": null,
+                "constraints": [],
+                "authority": [],
+                "forbidden": [],
+                "reversibility": "reversible",
+                "expires": "{expires}",
+                "expiry_action": "halt"
+            }}"#
+        );
+
+        let back: IntentPacket = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.convergence, None);
     }
 
     #[test]

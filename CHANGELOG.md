@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `organism_intent::ConvergenceCriteria` and `ConvergenceSignal`, plus an
+  optional `IntentPacket::convergence` field and
+  `with_convergence_criteria(...)` builder. This lets apps declare desired
+  formation termination behavior without defining parallel intent structs.
+
 ## [1.9.1] - 2026-05-18
 
 Audit clean-up release: typed identifiers across the catalog/runtime/
