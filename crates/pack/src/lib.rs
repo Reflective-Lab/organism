@@ -80,6 +80,7 @@ pub use organism_intent::{
     IntentPacket,
     Reversibility,
     admission::DefaultAdmissionController,
+    convergence::{ConvergenceCriteria, ConvergenceSignal},
     // Resolution
     resolution::{
         CapabilityRequirement, DeclarativeBinding, IntentBinding, IntentResolver, PackRequirement,

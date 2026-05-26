@@ -1464,6 +1464,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "converge-fuzzy-inference"
+version = "2.0.1"
+dependencies = [
+ "converge-pack",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "converge-kernel"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1534,6 +1543,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "burn",
+ "converge-fuzzy-inference",
  "converge-optimization",
  "converge-pack",
  "ndarray 0.17.2",
