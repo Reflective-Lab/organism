@@ -34,6 +34,7 @@ Purpose:
 
 What downstream code should use it for:
 - `IntentPacket`
+- `ConvergenceCriteria`
 - `AdmissionResult`
 - `Plan`
 - `Challenge`

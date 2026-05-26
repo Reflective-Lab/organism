@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `Suggestor` adapter for Prism fuzzy inference. Apps provide domain variables,
   input extraction, proposal ids, and typed payload projection; Organism owns
   the Formation/Suggestor mechanics and Prism remains the fuzzy engine.
+- `organism_intent::ConvergenceCriteria` and `ConvergenceSignal`, plus an
+  optional `IntentPacket::convergence` field and
+  `with_convergence_criteria(...)` builder. This lets apps declare desired
+  formation termination behavior without defining parallel intent structs.
 
 ## [1.9.1] - 2026-05-18
 
