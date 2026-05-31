@@ -93,3 +93,14 @@ cast_lossless = "allow"
 [profile.release]
 codegen-units = 1
 lto = true
+
+
+[patch.crates-io]
+converge-pack         = { path = "../converge/crates/pack" }
+converge-kernel       = { path = "../converge/crates/kernel" }
+converge-core         = { path = "../converge/crates/core" }
+converge-model        = { path = "../converge/crates/model" }
+converge-optimization = { path = "../converge/crates/optimization" }
+converge-runtime      = { path = "../converge/crates/runtime" }
+converge-experience   = { path = "../converge/crates/experience" }
+converge-provider     = { path = "../converge/crates/provider" }

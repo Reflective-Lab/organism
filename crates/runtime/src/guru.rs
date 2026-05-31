@@ -169,7 +169,7 @@ impl<'a> FormationGuru<'a> {
             .collect();
 
         // Higher composite wins; stable on ties (preserves catalog order).
-        scored.sort_by(|a, b| b.0.composite.cmp(&a.0.composite));
+        scored.sort_by_key(|s| std::cmp::Reverse(s.0.composite));
 
         let primary = scored[0].1;
         let alternates: Vec<&FormationTemplate> =

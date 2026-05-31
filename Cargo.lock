@@ -1447,8 +1447,6 @@ checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
 [[package]]
 name = "converge-core"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090b97037362a6e0dd96970de379483e8b770b519be8bb3aa25905f487fa8e3a"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1475,8 +1473,6 @@ dependencies = [
 [[package]]
 name = "converge-kernel"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dfb119da8a6481c1304be3ff32927807f1a3e0692e2c2d7bfffd543e2e2204c"
 dependencies = [
  "async-trait",
  "converge-core",
@@ -1490,8 +1486,6 @@ dependencies = [
 [[package]]
 name = "converge-model"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b63b3e65902cb2a1b8c4e6928ec2937959b6f7a11d09e5f0f03ec1b261b538a"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -1502,8 +1496,6 @@ dependencies = [
 [[package]]
 name = "converge-optimization"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8223cf9e43f885dd4f024e8ef620affbb65d9fc89157add483a9e8a3919adb62"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -1525,13 +1517,12 @@ dependencies = [
 [[package]]
 name = "converge-pack"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "497b800b3e4d9e744fabdc2663b28b3af6c87f0fb23d0045f18333bdcc233444"
 dependencies = [
  "async-trait",
  "hex",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "strum 0.28.0",
  "thiserror 2.0.18",
 ]
@@ -1558,8 +1549,6 @@ dependencies = [
 [[package]]
 name = "converge-provider"
 version = "3.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "721f145273c0d7f41788632cf0081214c4f2b820dd63480ca61b0e3d8d105023"
 dependencies = [
  "serde",
  "serde_json",
@@ -9423,3 +9412,11 @@ checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
 dependencies = [
  "zune-core",
 ]
+
+[[patch.unused]]
+name = "converge-experience"
+version = "3.9.1"
+
+[[patch.unused]]
+name = "converge-runtime"
+version = "3.9.1"

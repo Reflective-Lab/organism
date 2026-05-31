@@ -13,8 +13,8 @@
 
 use converge_pack::gate::{ObjectiveSpec, ProblemSpec};
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 use prism::ZScoreThreshold;
 use prism::packs::anomaly_detection::{AnomalyDetectionInput, ZScoreSolver};
@@ -107,8 +107,8 @@ impl Suggestor for AnomalySkepticAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

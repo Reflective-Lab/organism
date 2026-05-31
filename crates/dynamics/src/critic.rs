@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
@@ -98,8 +98,8 @@ impl Suggestor for DraftValidatorCriticSuggestor {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_DYNAMICS_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_DYNAMICS_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

@@ -135,7 +135,7 @@ pub fn generate_candidates(
     candidates.push(ShapeCandidate {
         id: Uuid::new_v4(),
         charter: alt_charter,
-        rationale: format!("Alternative: {alt_topology:?} explores the opposite structure point",),
+        rationale: format!("Alternative: {alt_topology:?} explores the opposite structure point"),
         prior_score: alt_prior,
         evidence_quality: None,
     });

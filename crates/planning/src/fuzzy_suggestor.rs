@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use converge_pack::gate::{ObjectiveSpec, ProblemSpec};
 use converge_pack::{
-    AgentEffect, Context, ContextKey, FactPayload, ProposedFact, Suggestor, TextPayload,
+    AgentEffect, Context, ContextKey, FactPayload, ProposedFact, Provenance, Suggestor, TextPayload,
 };
 use prism::fuzzy::{
     ActivatedRule, FuzzyInferenceEngine, FuzzyInferenceInput, FuzzyInferenceOutput, FuzzyRule,
@@ -311,8 +311,8 @@ where
         ))
     }
 
-    fn provenance(&self) -> &'static str {
-        "organism-planning"
+    fn provenance(&self) -> Provenance {
+        Provenance::new("organism-planning")
     }
 
     fn complexity_hint(&self) -> Option<&'static str> {

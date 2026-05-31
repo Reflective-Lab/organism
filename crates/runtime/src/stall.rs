@@ -10,7 +10,8 @@
 //! See `MILESTONES.md` Stage 3+ "In-loop re-selection" for design rationale.
 
 use converge_pack::{
-    AgentEffect, Context, ContextKey, ProposedFact, ProvenanceSource, Suggestor, TextPayload,
+    AgentEffect, Context, ContextKey, ProposedFact, Provenance, ProvenanceSource, Suggestor,
+    TextPayload,
 };
 
 use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
@@ -137,8 +138,8 @@ impl Suggestor for RoleStallSuggestor {
         &self.deps
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -195,8 +196,8 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
-        fn provenance(&self) -> &'static str {
-            ORGANISM_RUNTIME_PROVENANCE.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

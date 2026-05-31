@@ -10,7 +10,7 @@ use converge_kernel::{
     AgentEffect, Budget, Context, ContextKey, ContextState, ConvergeResult, Engine,
     ExperienceEventObserver, Suggestor,
 };
-use converge_pack::ProposalId;
+use converge_pack::{ProposalId, Provenance};
 use std::sync::Arc;
 
 /// Wrapper that implements `Suggestor` for a boxed trait object.
@@ -31,7 +31,7 @@ impl Suggestor for BoxedAgent {
         self.0.accepts(ctx)
     }
 
-    fn provenance(&self) -> &'static str {
+    fn provenance(&self) -> Provenance {
         self.0.provenance()
     }
 
@@ -277,7 +277,7 @@ pub enum FormationError {
 mod tests {
     use super::*;
     use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
-    use converge_pack::{ProvenanceSource, TextPayload};
+    use converge_pack::{Provenance, ProvenanceSource, TextPayload};
     use proptest::prelude::*;
 
     const SEED_DEPENDENCIES: &[ContextKey] = &[ContextKey::Seeds];
@@ -298,8 +298,8 @@ mod tests {
             SEED_DEPENDENCIES
         }
 
-        fn provenance(&self) -> &'static str {
-            ORGANISM_RUNTIME_PROVENANCE.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

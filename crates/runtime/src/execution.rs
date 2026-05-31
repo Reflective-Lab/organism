@@ -193,8 +193,9 @@ fn outcome_status(stop_reason: &StopReason, converged: bool) -> FormationOutcome
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
     use converge_kernel::{AgentEffect, Context, ContextKey};
-    use converge_pack::{ProvenanceSource, TextPayload};
+    use converge_pack::{Provenance, ProvenanceSource, TextPayload};
 
     const SEED_DEPENDENCIES: &[ContextKey] = &[ContextKey::Seeds];
 
@@ -212,8 +213,8 @@ mod tests {
             SEED_DEPENDENCIES
         }
 
-        fn provenance(&self) -> &'static str {
-            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

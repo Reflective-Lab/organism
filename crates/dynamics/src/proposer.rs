@@ -40,7 +40,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{AgentEffectBuilder, ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{AgentEffectBuilder, Provenance, ProvenanceSource, Suggestor, TextPayload};
 use organism_catalog::{DiscoveryCatalog, ProviderDescriptorCatalog};
 use organism_runtime::{FormationCompileRequest, FormationCompiler};
 
@@ -306,8 +306,8 @@ impl Suggestor for CatalogProposerSuggestor {
         PROPOSER_DEPENDENCIES
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_DYNAMICS_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_DYNAMICS_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

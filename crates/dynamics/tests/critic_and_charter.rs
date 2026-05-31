@@ -16,7 +16,7 @@ use converge_kernel::formation::{
     ProfileSnapshot, StaticFormationTemplate, SuggestorCapability, SuggestorRole,
 };
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 use converge_provider::{CostClass, LatencyClass};
 use organism_catalog::{
     CatalogSuggestorDescriptor, DiscoveryCatalog, DiscoveryMetadata, LoopContribution,
@@ -211,8 +211,8 @@ impl Suggestor for BadDraftProposer {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Seeds]
     }
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         // Fire once: gate on absence of our marker in Diagnostic.
@@ -384,8 +384,8 @@ impl Suggestor for TwoBatchProposer {
         &[ContextKey::Seeds, ContextKey::Diagnostic]
     }
 
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -645,8 +645,8 @@ impl Suggestor for SequencedBadProposer {
             ContextKey::Diagnostic,
         ]
     }
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if !ctx.has(ContextKey::Seeds) {

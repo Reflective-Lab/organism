@@ -12,8 +12,8 @@
 //! to run in the first place.
 
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 use organism_intent::problem::{ProblemClassification, classify_text};
 
@@ -68,8 +68,8 @@ impl Suggestor for ProblemClassifierSuggestor {
         &[ContextKey::Seeds]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

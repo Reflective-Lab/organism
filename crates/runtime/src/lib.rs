@@ -582,12 +582,13 @@ fn gate_admission(intent: &IntentPacket) -> Result<(), PipelineError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
     use chrono::{Duration, Utc};
     use converge_kernel::formation::{
         FormationTemplateQuery, ProfileSnapshot, SuggestorCapability, SuggestorRole,
     };
     use converge_kernel::{AgentEffect, Context, ContextKey, Suggestor};
-    use converge_pack::{ProvenanceSource, TextPayload};
+    use converge_pack::{Provenance, ProvenanceSource, TextPayload};
     use converge_provider::{BackendRequirements, CostClass, LatencyClass};
 
     fn id(n: u128) -> uuid::Uuid {
@@ -765,8 +766,8 @@ mod tests {
             &self.dependencies
         }
 
-        fn provenance(&self) -> &'static str {
-            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

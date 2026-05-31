@@ -35,8 +35,8 @@ impl std::fmt::Display for BudgetAmount {
     }
 }
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 
 fn proposed_text_fact(
@@ -196,8 +196,8 @@ impl Suggestor for AssumptionBreakerAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -424,8 +424,8 @@ impl Suggestor for ConstraintCheckerAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -607,8 +607,8 @@ impl Suggestor for EconomicSkepticAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -723,7 +723,7 @@ impl OperationalSkepticAgent {
             findings.push(Finding {
                 agent: "operational-skeptic".into(),
                 severity: Severity::Warning,
-                message: format!("{parallel} parallel initiatives exceeds cap of {max_parallel}",),
+                message: format!("{parallel} parallel initiatives exceeds cap of {max_parallel}"),
             });
         }
 
@@ -733,7 +733,7 @@ impl OperationalSkepticAgent {
                 findings.push(Finding {
                     agent: "operational-skeptic".into(),
                     severity: Severity::Warning,
-                    message: format!("high complexity with team of {size} — likely understaffed",),
+                    message: format!("high complexity with team of {size} — likely understaffed"),
                 });
             }
             (Some(size), Some("critical")) if size < 5 => {
@@ -805,8 +805,8 @@ impl Suggestor for OperationalSkepticAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_ADVERSARIAL_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

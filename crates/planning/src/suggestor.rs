@@ -14,8 +14,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use converge_pack::{
-    AgentEffect, Context, ContextKey, FactId, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextKey, FactId, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 use organism_intent::IntentPacket;
 
@@ -91,8 +91,8 @@ impl Suggestor for HuddleSeedSuggestor {
         &[]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, _ctx: &dyn Context) -> bool {
@@ -284,8 +284,8 @@ where
         &[ContextKey::Hypotheses]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -391,8 +391,8 @@ where
         &[ContextKey::Hypotheses]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

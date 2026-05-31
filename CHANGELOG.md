@@ -78,7 +78,7 @@ contract held constant.
 - **`organism-intelligence` Stripe carve-out.** Billing surface
   removed; subscription/entitlement/ledger/payment-reconciliation
   belongs to Movement; webhook transport / secret plumbing belongs
-  to Runway. See `kb/Handoffs/2026-05-18 Runway-Movement — Stripe
+  to Runtime Runway. See `kb/Handoffs/2026-05-18 Runtime Runway-Movement — Stripe
   carveout.md`.
 
 ### Fixed
@@ -98,7 +98,7 @@ contract held constant.
 - Removed the Stripe billing surface from `organism-intelligence`. Billing,
   subscription, entitlement, ledger, and payment-provider reconciliation
   semantics belong to Movement; Stripe webhook transport and secret/runtime
-  plumbing belong to Runway.
+  plumbing belong to Runtime Runway.
 
 ## [1.9.0] - 2026-05-17
 

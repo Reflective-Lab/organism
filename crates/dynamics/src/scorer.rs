@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use async_trait::async_trait;
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 
 use crate::batch::{decode_batch_id, encode_batch_id};
 use crate::extract::{extract_draft_validations, extract_drafts};
@@ -112,8 +112,8 @@ impl Suggestor for BeautyContestSuggestor {
         ]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_DYNAMICS_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_DYNAMICS_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

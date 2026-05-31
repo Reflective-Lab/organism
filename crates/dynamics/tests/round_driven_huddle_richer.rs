@@ -30,7 +30,7 @@ use converge_kernel::formation::{
     ProfileSnapshot, StaticFormationTemplate, SuggestorCapability, SuggestorRole,
 };
 use converge_kernel::{AgentEffect, Context, ContextFact, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 use converge_provider::{CostClass, LatencyClass};
 use organism_adversarial::AssumptionBreakerAgent;
 use organism_catalog::{
@@ -203,8 +203,8 @@ impl Suggestor for RoundAdvancer {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Diagnostic]
     }
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         !Self::pending(ctx).is_empty()
@@ -254,8 +254,8 @@ impl Suggestor for ShortlistNoteEmitter {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Diagnostic, ContextKey::Proposals]
     }
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         !Self::pending(ctx).is_empty()

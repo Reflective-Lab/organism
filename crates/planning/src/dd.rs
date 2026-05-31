@@ -19,8 +19,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, ProvenanceSource,
-    Suggestor, TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, FactId, ProposedFact, Provenance,
+    ProvenanceSource, Suggestor, TextPayload,
 };
 use converge_provider::{
     ChatMessage, ChatRequest, ChatRole, DynChatBackend, LlmError, ResponseFormat,
@@ -320,8 +320,8 @@ impl Suggestor for BreadthResearchSuggestor {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -432,8 +432,8 @@ impl Suggestor for DepthResearchSuggestor {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -527,8 +527,8 @@ impl Suggestor for FactExtractorSuggestor {
         &[ContextKey::Signals]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -658,8 +658,8 @@ impl Suggestor for GapDetectorSuggestor {
         &[ContextKey::Hypotheses]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -759,8 +759,8 @@ impl Suggestor for ContradictionFinderSuggestor {
         &[ContextKey::Hypotheses]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -882,8 +882,8 @@ impl Suggestor for SynthesisSuggestor {
         &[]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_PLANNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

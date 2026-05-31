@@ -164,8 +164,8 @@ impl PolicySimulator {
 use crate::provenance::ORGANISM_SIMULATION_PROVENANCE;
 use crate::types::{SimulationRecommendation, SimulationVerdict};
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 
 fn proposed_text_fact(
@@ -211,8 +211,8 @@ impl Suggestor for PolicySimulationAgent {
         &[ContextKey::Strategies]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_SIMULATION_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_SIMULATION_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

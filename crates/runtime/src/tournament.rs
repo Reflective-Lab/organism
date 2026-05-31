@@ -217,8 +217,9 @@ fn episode_from_scores(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provenance::ORGANISM_RUNTIME_PROVENANCE;
     use converge_kernel::{AgentEffect, Context, ContextKey};
-    use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+    use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 
     struct ConvergingAgent;
 
@@ -232,8 +233,8 @@ mod tests {
             &[ContextKey::Seeds]
         }
 
-        fn provenance(&self) -> &'static str {
-            crate::provenance::ORGANISM_RUNTIME_PROVENANCE.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

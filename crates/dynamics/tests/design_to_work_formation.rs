@@ -14,7 +14,7 @@ use converge_kernel::formation::{
     ProfileSnapshot, StaticFormationTemplate, SuggestorCapability, SuggestorRole,
 };
 use converge_kernel::{AgentEffect, Context, ContextKey};
-use converge_pack::{ProvenanceSource, Suggestor, TextPayload};
+use converge_pack::{Provenance, ProvenanceSource, Suggestor, TextPayload};
 use converge_provider::{CostClass, LatencyClass};
 use organism_catalog::{
     CatalogSuggestorDescriptor, DiscoveryCatalog, DiscoveryMetadata, LoopContribution,
@@ -130,8 +130,8 @@ impl Suggestor for ConvergingTagSuggestor {
     fn dependencies(&self) -> &[ContextKey] {
         &[ContextKey::Seeds]
     }
-    fn provenance(&self) -> &'static str {
-        TestProvenance.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(TestProvenance.as_str())
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Seeds) && !ctx.has(self.writes)
@@ -395,8 +395,8 @@ async fn extract_drafts_ignores_non_draft_facts_on_same_key() {
         fn dependencies(&self) -> &[ContextKey] {
             &[ContextKey::Seeds]
         }
-        fn provenance(&self) -> &'static str {
-            TestProvenance.as_str()
+        fn provenance(&self) -> Provenance {
+            Provenance::from(TestProvenance.as_str())
         }
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Proposals)

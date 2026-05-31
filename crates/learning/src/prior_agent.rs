@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 use converge_kernel::{ExperienceStore, RecallPolicy, RecallQuery, recall_from_store};
 use converge_pack::{
-    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, ProvenanceSource, Suggestor,
-    TextPayload,
+    AgentEffect, Context, ContextFact, ContextKey, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 
 use crate::PriorCalibration;
@@ -87,8 +87,8 @@ impl Suggestor for PlanningPriorAgent {
         &[ContextKey::Seeds]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_LEARNING_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_LEARNING_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

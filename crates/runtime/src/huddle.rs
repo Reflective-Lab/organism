@@ -14,7 +14,7 @@ use std::sync::Mutex;
 
 use converge_pack::{
     AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextFact, ContextKey, Disagreement,
-    ProposedFact, ProvenanceSource, Suggestor, TextPayload, Vote, VoteTopicId,
+    ProposedFact, Provenance, ProvenanceSource, Suggestor, TextPayload, Vote, VoteTopicId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -184,8 +184,8 @@ impl Suggestor for RoundStarter {
         &[]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -332,8 +332,8 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
         &[ContextKey::Hypotheses]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -429,8 +429,8 @@ impl Suggestor for DisagreementMapper {
         &[ContextKey::Disagreements]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -529,8 +529,8 @@ impl Suggestor for ConsensusEvaluator {
         &[ContextKey::Votes]
     }
 
-    fn provenance(&self) -> &'static str {
-        ORGANISM_RUNTIME_PROVENANCE.as_str()
+    fn provenance(&self) -> Provenance {
+        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

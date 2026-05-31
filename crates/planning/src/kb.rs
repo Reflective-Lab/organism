@@ -483,7 +483,7 @@ pub fn update_root_pages(vault_root: &Path, config: &KbConfig) -> anyhow::Result
                 }
             }
 
-            children.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+            children.sort_by_key(|c| c.1.to_lowercase());
 
             let section_title = if root_def.scan_dirs.len() > 1 {
                 scan_dir.clone()
