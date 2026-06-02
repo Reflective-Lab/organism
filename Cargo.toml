@@ -19,7 +19,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.9.2"
+version = "1.9.3"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
@@ -27,18 +27,18 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.9.2" }
-organism-planning = { path = "crates/planning", version = "1.9.2" }
-organism-adversarial = { path = "crates/adversarial", version = "1.9.2" }
-organism-simulation = { path = "crates/simulation", version = "1.9.2" }
-organism-learning = { path = "crates/learning", version = "1.9.2" }
-organism-runtime = { path = "crates/runtime", version = "1.9.2" }
-organism-pack = { path = "crates/pack", version = "1.9.2" }
-organism-intelligence = { path = "crates/intelligence", version = "1.9.2" }
-organism-notes = { path = "crates/notes", version = "1.9.2" }
-organism-catalog = { path = "crates/catalog", version = "1.9.2" }
-organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.2" }
-organism-dynamics = { path = "crates/dynamics", version = "1.9.2" }
+organism-intent = { path = "crates/intent", version = "1.9.3" }
+organism-planning = { path = "crates/planning", version = "1.9.3" }
+organism-adversarial = { path = "crates/adversarial", version = "1.9.3" }
+organism-simulation = { path = "crates/simulation", version = "1.9.3" }
+organism-learning = { path = "crates/learning", version = "1.9.3" }
+organism-runtime = { path = "crates/runtime", version = "1.9.3" }
+organism-pack = { path = "crates/pack", version = "1.9.3" }
+organism-intelligence = { path = "crates/intelligence", version = "1.9.3" }
+organism-notes = { path = "crates/notes", version = "1.9.3" }
+organism-catalog = { path = "crates/catalog", version = "1.9.3" }
+organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.3" }
+organism-dynamics = { path = "crates/dynamics", version = "1.9.3" }
 
 # Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
 converge-pack     = "3.9.2"
@@ -48,14 +48,14 @@ converge-provider = "3.9.2"
 # Converge extensions — all target the Converge 3.9 contract. Local stack
 # development resolves touched own crates from the checked-out source so API
 # corrections are consumed directly instead of waiting for a release tag.
-arbiter          = { package = "converge-arbiter-policy",    version = "2.0.1" }
+arbiter          = { package = "converge-arbiter-policy",    version = "2.0.2" }
 atelier-domain   = { package = "converge-atelier-domain",    version = "1.0" }
-embassy-pack     = { package = "converge-embassy-pack",      version = "1.3.0" }
-embassy-linkedin = { package = "converge-embassy-linkedin",  version = "1.3.0" }
-ferrox           = { package = "converge-ferrox-solver",     version = "0.7.1" }
-manifold         = { package = "converge-manifold-adapters", version = "1.1.1" }
-mnemos           = { package = "converge-mnemos-knowledge",  version = "1.2.2" }
-prism            = { package = "converge-prism-analytics",   path = "../../mosaic-extensions/prism-analytics/crates/prism" }
+embassy-pack     = { package = "converge-embassy-pack",      version = "1.3.1" }
+embassy-linkedin = { package = "converge-embassy-linkedin",  version = "1.3.1" }
+ferrox           = { package = "converge-ferrox-solver",     version = "0.7.2" }
+manifold         = { package = "converge-manifold-adapters", version = "1.1.2" }
+mnemos           = { package = "converge-mnemos-knowledge",  version = "1.2.3" }
+prism            = { package = "converge-prism-analytics",   version = "2.0.2" }
 
 # Shared deps
 anyhow = "1"
