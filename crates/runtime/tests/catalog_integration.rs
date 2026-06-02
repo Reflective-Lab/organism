@@ -375,7 +375,7 @@ impl Suggestor for ConvergingTagSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from("test-tournament-suggestor")
+        TestProvenance.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -482,7 +482,7 @@ async fn compile_k_and_run_tournament_pairs_scores_to_candidates() {
                     key: ContextKey::Seeds,
                     id: "s1".into(),
                     content: "seed-content".to_string(),
-                    provenance: "test".to_string(),
+                    provenance: TestProvenance.provenance(),
                 }]
             },
             2,
@@ -555,7 +555,7 @@ async fn compile_k_and_run_tournament_errors_when_intent_rejected() {
                     key: ContextKey::Seeds,
                     id: "s1".into(),
                     content: "x".to_string(),
-                    provenance: "test".to_string(),
+                    provenance: TestProvenance.provenance(),
                 }]
             },
             2,

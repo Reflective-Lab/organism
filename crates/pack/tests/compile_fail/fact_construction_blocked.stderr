@@ -19,5 +19,3 @@ error: trait `fact::ErasedFactPayload` is private
    |
 13 |         payload: todo!(),
    |                  ^^^^^^^ private trait
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)

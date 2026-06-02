@@ -321,7 +321,7 @@ impl Suggestor for BreadthResearchSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -433,7 +433,7 @@ impl Suggestor for DepthResearchSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -528,7 +528,7 @@ impl Suggestor for FactExtractorSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -659,7 +659,7 @@ impl Suggestor for GapDetectorSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -760,7 +760,7 @@ impl Suggestor for ContradictionFinderSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -883,7 +883,7 @@ impl Suggestor for SynthesisSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

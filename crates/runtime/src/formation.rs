@@ -61,7 +61,7 @@ pub struct Seed {
     pub key: ContextKey,
     pub id: ProposalId,
     pub content: String,
-    pub provenance: String,
+    pub provenance: Provenance,
 }
 
 /// Result of running a Formation in a Converge Engine.
@@ -101,7 +101,7 @@ impl Formation {
         key: ContextKey,
         id: impl Into<ProposalId>,
         content: impl Into<String>,
-        provenance: impl Into<String>,
+        provenance: impl Into<Provenance>,
     ) -> Self {
         self.seeds.push(Seed {
             key,
@@ -160,7 +160,7 @@ impl Formation {
                     seed.key,
                     seed.id.clone(),
                     &seed.content,
-                    &seed.provenance,
+                    seed.provenance.clone(),
                 )
                 .map_err(|e| FormationError::ConvergenceFailed(e.to_string()))?;
         }
@@ -299,7 +299,7 @@ mod tests {
         }
 
         fn provenance(&self) -> Provenance {
-            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+            ORGANISM_RUNTIME_PROVENANCE.provenance()
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

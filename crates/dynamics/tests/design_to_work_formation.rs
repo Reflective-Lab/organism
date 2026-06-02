@@ -131,7 +131,7 @@ impl Suggestor for ConvergingTagSuggestor {
         &[ContextKey::Seeds]
     }
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         ctx.has(ContextKey::Seeds) && !ctx.has(self.writes)
@@ -167,7 +167,7 @@ fn seed() -> Seed {
         key: ContextKey::Seeds,
         id: "design-seed".into(),
         content: "design the work formation".to_string(),
-        provenance: "test".to_string(),
+        provenance: TestProvenance.provenance(),
     }
 }
 
@@ -396,7 +396,7 @@ async fn extract_drafts_ignores_non_draft_facts_on_same_key() {
             &[ContextKey::Seeds]
         }
         fn provenance(&self) -> Provenance {
-            Provenance::from(TestProvenance.as_str())
+            TestProvenance.provenance()
         }
         fn accepts(&self, ctx: &dyn Context) -> bool {
             ctx.has(ContextKey::Seeds) && !ctx.has(ContextKey::Proposals)

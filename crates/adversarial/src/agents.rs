@@ -197,7 +197,7 @@ impl Suggestor for AssumptionBreakerAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
+        ORGANISM_ADVERSARIAL_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -425,7 +425,7 @@ impl Suggestor for ConstraintCheckerAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
+        ORGANISM_ADVERSARIAL_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -608,7 +608,7 @@ impl Suggestor for EconomicSkepticAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
+        ORGANISM_ADVERSARIAL_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -806,7 +806,7 @@ impl Suggestor for OperationalSkepticAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
+        ORGANISM_ADVERSARIAL_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

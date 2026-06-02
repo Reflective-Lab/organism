@@ -185,7 +185,7 @@ impl Suggestor for RoundStarter {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -333,7 +333,7 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -430,7 +430,7 @@ impl Suggestor for DisagreementMapper {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -530,7 +530,7 @@ impl Suggestor for ConsensusEvaluator {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

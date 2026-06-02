@@ -88,7 +88,7 @@ impl Suggestor for PlanningPriorAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_LEARNING_PROVENANCE.as_str())
+        ORGANISM_LEARNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

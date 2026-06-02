@@ -235,7 +235,7 @@ organism-pack = { path = "../organism/crates/pack" }
 organism-runtime = { path = "../organism/crates/runtime" }
 
 # Organizational pack library and blueprints
-organism-domain = { path = "../extensions/atelier-showcase/crates/organism-domain" }
+organism-domain = { path = "../../../atelier-showcase/crates/organism-domain" }
 
 # Converge integration
 converge-kernel = "3"
@@ -279,7 +279,7 @@ See the [`atelier-showcase`](../../atelier-showcase) repository for a curated se
 | `shape-competition` | Competing shapes, scoring, winner selection, prior calibration |
 
 The former loan-application example graduated to
-`~/dev/reflective/stack/marquee-apps/loan-application` because lending vocabulary, underwriting
+`~/dev/reflective/marquee-apps/loan-application` because lending vocabulary, underwriting
 assumptions, fixture data, and product workflow belong in concrete apps rather
 than reusable Organism examples.
 

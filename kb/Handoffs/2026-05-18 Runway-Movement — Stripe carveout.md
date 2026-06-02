@@ -4,7 +4,7 @@ source: organism
 date: 2026-05-18
 targets: [runway, movement]
 ---
-# Handoff to Runway and Movement — Stripe carveout
+# Handoff to Runtime Runway and Movement — Stripe carveout
 
 Organism no longer owns Stripe billing code. The removed
 `organism_intelligence::billing` module mixed provider transport, SaaS checkout,
@@ -15,7 +15,7 @@ intelligence boundary.
 
 | Concern | Owner | Notes |
 |---|---|---|
-| Stripe webhook route, signing secret access, deployment config, runtime observability | Runway | Transport and host/runtime infrastructure only. |
+| Stripe webhook route, signing secret access, deployment config, runtime observability | Runtime Runway | Transport and host/runtime infrastructure only. |
 | Stripe checkout, subscription, invoice, payment, meter-event, provider object mapping | Movement | Commercial provider adapter behind Movement's commerce contract. |
 | Webhook receipt, idempotency, replay, reconciliation, entitlement grants, commercial ledger, payouts | Movement | Stripe IDs must stay provider references, not primary domain IDs. |
 | Planning constraints derived from commercial state | Organism consumes typed facts | Organism must not call Stripe or decide commercial state. |
@@ -33,7 +33,7 @@ intelligence boundary.
 
 ## Porting notes
 
-- Runway should keep only the ingress contract: authenticated route, raw body,
+- Runtime Runway should keep only the ingress contract: authenticated route, raw body,
   `Stripe-Signature` header, signing secret lookup, request observability, and
   handoff to Movement.
 - Movement should express provider events through its commerce contracts:

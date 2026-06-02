@@ -195,7 +195,7 @@ impl Suggestor for RoundAdvancer {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

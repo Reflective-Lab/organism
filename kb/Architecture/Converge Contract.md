@@ -5,7 +5,7 @@ tags: [architecture]
 
 How Organism uses Converge. See [[Philosophy/Relationship to Converge]] for why.
 
-Shared stack guidance: `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/Golden Path Matrix.md`.
+Shared stack guidance: `~/dev/reflective/bedrock-platform/converge/kb/Architecture/Golden Path Matrix.md`.
 
 ## Direct Type Usage
 

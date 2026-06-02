@@ -41,9 +41,9 @@ organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.1" }
 organism-dynamics = { path = "crates/dynamics", version = "1.9.1" }
 
 # Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
-converge-pack     = "3.9.1"
-converge-kernel   = "3.9.1"
-converge-provider = "3.9.1"
+converge-pack     = "3.9.2"
+converge-kernel   = "3.9.2"
+converge-provider = "3.9.2"
 
 # Converge extensions — all target the Converge 3.9 contract. Local stack
 # development resolves touched own crates from the checked-out source so API

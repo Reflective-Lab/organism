@@ -10,7 +10,7 @@ Human intent → Organism (form, reason, debate, simulate) → Converge (run, pr
 
 - **Milestones:** Read `MILESTONES.md` at the start of every session. Scope work to the current milestone.
 - **Changelog:** Update `CHANGELOG.md` when shipping notable changes.
-- **Strategic context:** `~/dev/reflective/stack/bedrock-platform/EPIC.md`
+- **Strategic context:** `~/dev/reflective/bedrock-platform/EPIC.md`
 
 ## Claude-Specific Notes
 
@@ -61,9 +61,9 @@ Converge changes that matter to Organism:
 - Sequencing is by dependencies and deterministic registration order, not by suggestor name.
 
 **Before implementing a core/basic/fundamental function, check if Converge already provides it:**
-`~/dev/reflective/stack/bedrock-platform/converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
+`~/dev/reflective/bedrock-platform/converge/CAPABILITIES.md` — optimization solvers, knowledge base, policy engine, analytics/ML, LLM providers, tool integration, experience store, object storage.
 
-See `~/dev/reflective/stack/bedrock-platform/converge/kb/Architecture/API Surfaces.md` for the full public contract.
+See `~/dev/reflective/bedrock-platform/converge/kb/Architecture/API Surfaces.md` for the full public contract.
 
 ## What Organism MUST NOT do
 

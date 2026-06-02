@@ -10,7 +10,8 @@ use std::sync::Arc;
 
 use converge_pack::gate::{ObjectiveSpec, ProblemSpec};
 use converge_pack::{
-    AgentEffect, Context, ContextKey, FactPayload, ProposedFact, Provenance, Suggestor, TextPayload,
+    AgentEffect, Context, ContextKey, FactPayload, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload,
 };
 use prism::fuzzy::{
     ActivatedRule, FuzzyInferenceEngine, FuzzyInferenceInput, FuzzyInferenceOutput, FuzzyRule,
@@ -18,6 +19,8 @@ use prism::fuzzy::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::provenance::ORGANISM_PLANNING_PROVENANCE;
 
 type InputExtractor =
     Arc<dyn Fn(&dyn Context) -> Result<BTreeMap<String, f64>, FuzzySuggestorError> + Send + Sync>;
@@ -49,7 +52,7 @@ where
     P: FactPayload + PartialEq,
 {
     name: String,
-    provenance: String,
+    provenance: Provenance,
     dependencies: Vec<ContextKey>,
     output_key: ContextKey,
     diagnostic_key: ContextKey,
@@ -86,7 +89,7 @@ where
         Self {
             proposal_id_prefix: format!("organism.fuzzy.{name}"),
             name,
-            provenance: "organism-planning".to_string(),
+            provenance: ORGANISM_PLANNING_PROVENANCE.provenance(),
             dependencies: vec![ContextKey::Signals],
             output_key: ContextKey::Evaluations,
             diagnostic_key: ContextKey::Diagnostic,
@@ -117,7 +120,7 @@ where
     }
 
     #[must_use]
-    pub fn with_provenance(mut self, provenance: impl Into<String>) -> Self {
+    pub fn with_provenance(mut self, provenance: impl Into<Provenance>) -> Self {
         self.provenance = provenance.into();
         self
     }
@@ -312,7 +315,7 @@ where
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::new("organism-planning")
+        self.provenance.clone()
     }
 
     fn complexity_hint(&self) -> Option<&'static str> {

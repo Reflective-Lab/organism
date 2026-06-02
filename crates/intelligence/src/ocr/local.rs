@@ -62,8 +62,40 @@ pub struct OcrTextBlock {
 pub struct ImageOcrRequest {
     pub path: String,
     pub target_kind: OcrTargetKind,
-    pub provenance: String,
+    pub provenance: OcrInputProvenance,
     pub language_hints: Vec<String>,
+}
+
+/// Typed provenance for an OCR input.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OcrInputProvenance {
+    pub kind: OcrInputProvenanceKind,
+    pub source_path: String,
+}
+
+impl OcrInputProvenance {
+    #[must_use]
+    pub fn photo(source_path: impl Into<String>) -> Self {
+        Self {
+            kind: OcrInputProvenanceKind::Photo,
+            source_path: source_path.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn screenshot(source_path: impl Into<String>) -> Self {
+        Self {
+            kind: OcrInputProvenanceKind::Screenshot,
+            source_path: source_path.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OcrInputProvenanceKind {
+    Photo,
+    Screenshot,
+    External,
 }
 
 /// Result of image OCR extraction.

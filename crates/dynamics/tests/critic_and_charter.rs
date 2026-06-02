@@ -212,7 +212,7 @@ impl Suggestor for BadDraftProposer {
         &[ContextKey::Seeds]
     }
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         // Fire once: gate on absence of our marker in Diagnostic.
@@ -385,7 +385,7 @@ impl Suggestor for TwoBatchProposer {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -646,7 +646,7 @@ impl Suggestor for SequencedBadProposer {
         ]
     }
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         if !ctx.has(ContextKey::Seeds) {

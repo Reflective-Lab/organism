@@ -7,7 +7,9 @@
 //! Extracts text from screenshots with UI chrome detection, producing
 //! structured documents suitable for knowledge base ingestion.
 
-use super::local::{ImageOcrRequest, OcrBackend, OcrBlockKind, OcrDocument, OcrTargetKind};
+use super::local::{
+    ImageOcrRequest, OcrBackend, OcrBlockKind, OcrDocument, OcrInputProvenance, OcrTargetKind,
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -65,7 +67,7 @@ impl ScreenshotIngester {
         let request = ImageOcrRequest {
             path: path.to_string_lossy().to_string(),
             target_kind: OcrTargetKind::Screenshot,
-            provenance: format!("screenshot:{}", path.display()),
+            provenance: OcrInputProvenance::screenshot(path.to_string_lossy().to_string()),
             language_hints: self.config.language_hints.clone(),
         };
 

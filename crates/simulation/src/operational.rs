@@ -253,7 +253,7 @@ impl Suggestor for OperationalSimulationAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_SIMULATION_PROVENANCE.as_str())
+        ORGANISM_SIMULATION_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

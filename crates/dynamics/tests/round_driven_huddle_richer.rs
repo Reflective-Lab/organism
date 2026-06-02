@@ -204,7 +204,7 @@ impl Suggestor for RoundAdvancer {
         &[ContextKey::Diagnostic]
     }
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         !Self::pending(ctx).is_empty()
@@ -255,7 +255,7 @@ impl Suggestor for ShortlistNoteEmitter {
         &[ContextKey::Diagnostic, ContextKey::Proposals]
     }
     fn provenance(&self) -> Provenance {
-        Provenance::from(TestProvenance.as_str())
+        TestProvenance.provenance()
     }
     fn accepts(&self, ctx: &dyn Context) -> bool {
         !Self::pending(ctx).is_empty()

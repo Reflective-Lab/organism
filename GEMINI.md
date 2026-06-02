@@ -8,4 +8,4 @@ Read and follow `AGENTS.md` — it is the canonical project documentation.
 - Use `generalist` for batch refactoring or high-volume file operations across the workspace.
 - Prefer `grep_search` and `glob` over reading entire files. Lazy-load `kb/` pages as needed.
 - Use `save_memory` for personal preferences only — project knowledge belongs in `kb/`.
-- See `~/dev/reflective/stack/bedrock-platform/EPIC.md` for strategic context (Organism = E2).
+- See `~/dev/reflective/bedrock-platform/EPIC.md` for strategic context (Organism = E2).

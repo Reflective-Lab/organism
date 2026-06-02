@@ -307,7 +307,7 @@ impl Suggestor for CatalogProposerSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_DYNAMICS_PROVENANCE.as_str())
+        ORGANISM_DYNAMICS_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

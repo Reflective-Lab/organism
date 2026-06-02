@@ -49,7 +49,7 @@ pub struct NoteValueCandidate {
     pub path: String,
     pub title: String,
     pub kind: String,
-    pub provenance: String,
+    pub provenance: NoteProvenance,
     pub review_state: String,
     pub freshness_status: NoteFreshnessStatus,
     pub suggested_action: NoteValueAction,
@@ -61,6 +61,47 @@ pub struct NoteValueCandidate {
     pub outgoing_reference_count: usize,
     pub external_url_count: usize,
     pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct NoteProvenance(String);
+
+impl NoteProvenance {
+    #[must_use]
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    #[must_use]
+    pub fn human_authored() -> Self {
+        Self::new("human_authored")
+    }
+
+    #[must_use]
+    pub fn kind(&self) -> NoteProvenanceKind {
+        match self.0.as_str() {
+            "human_authored" => NoteProvenanceKind::HumanAuthored,
+            "human_reviewed_agent_assisted" => NoteProvenanceKind::HumanReviewedAgentAssisted,
+            "machine_derived" => NoteProvenanceKind::MachineDerived,
+            "imported_source" => NoteProvenanceKind::ImportedSource,
+            _ => NoteProvenanceKind::Other,
+        }
+    }
+
+    #[must_use]
+    pub fn is_imported_source(&self) -> bool {
+        self.kind() == NoteProvenanceKind::ImportedSource
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoteProvenanceKind {
+    HumanAuthored,
+    HumanReviewedAgentAssisted,
+    MachineDerived,
+    ImportedSource,
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -91,7 +132,7 @@ struct IndexedNote {
     path: String,
     title: String,
     kind: String,
-    provenance: String,
+    provenance: NoteProvenance,
     review_state: String,
     freshness_anchor: Option<DateTime<Utc>>,
     external_url_count: usize,
@@ -207,7 +248,7 @@ fn load_indexed_notes(vault: &ObsidianVault) -> NoteValueResult<Vec<IndexedNote>
             kind: extract_frontmatter_value(&note.body, "kind")
                 .unwrap_or_else(|| "note".to_string()),
             provenance: extract_frontmatter_value(&note.body, "provenance")
-                .unwrap_or_else(|| "human_authored".to_string()),
+                .map_or_else(NoteProvenance::human_authored, NoteProvenance::new),
             review_state: extract_frontmatter_value(&note.body, "review_state")
                 .unwrap_or_else(|| "canonical".to_string()),
             freshness_anchor: select_freshness_anchor(&note.body, note.modified_at),
@@ -339,7 +380,7 @@ fn freshness_thresholds(note: &IndexedNote) -> (i64, i64) {
         return (45, 120);
     }
     if note.kind == "source_capture"
-        || note.provenance == "imported_source"
+        || note.provenance.is_imported_source()
         || note.path.starts_with("Imported/")
     {
         return (180, 365);
@@ -397,12 +438,12 @@ fn value_score_bps(
         _ => {}
     }
 
-    match note.provenance.as_str() {
-        "human_authored" => score += 900,
-        "human_reviewed_agent_assisted" => score += 500,
-        "machine_derived" => score -= 700,
-        "imported_source" => score -= 300,
-        _ => {}
+    match note.provenance.kind() {
+        NoteProvenanceKind::HumanAuthored => score += 900,
+        NoteProvenanceKind::HumanReviewedAgentAssisted => score += 500,
+        NoteProvenanceKind::MachineDerived => score -= 700,
+        NoteProvenanceKind::ImportedSource => score -= 300,
+        NoteProvenanceKind::Other => {}
     }
 
     if note.kind == "source_capture" {
@@ -431,7 +472,7 @@ fn classify_action(
 ) -> NoteValueAction {
     let reviewed = matches!(note.review_state.as_str(), "canonical" | "approved");
     let imported = note.kind == "source_capture"
-        || note.provenance == "imported_source"
+        || note.provenance.is_imported_source()
         || note.path.starts_with("Imported/");
 
     if freshness_status == NoteFreshnessStatus::Stale
@@ -672,8 +713,8 @@ fn select_freshness_anchor(
 ) -> Option<DateTime<Utc>> {
     let kind = extract_frontmatter_value(body, "kind").unwrap_or_else(|| "note".to_string());
     let provenance = extract_frontmatter_value(body, "provenance")
-        .unwrap_or_else(|| "human_authored".to_string());
-    let imported = kind == "source_capture" || provenance == "imported_source";
+        .map_or_else(NoteProvenance::human_authored, NoteProvenance::new);
+    let imported = kind == "source_capture" || provenance.is_imported_source();
 
     let preferred_fields = if imported {
         [

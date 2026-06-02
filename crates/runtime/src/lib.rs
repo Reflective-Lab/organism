@@ -767,7 +767,7 @@ mod tests {
         }
 
         fn provenance(&self) -> Provenance {
-            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+            ORGANISM_RUNTIME_PROVENANCE.provenance()
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -874,7 +874,7 @@ mod tests {
             key: ContextKey::Seeds,
             id: "vendor-selection-intent".into(),
             content: "select the AI governance vendor".to_string(),
-            provenance: "runtime-test".to_string(),
+            provenance: ORGANISM_RUNTIME_PROVENANCE.provenance(),
         };
 
         let record = Runtime::new()
@@ -930,7 +930,7 @@ mod tests {
             key: ContextKey::Seeds,
             id: "vendor-selection-intent".into(),
             content: "select the AI governance vendor".to_string(),
-            provenance: "runtime-test".to_string(),
+            provenance: ORGANISM_RUNTIME_PROVENANCE.provenance(),
         };
         let mut partial = ExecutableSuggestorCatalog::new();
         partial

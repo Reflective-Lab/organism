@@ -92,7 +92,7 @@ impl Suggestor for HuddleSeedSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, _ctx: &dyn Context) -> bool {
@@ -285,7 +285,7 @@ where
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -392,7 +392,7 @@ where
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_PLANNING_PROVENANCE.as_str())
+        ORGANISM_PLANNING_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

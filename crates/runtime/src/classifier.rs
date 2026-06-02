@@ -69,7 +69,7 @@ impl Suggestor for ProblemClassifierSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {

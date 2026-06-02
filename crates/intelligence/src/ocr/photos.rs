@@ -7,7 +7,7 @@
 //! Extracts text from photos using OCR backends, producing structured
 //! documents suitable for knowledge base ingestion.
 
-use super::local::{ImageOcrRequest, OcrBackend, OcrDocument, OcrTargetKind};
+use super::local::{ImageOcrRequest, OcrBackend, OcrDocument, OcrInputProvenance, OcrTargetKind};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -71,7 +71,7 @@ impl PhotoIngester {
         let request = ImageOcrRequest {
             path: path.to_string_lossy().to_string(),
             target_kind: OcrTargetKind::Photo,
-            provenance: format!("photo:{}", path.display()),
+            provenance: OcrInputProvenance::photo(path.to_string_lossy().to_string()),
             language_hints: self.config.language_hints.clone(),
         };
 

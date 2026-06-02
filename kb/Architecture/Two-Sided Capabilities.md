@@ -22,7 +22,7 @@ Data acquisition from the world. API adapters that produce observations.
 
 **Pattern:** Each module defines a provider trait (e.g., `OcrProvider`, `VisionDescriber`), results wrapped in `Observation<T>` with provenance metadata. Implementations are feature-gated.
 
-Billing, subscriptions, entitlements, payouts, and payment-provider reconciliation belong to Movement's commerce layer. Stripe webhook ingress, signing secrets, deployment configuration, and runtime observability belong to Runway.
+Billing, subscriptions, entitlements, payouts, and payment-provider reconciliation belong to Movement's commerce layer. Stripe webhook ingress, signing secrets, deployment configuration, and runtime observability belong to Runtime Runway.
 
 **Future:** `organism-notes` (vault, ingestion, cleanup, enrichment, indexing) will follow this pattern.
 

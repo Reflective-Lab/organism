@@ -139,7 +139,7 @@ impl Suggestor for RoleStallSuggestor {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+        ORGANISM_RUNTIME_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
@@ -197,7 +197,7 @@ mod tests {
         }
 
         fn provenance(&self) -> Provenance {
-            Provenance::from(ORGANISM_RUNTIME_PROVENANCE.as_str())
+            ORGANISM_RUNTIME_PROVENANCE.provenance()
         }
 
         fn accepts(&self, ctx: &dyn Context) -> bool {

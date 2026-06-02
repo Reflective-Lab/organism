@@ -108,7 +108,7 @@ impl Suggestor for AnomalySkepticAgent {
     }
 
     fn provenance(&self) -> Provenance {
-        Provenance::from(ORGANISM_ADVERSARIAL_PROVENANCE.as_str())
+        ORGANISM_ADVERSARIAL_PROVENANCE.provenance()
     }
 
     fn accepts(&self, ctx: &dyn Context) -> bool {
