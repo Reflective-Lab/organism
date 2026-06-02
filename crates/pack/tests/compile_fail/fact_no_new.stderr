@@ -1,25 +1,25 @@
 error[E0599]: no associated function or constant named `construct_unchecked` found for struct `ContextFact` in the current scope
-    --> tests/compile_fail/fact_no_new.rs:8:22
-     |
-   8 |         ContextFact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
-     |                      ^^^^^^^^^^^^^^^^^^^ associated function or constant not found in `ContextFact`
-     |
+ --> tests/compile_fail/fact_no_new.rs:8:22
+  |
+8 |         ContextFact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
+  |                      ^^^^^^^^^^^^^^^^^^^ associated function or constant not found in `ContextFact`
+  |
 note: if you're trying to build a new `ContextFact` consider using one of the following associated functions:
       ContextFact::new_projection
       ContextFact::from_wire
-    --> /Users/kpernyer/dev/reflective/bedrock-platform/converge/crates/pack/src/fact.rs:1123:5
-     |
-1123 | /     pub fn new_projection<T>(
-1124 | |         key: ContextKey,
-1125 | |         id: impl Into<FactId>,
-1126 | |         payload: T,
-...    |
-1130 | |     where
-1131 | |         T: FactPayload + PartialEq,
-     | |___________________________________^
+ --> $CARGO/converge-pack-$VERSION/src/fact.rs
+  |
+  | /     pub fn new_projection<T>(
+  | |         key: ContextKey,
+  | |         id: impl Into<FactId>,
+  | |         payload: T,
+... |
+  | |     where
+  | |         T: FactPayload + PartialEq,
+  | |___________________________________^
 ...
-1144 | /     pub fn from_wire(
-1145 | |         wire: WireContextFact,
-1146 | |         registry: &PayloadRegistry,
-1147 | |     ) -> Result<Self, PayloadError> {
-     | |___________________________________^
+  | /     pub fn from_wire(
+  | |         wire: WireContextFact,
+  | |         registry: &PayloadRegistry,
+  | |     ) -> Result<Self, PayloadError> {
+  | |___________________________________^
