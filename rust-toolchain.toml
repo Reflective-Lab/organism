@@ -1,0 +1,8 @@
+# Pin rustc to a specific stable release so trybuild fixtures, clippy lints,
+# and macro-expansion output stay deterministic across contributor machines
+# and CI runners. Enforced by RP-RUSTC-DRIFT-CONTAINED (`just project-doctor`
+# check 5 at workspace root). Bump in a dedicated PR with classified snapshot
+# diffs (RP-AUTO-BLESS-AUDITED).
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]
