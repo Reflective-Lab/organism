@@ -287,16 +287,18 @@ struct HuddleSynthesisProducer;
 
 #[async_trait]
 impl SynthesisProducer for HuddleSynthesisProducer {
+    type Payload = TextPayload;
+
     async fn synthesize(
         &self,
         round: u8,
         notes: &[ContextFact],
         _ctx: &dyn Context,
-    ) -> Result<String, String> {
-        Ok(format!(
+    ) -> Result<Self::Payload, String> {
+        Ok(TextPayload::new(format!(
             "design huddle synthesis for round {round}: {} note(s)",
             notes.len()
-        ))
+        )))
     }
 }
 

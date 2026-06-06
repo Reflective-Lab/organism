@@ -13,8 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 use converge_pack::{
-    AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextFact, ContextKey, Disagreement,
-    ProposedFact, Provenance, ProvenanceSource, Suggestor, TextPayload, Vote, VoteTopicId,
+    AgentEffect, ConsensusOutcome, ConsensusRule, Context, ContextFact, ContextKey,
+    DiagnosticPayload, Disagreement, FactPayload, ProposedFact, Provenance, ProvenanceSource,
+    Suggestor, TextPayload, Vote, VoteTopicId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -28,8 +29,15 @@ fn proposed_text_fact(
     ORGANISM_RUNTIME_PROVENANCE.proposed_fact(key, id, TextPayload::new(content))
 }
 
-fn fact_text(fact: &ContextFact) -> &str {
-    fact.text().unwrap_or_default()
+fn proposed_diagnostic_fact(
+    id: impl Into<converge_pack::ProposalId>,
+    message: impl Into<String>,
+) -> ProposedFact {
+    ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
+        ContextKey::Diagnostic,
+        id,
+        DiagnosticPayload::new("organism-round-synthesizer", message),
+    )
 }
 
 /// Fact-id and key conventions for round-based deliberation.
@@ -215,6 +223,8 @@ impl Suggestor for RoundStarter {
 /// complete, where to write the result).
 #[async_trait::async_trait]
 pub trait SynthesisProducer: Send + Sync {
+    type Payload: FactPayload + PartialEq;
+
     /// Synthesize the given round's notes into a single content payload.
     ///
     /// `notes` are facts from [`RoundConventions::note_key`] whose ids end
@@ -231,7 +241,7 @@ pub trait SynthesisProducer: Send + Sync {
         round: u8,
         notes: &[ContextFact],
         ctx: &dyn Context,
-    ) -> Result<String, String>;
+    ) -> Result<Self::Payload, String>;
 }
 
 /// Drives round-by-round synthesis.
@@ -355,13 +365,12 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
             .collect();
 
         match self.producer.synthesize(round, &notes, ctx).await {
-            Ok(content) => AgentEffect::with_proposal(proposed_text_fact(
+            Ok(payload) => AgentEffect::with_proposal(ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
                 self.conventions.synthesis_key,
                 self.conventions.synthesis_id(round),
-                content,
+                payload,
             )),
-            Err(err) => AgentEffect::with_proposal(proposed_text_fact(
-                ContextKey::Diagnostic,
+            Err(err) => AgentEffect::with_proposal(proposed_diagnostic_fact(
                 format!("runtime:error:synthesis:{round}"),
                 err,
             )),
@@ -375,6 +384,11 @@ impl<P: SynthesisProducer> Suggestor for RoundSynthesizer<P> {
 pub struct DisagreementMap {
     pub topic: VoteTopicId,
     pub entries: Vec<Disagreement>,
+}
+
+impl FactPayload for DisagreementMap {
+    const FAMILY: &'static str = "organism.huddle.disagreement_map";
+    const VERSION: u16 = 1;
 }
 
 /// Aggregates [`Disagreement`] facts under [`ContextKey::Disagreements`] into
@@ -440,7 +454,7 @@ impl Suggestor for DisagreementMapper {
         let mapped = self.mapped_topics.lock().unwrap();
         ctx.get(ContextKey::Disagreements)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Disagreement>(fact_text(fact)).ok())
+            .filter_map(|fact| fact.payload::<Disagreement>())
             .any(|d| !mapped.contains(&d.topic))
     }
 
@@ -449,9 +463,10 @@ impl Suggestor for DisagreementMapper {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Disagreement>> = HashMap::new();
         for fact in ctx.get(ContextKey::Disagreements) {
-            let Ok(d) = serde_json::from_str::<Disagreement>(fact_text(fact)) else {
+            let Some(d) = fact.payload::<Disagreement>() else {
                 continue;
             };
+            let d = d.clone();
             if mapped.contains(&d.topic) {
                 continue;
             }
@@ -468,13 +483,10 @@ impl Suggestor for DisagreementMapper {
                 topic: topic.clone(),
                 entries,
             };
-            let Ok(content) = serde_json::to_string(&map) else {
-                continue;
-            };
-            proposals.push(proposed_text_fact(
+            proposals.push(ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
                 self.output_key,
                 Self::map_id(&topic),
-                content,
+                map,
             ));
             mapped.insert(topic);
         }
@@ -487,8 +499,7 @@ impl Suggestor for DisagreementMapper {
 /// [`ConsensusRule`] and emits [`ConsensusOutcome`] facts under
 /// [`ContextKey::ConsensusOutcomes`].
 ///
-/// Vote payloads are read as JSON-serialized [`Vote`] structs from each fact's
-/// content. Outcomes are emitted at most once per topic — once a topic has an
+/// Vote payloads are typed [`Vote`] facts. Outcomes are emitted at most once per topic — once a topic has an
 /// outcome, additional votes on that topic are ignored. This matches the
 /// round-based deliberation pattern: each round has its own topic id, so
 /// re-tallying happens by issuing a new topic, not by amending an old one.
@@ -540,7 +551,7 @@ impl Suggestor for ConsensusEvaluator {
         let decided = self.decided_topics.lock().unwrap();
         ctx.get(ContextKey::Votes)
             .iter()
-            .filter_map(|fact| serde_json::from_str::<Vote>(fact_text(fact)).ok())
+            .filter_map(|fact| fact.payload::<Vote>())
             .any(|vote| !decided.contains(&vote.topic))
     }
 
@@ -549,9 +560,10 @@ impl Suggestor for ConsensusEvaluator {
 
         let mut by_topic: HashMap<VoteTopicId, Vec<Vote>> = HashMap::new();
         for fact in ctx.get(ContextKey::Votes) {
-            let Ok(vote) = serde_json::from_str::<Vote>(fact_text(fact)) else {
+            let Some(vote) = fact.payload::<Vote>() else {
                 continue;
             };
+            let vote = vote.clone();
             if decided.contains(&vote.topic) {
                 continue;
             }
@@ -572,13 +584,10 @@ impl Suggestor for ConsensusEvaluator {
             else {
                 continue;
             };
-            let Ok(content) = serde_json::to_string(&outcome) else {
-                continue;
-            };
-            proposals.push(proposed_text_fact(
+            proposals.push(ORGANISM_RUNTIME_PROVENANCE.proposed_fact(
                 ContextKey::ConsensusOutcomes,
                 format!("outcome:{}", topic.as_str()),
-                content,
+                outcome,
             ));
             decided.insert(topic);
         }
@@ -611,11 +620,10 @@ mod tests {
         let mut formation =
             Formation::new(label).agent(ConsensusEvaluator::new(rule, total_voters));
         for (i, v) in votes.iter().enumerate() {
-            let content = serde_json::to_string(v).unwrap();
-            formation = formation.seed(
+            formation = formation.seed_payload(
                 ContextKey::Votes,
                 format!("vote-{i}"),
-                content,
+                v.clone(),
                 "test-author",
             );
         }
@@ -641,7 +649,7 @@ mod tests {
         assert_eq!(outcomes.len(), 1);
         assert_eq!(outcomes[0].id().as_str(), "outcome:done-r1");
 
-        let outcome: ConsensusOutcome = serde_json::from_str(fact_text(&outcomes[0])).unwrap();
+        let outcome = outcomes[0].require_payload::<ConsensusOutcome>().unwrap();
         assert_eq!(outcome.tally().yes_votes(), 2);
         assert_eq!(outcome.tally().no_votes(), 1);
         assert_eq!(outcome.total_voters().get(), 3);
@@ -672,7 +680,7 @@ mod tests {
         for fact in outcomes {
             decisions.insert(
                 fact.id().as_str().to_string(),
-                serde_json::from_str(fact_text(fact)).unwrap(),
+                fact.require_payload::<ConsensusOutcome>().unwrap().clone(),
             );
         }
         assert!(decisions["outcome:a"].passes());
@@ -695,7 +703,7 @@ mod tests {
             .context
             .get(ContextKey::ConsensusOutcomes);
         assert_eq!(outcomes.len(), 1);
-        let outcome: ConsensusOutcome = serde_json::from_str(fact_text(&outcomes[0])).unwrap();
+        let outcome = outcomes[0].require_payload::<ConsensusOutcome>().unwrap();
         assert!(!outcome.passes());
     }
 
@@ -835,13 +843,15 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for StaticProducer {
+        type Payload = TextPayload;
+
         async fn synthesize(
             &self,
             _round: u8,
             _notes: &[ContextFact],
             _ctx: &dyn Context,
-        ) -> Result<String, String> {
-            Ok(self.0.to_string())
+        ) -> Result<Self::Payload, String> {
+            Ok(TextPayload::new(self.0))
         }
     }
 
@@ -849,13 +859,18 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for CountingProducer {
+        type Payload = TextPayload;
+
         async fn synthesize(
             &self,
             round: u8,
             notes: &[ContextFact],
             _ctx: &dyn Context,
-        ) -> Result<String, String> {
-            Ok(format!("round {round} from {} notes", notes.len()))
+        ) -> Result<Self::Payload, String> {
+            Ok(TextPayload::new(format!(
+                "round {round} from {} notes",
+                notes.len()
+            )))
         }
     }
 
@@ -863,12 +878,14 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SynthesisProducer for FailingProducer {
+        type Payload = TextPayload;
+
         async fn synthesize(
             &self,
             _round: u8,
             _notes: &[ContextFact],
             _ctx: &dyn Context,
-        ) -> Result<String, String> {
+        ) -> Result<Self::Payload, String> {
             Err(self.0.to_string())
         }
     }
@@ -955,7 +972,13 @@ mod tests {
         let diagnostic = result.converge_result.context.get(ContextKey::Diagnostic);
         assert_eq!(diagnostic.len(), 1);
         assert_eq!(diagnostic[0].id().as_str(), "runtime:error:synthesis:1");
-        assert_eq!(diagnostic[0].text(), Some("upstream timeout"));
+        assert_eq!(
+            diagnostic[0]
+                .require_payload::<DiagnosticPayload>()
+                .unwrap()
+                .message(),
+            "upstream timeout"
+        );
     }
 
     #[tokio::test]
@@ -1050,11 +1073,10 @@ mod tests {
     }
 
     fn seed_disagreement(formation: Formation, slot: usize, d: &Disagreement) -> Formation {
-        let content = serde_json::to_string(d).unwrap();
-        formation.seed(
+        formation.seed_payload(
             ContextKey::Disagreements,
             format!("disagreement-{slot}"),
-            content,
+            d.clone(),
             "test-author",
         )
     }
@@ -1078,7 +1100,7 @@ mod tests {
         let mut by_id: std::collections::HashMap<String, DisagreementMap> =
             std::collections::HashMap::new();
         for fact in maps {
-            let parsed: DisagreementMap = serde_json::from_str(fact_text(fact)).unwrap();
+            let parsed = fact.require_payload::<DisagreementMap>().unwrap().clone();
             by_id.insert(fact.id().as_str().to_string(), parsed);
         }
         let map_a = &by_id["disagreement_map:topic-a"];

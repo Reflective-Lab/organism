@@ -10,7 +10,7 @@ use converge_kernel::{
     AgentEffect, Budget, Context, ContextKey, ContextState, ConvergeResult, Engine,
     ExperienceEventObserver, Suggestor,
 };
-use converge_pack::{ProposalId, Provenance};
+use converge_pack::{FactPayload, ProposalId, ProposedFact, Provenance};
 use std::sync::Arc;
 
 /// Wrapper that implements `Suggestor` for a boxed trait object.
@@ -52,6 +52,8 @@ pub struct Formation {
     agents: Vec<Box<dyn Suggestor>>,
     /// Initial external inputs to stage before running.
     seeds: Vec<Seed>,
+    /// Initial typed facts to stage before running.
+    typed_seeds: Vec<ProposedFact>,
     /// Execution budget for this formation's run.
     pub budget: Budget,
 }
@@ -79,6 +81,7 @@ impl Formation {
             label: label.into(),
             agents: Vec::new(),
             seeds: Vec::new(),
+            typed_seeds: Vec::new(),
             budget: Budget::default(),
         }
     }
@@ -86,6 +89,25 @@ impl Formation {
     /// Add a heterogeneous agent to the team.
     pub fn agent(mut self, suggestor: impl Suggestor + 'static) -> Self {
         self.agents.push(Box::new(suggestor));
+        self
+    }
+
+    /// Stage an initial typed payload with explicit provenance.
+    ///
+    /// Use this for semantic facts. [`Formation::seed`] remains only for
+    /// human-readable text payloads.
+    pub fn seed_payload<T>(
+        mut self,
+        key: ContextKey,
+        id: impl Into<ProposalId>,
+        payload: T,
+        provenance: impl Into<Provenance>,
+    ) -> Self
+    where
+        T: FactPayload + PartialEq,
+    {
+        self.typed_seeds
+            .push(ProposedFact::new(key, id, payload, provenance.into()));
         self
     }
 
@@ -162,6 +184,11 @@ impl Formation {
                     &seed.content,
                     seed.provenance.clone(),
                 )
+                .map_err(|e| FormationError::ConvergenceFailed(e.to_string()))?;
+        }
+        for seed in self.typed_seeds {
+            context
+                .add_proposal(seed)
                 .map_err(|e| FormationError::ConvergenceFailed(e.to_string()))?;
         }
 

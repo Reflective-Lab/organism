@@ -22,7 +22,7 @@ use converge_kernel::{
     ExperienceStore, ExperienceStoreResult, LifecycleEvent, RecallPolicy, ReplayTrace, TraceLinkId,
     UserExperienceEvent, UserExperienceEventEnvelope,
 };
-use converge_pack::{ActorId, Context, ContextFact, GateId, UnitInterval};
+use converge_pack::{ActorId, Context, ContextFact, GateId, TextPayload, UnitInterval};
 use organism_learning::PlanningPriorAgent;
 use organism_runtime::{Formation, RoundConventions, RoundSynthesizer, SynthesisProducer};
 
@@ -97,12 +97,14 @@ struct RecallAwareProducer;
 
 #[async_trait::async_trait]
 impl SynthesisProducer for RecallAwareProducer {
+    type Payload = TextPayload;
+
     async fn synthesize(
         &self,
         round: u8,
         _notes: &[ContextFact],
         ctx: &dyn Context,
-    ) -> Result<String, String> {
+    ) -> Result<Self::Payload, String> {
         let summary = ctx
             .get(ContextKey::Hypotheses)
             .iter()
@@ -114,11 +116,11 @@ impl SynthesisProducer for RecallAwareProducer {
                     .map_err(|e| e.to_string())?;
                 let avg = v["avg_confidence"].as_f64().unwrap_or(0.0);
                 let count = v["count"].as_u64().unwrap_or(0);
-                Ok(format!(
+                Ok(TextPayload::new(format!(
                     "round-{round}|recall_count={count}|recall_avg={avg:.4}"
-                ))
+                )))
             }
-            None => Ok(format!("round-{round}|no_recall")),
+            None => Ok(TextPayload::new(format!("round-{round}|no_recall"))),
         }
     }
 }
