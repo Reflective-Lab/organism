@@ -1,0 +1,31 @@
+# Workspace-level clippy configuration for Organism.
+#
+# RP-HERMETIC-UNIT enforcement (QUALITY_BACKLOG.md → QF-2026-06-02-05):
+# methods listed below construct HTTP/network clients with implicit
+# defaults, making it impossible for a test to substitute a stub without
+# the test author noticing. Production constructors that legitimately
+# need a default client must either:
+#
+#   1. Refactor to expose a `with_http_client(client, ...)` constructor
+#      next to the default `new(...)` and route `new` through it.
+#      Pattern documented at:
+#      KB/05-engineering/standards/hermetic-unit-tests.md
+#
+#   2. Annotate the callsite with
+#      `#[allow(clippy::disallowed_methods)]` + a comment citing the
+#      reason (e.g. "convenience default for callers who don't need DI").
+#
+# Today the lint is configured at `warn` (see organism Cargo.toml
+# [workspace.lints.clippy]). Each unmigrated callsite is a visible
+# warning in `cargo clippy` output — that's the TODO list. Promotion
+# to `deny` happens when every intelligence/helms/runtime callsite is
+# either migrated or explicitly allowed.
+
+disallowed-methods = [
+    # `allow-invalid = true` suppresses the "method does not refer to a
+    # reachable function" clippy warning when `reqwest` isn't in scope
+    # (default-features build). The list still applies whenever the
+    # `ocr` feature pulls reqwest in.
+    { path = "reqwest::Client::new", allow-invalid = true, reason = "use with_http_client(...) — RP-HERMETIC-UNIT / QF-2026-06-02-05" },
+    { path = "reqwest::blocking::Client::new", allow-invalid = true, reason = "use with_http_client(...) — RP-HERMETIC-UNIT / QF-2026-06-02-05" },
+]

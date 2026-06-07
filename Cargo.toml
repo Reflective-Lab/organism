@@ -89,6 +89,16 @@ cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
 cast_sign_loss = "allow"
 cast_lossless = "allow"
+# RP-HERMETIC-UNIT (QF-2026-06-02-05): denies `reqwest::Client::new` and
+# `reqwest::blocking::Client::new` so unit tests can't accidentally hit
+# the network. The disallowed-methods list lives in `clippy.toml` at the
+# workspace root. Production callsites either route through a
+# `with_http_client(...)` DI constructor (see KB standard
+# `hermetic-unit-tests.md`) or annotate with `#[allow(clippy::
+# disallowed_methods)]` + a justification comment. Level is `warn` during
+# migration — each unmigrated callsite is a visible TODO. Promote to `deny`
+# once every intelligence/helms/runtime callsite is migrated or allowed.
+disallowed_methods = "warn"
 
 [profile.release]
 codegen-units = 1
