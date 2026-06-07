@@ -21,7 +21,7 @@ Authority is never inherited from reasoning. Plans must pass adversarial review 
 
 | Layer | Technology |
 |---|---|
-| System logic | Rust (Edition 2024, rust-version 1.94) |
+| System logic | Rust (Edition 2024, rust-version 1.96) |
 | Converge contract | `converge-pack`, `converge-kernel`, `converge-provider-api`, optional `converge-model` / `converge-client` (v3.7.6) |
 | Task runner | just |
 

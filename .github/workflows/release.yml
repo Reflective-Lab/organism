@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.94.0"
+          toolchain: "1.96.0"
       - uses: Swatinem/rust-cache@v2
       - name: Check workspace
         run: cargo check --workspace ${{ env.EXCLUDES }}
