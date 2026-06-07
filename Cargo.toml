@@ -113,6 +113,4 @@ converge-kernel       = { path = "../converge/crates/kernel" }
 converge-core         = { path = "../converge/crates/core" }
 converge-model        = { path = "../converge/crates/model" }
 converge-optimization = { path = "../converge/crates/optimization" }
-converge-runtime      = { path = "../converge/crates/runtime" }
-converge-experience   = { path = "../converge/crates/experience" }
 converge-provider     = { path = "../converge/crates/provider" }
