@@ -95,10 +95,12 @@ cast_lossless = "allow"
 # workspace root. Production callsites either route through a
 # `with_http_client(...)` DI constructor (see KB standard
 # `hermetic-unit-tests.md`) or annotate with `#[allow(clippy::
-# disallowed_methods)]` + a justification comment. Level is `warn` during
-# migration — each unmigrated callsite is a visible TODO. Promote to `deny`
-# once every intelligence/helms/runtime callsite is migrated or allowed.
-disallowed_methods = "warn"
+# disallowed_methods)]` + a justification comment. Promoted to `deny`
+# 2026-06-07 after every organism-intelligence callsite (cloud.rs
+# Mistral/DeepSeek/LightOn, vision/backends.rs
+# Anthropic/OpenAi/Gemini/Mistral, receipt.rs OllamaReceiptOcrProvider)
+# was migrated to the DI pattern.
+disallowed_methods = "deny"
 
 [profile.release]
 codegen-units = 1

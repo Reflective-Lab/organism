@@ -664,14 +664,34 @@ pub struct DeepSeekOcrProvider {
 }
 
 impl DeepSeekOcrProvider {
-    /// Creates a new `DeepSeek` OCR provider.
+    /// Creates a new `DeepSeek` OCR provider with a default HTTP client.
+    ///
+    /// For hermetic tests (`RP-HERMETIC-UNIT` / `QF-2026-06-02-05`),
+    /// use [`with_http_client`](Self::with_http_client) instead.
     #[must_use]
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers who don't need DI.
+    // Tests use `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// Creates a new `DeepSeek` OCR provider with an explicit HTTP client.
+    ///
+    /// Dependency-injection constructor for hermetic tests
+    /// (`RP-HERMETIC-UNIT`).
+    #[must_use]
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: crate::secret::SecretString::new(api_key),
             model: model.into(),
             base_url: "https://api.deepseek.com/v1".to_string(),
-            client: reqwest::blocking::Client::new(),
+            client,
         }
     }
 
@@ -846,14 +866,34 @@ pub struct LightOnOcrProvider {
 }
 
 impl LightOnOcrProvider {
-    /// Creates a new `LightOn` OCR provider.
+    /// Creates a new `LightOn` OCR provider with a default HTTP client.
+    ///
+    /// For hermetic tests (`RP-HERMETIC-UNIT` / `QF-2026-06-02-05`),
+    /// use [`with_http_client`](Self::with_http_client) instead.
     #[must_use]
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers who don't need DI.
+    // Tests use `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// Creates a new `LightOn` OCR provider with an explicit HTTP client.
+    ///
+    /// Dependency-injection constructor for hermetic tests
+    /// (`RP-HERMETIC-UNIT`).
+    #[must_use]
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: crate::secret::SecretString::new(api_key),
             model: model.into(),
             base_url: "https://api-inference.huggingface.co/models".to_string(),
-            client: reqwest::blocking::Client::new(),
+            client,
         }
     }
 

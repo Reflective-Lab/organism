@@ -139,13 +139,28 @@ fn guess_media_type(bytes: &[u8]) -> &'static str {
 pub struct AnthropicVision {
     api_key: SecretString,
     model: String,
+    client: reqwest::blocking::Client,
 }
 
 impl AnthropicVision {
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers. Tests use
+    // `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// DI constructor for hermetic tests (`RP-HERMETIC-UNIT`).
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: SecretString::new(api_key),
             model: model.into(),
+            client,
         }
     }
 
@@ -192,8 +207,8 @@ impl AnthropicVision {
             }]
         });
 
-        let client = reqwest::blocking::Client::new();
-        let response = client
+        let response = self
+            .client
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", self.api_key.expose())
             .header("anthropic-version", "2023-06-01")
@@ -244,13 +259,28 @@ impl VisionDescriber for AnthropicVision {
 pub struct OpenAiVision {
     api_key: SecretString,
     model: String,
+    client: reqwest::blocking::Client,
 }
 
 impl OpenAiVision {
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers. Tests use
+    // `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// DI constructor for hermetic tests (`RP-HERMETIC-UNIT`).
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: SecretString::new(api_key),
             model: model.into(),
+            client,
         }
     }
 
@@ -309,8 +339,8 @@ impl OpenAiVision {
             ]
         });
 
-        let client = reqwest::blocking::Client::new();
-        let response = client
+        let response = self
+            .client
             .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key.expose()))
             .header("content-type", "application/json")
@@ -360,13 +390,28 @@ impl VisionDescriber for OpenAiVision {
 pub struct GeminiVision {
     api_key: SecretString,
     model: String,
+    client: reqwest::blocking::Client,
 }
 
 impl GeminiVision {
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers. Tests use
+    // `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// DI constructor for hermetic tests (`RP-HERMETIC-UNIT`).
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: SecretString::new(api_key),
             model: model.into(),
+            client,
         }
     }
 
@@ -418,8 +463,8 @@ impl GeminiVision {
             self.api_key.expose()
         );
 
-        let client = reqwest::blocking::Client::new();
-        let response = client
+        let response = self
+            .client
             .post(&url)
             .header("content-type", "application/json")
             .json(&body)
@@ -468,13 +513,28 @@ impl VisionDescriber for GeminiVision {
 pub struct MistralVision {
     api_key: SecretString,
     model: String,
+    client: reqwest::blocking::Client,
 }
 
 impl MistralVision {
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers. Tests use
+    // `with_http_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// DI constructor for hermetic tests (`RP-HERMETIC-UNIT`).
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: SecretString::new(api_key),
             model: model.into(),
+            client,
         }
     }
 
@@ -533,8 +593,8 @@ impl MistralVision {
             ]
         });
 
-        let client = reqwest::blocking::Client::new();
-        let response = client
+        let response = self
+            .client
             .post("https://api.mistral.ai/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key.expose()))
             .header("content-type", "application/json")

@@ -165,12 +165,26 @@ impl Default for OllamaReceiptConfig {
 #[derive(Debug, Clone)]
 pub struct OllamaReceiptOcrProvider {
     config: OllamaReceiptConfig,
+    client: reqwest::blocking::Client,
 }
 
 impl OllamaReceiptOcrProvider {
     #[must_use]
+    #[allow(clippy::disallowed_methods)]
+    // Convenience default for production callers. Tests use
+    // `with_config_and_client`. See
+    // `KB/05-engineering/standards/hermetic-unit-tests.md`.
     pub fn with_config(config: OllamaReceiptConfig) -> Self {
-        Self { config }
+        Self::with_config_and_client(config, reqwest::blocking::Client::new())
+    }
+
+    /// DI constructor for hermetic tests (`RP-HERMETIC-UNIT`).
+    #[must_use]
+    pub fn with_config_and_client(
+        config: OllamaReceiptConfig,
+        client: reqwest::blocking::Client,
+    ) -> Self {
+        Self { config, client }
     }
 }
 
@@ -210,8 +224,8 @@ impl OcrProvider for OllamaReceiptOcrProvider {
             }),
         };
 
-        let client = reqwest::blocking::Client::new();
-        let response = client
+        let response = self
+            .client
             .post(format!(
                 "{}/api/generate",
                 self.config.base_url.trim_end_matches('/')
