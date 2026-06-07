@@ -31,6 +31,12 @@ Where [Converge](https://github.com/Reflective-Lab/converge) answers *"what acti
 Human intent → Organism (form, reason, debate, simulate) → Converge (run, promote, govern) → World
 ```
 
+## Boundary
+
+> Owns: intent contracts, planning, adversarial review, simulation, formation selection. Does NOT own: promotion authority (→ Converge); truth compilation (→ Axiom).
+
+— Canonical claim: [Organism](https://github.com/Reflective-Lab/reflective/blob/main/KB/04-architecture/current-system-map.md#organism) in the boundary registry. Update there first; this README quotes that source.
+
 ## A New World
 
 The old world translated human intent into explicit instructions before execution. The new world keeps the gap between *intent* and *decision* open and runs systems that close it safely at runtime. Organism is the layer that does that closure — admission, decomposition, planning, adversarial review, simulation — all governed by Converge's commit boundary.
