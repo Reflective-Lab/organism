@@ -414,14 +414,40 @@ pub struct MistralOcrProvider {
 }
 
 impl MistralOcrProvider {
-    /// Creates a new Mistral OCR provider.
+    /// Creates a new Mistral OCR provider with a default HTTP client.
+    ///
+    /// For tests that must stay hermetic per `RP-HERMETIC-UNIT`
+    /// (`QUALITY_BACKLOG.md` → `QF-2026-06-02-05`), use
+    /// [`with_http_client`](Self::with_http_client) and inject a stub
+    /// client (e.g. one wired to a `wiremock` server) — never the default,
+    /// which would call live `api.mistral.ai`.
     #[must_use]
+    #[allow(clippy::disallowed_methods)]
+    // This is the convenience constructor that builds the default HTTP
+    // client. The clippy::disallowed_methods lint (RP-HERMETIC-UNIT /
+    // QF-2026-06-02-05) is intentionally allowed here because production
+    // callers who don't need DI use this path. Tests use
+    // `with_http_client` instead.
     pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_http_client(reqwest::blocking::Client::new(), api_key, model)
+    }
+
+    /// Creates a new Mistral OCR provider with an explicit HTTP client.
+    ///
+    /// This is the dependency-injection constructor used by hermetic tests
+    /// (`RP-HERMETIC-UNIT`). Production callers can use [`new`](Self::new)
+    /// for the default client.
+    #[must_use]
+    pub fn with_http_client(
+        client: reqwest::blocking::Client,
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             api_key: crate::secret::SecretString::new(api_key),
             model: model.into(),
             base_url: "https://api.mistral.ai/v1".to_string(),
-            client: reqwest::blocking::Client::new(),
+            client,
         }
     }
 
@@ -1490,5 +1516,28 @@ mod tests {
     fn test_ocr_output_format_default() {
         let format = OcrOutputFormat::default();
         assert_eq!(format, OcrOutputFormat::Markdown);
+    }
+
+    /// Hermetic construction per `RP-HERMETIC-UNIT` (`QF-2026-06-02-05`).
+    ///
+    /// Demonstrates the dependency-injection pattern: tests build their
+    /// own `reqwest::blocking::Client` (which can be wired to
+    /// `wiremock` or any other test double) and pass it explicitly via
+    /// `with_http_client`. No environment variables are read; no
+    /// outbound socket is opened by this construction path.
+    #[test]
+    fn mistral_provider_constructs_hermetically_via_di() {
+        // A bare `reqwest::blocking::Client` doesn't open a socket until
+        // a request is sent. The point is the *constructor* doesn't bake
+        // in environment lookup or implicit defaults the test author
+        // can't see.
+        let stub_client = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("stub client builds without env or network");
+        let provider =
+            MistralOcrProvider::with_http_client(stub_client, "fake-test-key", "test-model");
+        assert_eq!(provider.name(), "mistral-ocr");
+        assert_eq!(provider.model(), "test-model");
     }
 }
