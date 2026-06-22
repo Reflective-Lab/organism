@@ -16,7 +16,7 @@ jobs:
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Checkout Reflective sibling dependencies
         run: bash scripts/ci/checkout-reflective-siblings.sh
       - uses: dtolnay/rust-toolchain@stable
@@ -32,7 +32,7 @@ jobs:
     name: Dependency Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Checkout Reflective sibling dependencies
         run: bash scripts/ci/checkout-reflective-siblings.sh
       - uses: dtolnay/rust-toolchain@stable
@@ -184,7 +184,7 @@ jobs:
     name: Secrets Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install and run gitleaks
