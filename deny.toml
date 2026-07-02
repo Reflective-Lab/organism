@@ -3,6 +3,15 @@ all-features = false
 
 [advisories]
 yanked = "warn"
+ignore = [
+    # quick-xml <0.41 — duplicate-attribute quadratic run time (0194) and
+    # NsReader namespace-allocation DoS (0195), fixed in >=0.41. Transitive
+    # via object_store (semver-locked upstream); no fix path until upstream
+    # moves. XML surface is the storage provider's own API responses; both
+    # advisories are DoS-class. Added 2026-07-02.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]
 
 [licenses]
 allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-DFS-2016", "Zlib", "CC0-1.0"]
