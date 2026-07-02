@@ -1581,7 +1581,7 @@ checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
 
 [[package]]
 name = "converge-core"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -1609,7 +1609,7 @@ dependencies = [
 
 [[package]]
 name = "converge-kernel"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "async-trait",
  "converge-core",
@@ -1622,7 +1622,7 @@ dependencies = [
 
 [[package]]
 name = "converge-model"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "converge-core",
  "converge-pack",
@@ -1632,7 +1632,7 @@ dependencies = [
 
 [[package]]
 name = "converge-optimization"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -1653,7 +1653,7 @@ dependencies = [
 
 [[package]]
 name = "converge-pack"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "async-trait",
  "hex",
@@ -1687,7 +1687,7 @@ dependencies = [
 
 [[package]]
 name = "converge-provider"
-version = "3.9.2"
+version = "3.9.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -5171,7 +5171,7 @@ dependencies = [
 
 [[package]]
 name = "organism-adversarial"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "converge-pack",
@@ -5186,7 +5186,7 @@ dependencies = [
 
 [[package]]
 name = "organism-catalog"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "converge-kernel",
@@ -5200,7 +5200,7 @@ dependencies = [
 
 [[package]]
 name = "organism-catalog-seed"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "converge-kernel",
  "converge-pack",
@@ -5212,7 +5212,7 @@ dependencies = [
 
 [[package]]
 name = "organism-dynamics"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5232,7 +5232,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intelligence"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "base64 0.22.1",
  "pdf-extract",
@@ -5246,7 +5246,7 @@ dependencies = [
 
 [[package]]
 name = "organism-intent"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5261,7 +5261,7 @@ dependencies = [
 
 [[package]]
 name = "organism-learning"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5277,7 +5277,7 @@ dependencies = [
 
 [[package]]
 name = "organism-notes"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -5290,7 +5290,7 @@ dependencies = [
 
 [[package]]
 name = "organism-pack"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "chrono",
  "converge-pack",
@@ -5307,7 +5307,7 @@ dependencies = [
 
 [[package]]
 name = "organism-planning"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5327,7 +5327,7 @@ dependencies = [
 
 [[package]]
 name = "organism-runtime"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5353,7 +5353,7 @@ dependencies = [
 
 [[package]]
 name = "organism-simulation"
-version = "1.9.3"
+version = "1.9.4"
 dependencies = [
  "async-trait",
  "converge-pack",

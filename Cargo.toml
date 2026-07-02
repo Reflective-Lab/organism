@@ -19,7 +19,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "1.9.3"
+version = "1.9.4"
 edition = "2024"
 rust-version = "1.96.0"
 license = "MIT"
@@ -27,23 +27,23 @@ repository = "https://github.com/Reflective-Lab/organism"
 
 [workspace.dependencies]
 # Internal crates
-organism-intent = { path = "crates/intent", version = "1.9.3" }
-organism-planning = { path = "crates/planning", version = "1.9.3" }
-organism-adversarial = { path = "crates/adversarial", version = "1.9.3" }
-organism-simulation = { path = "crates/simulation", version = "1.9.3" }
-organism-learning = { path = "crates/learning", version = "1.9.3" }
-organism-runtime = { path = "crates/runtime", version = "1.9.3" }
-organism-pack = { path = "crates/pack", version = "1.9.3" }
-organism-intelligence = { path = "crates/intelligence", version = "1.9.3" }
-organism-notes = { path = "crates/notes", version = "1.9.3" }
-organism-catalog = { path = "crates/catalog", version = "1.9.3" }
-organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.3" }
-organism-dynamics = { path = "crates/dynamics", version = "1.9.3" }
+organism-intent = { path = "crates/intent", version = "1.9.4" }
+organism-planning = { path = "crates/planning", version = "1.9.4" }
+organism-adversarial = { path = "crates/adversarial", version = "1.9.4" }
+organism-simulation = { path = "crates/simulation", version = "1.9.4" }
+organism-learning = { path = "crates/learning", version = "1.9.4" }
+organism-runtime = { path = "crates/runtime", version = "1.9.4" }
+organism-pack = { path = "crates/pack", version = "1.9.4" }
+organism-intelligence = { path = "crates/intelligence", version = "1.9.4" }
+organism-notes = { path = "crates/notes", version = "1.9.4" }
+organism-catalog = { path = "crates/catalog", version = "1.9.4" }
+organism-catalog-seed = { path = "crates/catalog-seed", version = "1.9.4" }
+organism-dynamics = { path = "crates/dynamics", version = "1.9.4" }
 
 # Converge contract (3.9.1 floor — 3.9.0 contract plus release dependency fixes)
-converge-pack     = "3.9.2"
-converge-kernel   = "3.9.2"
-converge-provider = "3.9.2"
+converge-pack     = "3.9.3"
+converge-kernel   = "3.9.3"
+converge-provider = "3.9.3"
 
 # Converge extensions — all target the Converge 3.9 contract. Local stack
 # development resolves touched own crates from the checked-out source so API
