@@ -4,6 +4,5 @@ use converge_pack::{ContextFact, ContextKey};
 
 fn main() {
     // This must NOT compile: Organism cannot mint governed context facts directly.
-    let _fact =
-        ContextFact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
+    let _fact = ContextFact::construct_unchecked(ContextKey::Seeds, "test-id", "test-content");
 }

@@ -26,7 +26,15 @@ jobs:
         with:
           tool: cargo-audit
       - name: Run cargo-audit
-        run: cargo audit --deny warnings
+        # Mirrors deny.toml [advisories].ignore — keep in lockstep.
+        run: >
+          cargo audit --deny warnings
+          --ignore RUSTSEC-2026-0194
+          --ignore RUSTSEC-2026-0195
+          --ignore RUSTSEC-2026-0187
+          --ignore RUSTSEC-2026-0192
+          --ignore RUSTSEC-2025-0141
+          --ignore RUSTSEC-2024-0436
 
   dependency-analysis:
     name: Dependency Analysis
