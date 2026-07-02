@@ -11,6 +11,18 @@ ignore = [
     # advisories are DoS-class. Added 2026-07-02.
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+    # lopdf 0.38 stack overflow on deeply nested PDF objects, fix >=0.42 (0187)
+    # and ttf-parser unmaintained via lopdf (0192). Transitive via pdf-extract
+    # 0.10 -> organism-intelligence; no fixed version until pdf-extract moves
+    # to lopdf >=0.42. We parse operator-supplied PDFs, not anonymous ones.
+    # Mirrors atelier-showcase. Added 2026-07-02.
+    "RUSTSEC-2026-0187",
+    "RUSTSEC-2026-0192",
+    # bincode unmaintained (2025-0141, via burn model serialization) and
+    # paste unmaintained proc-macro (2024-0436, compile-time only). Both
+    # fleet-standard ignores; mirrors foundation/mosaic deny.toml files.
+    "RUSTSEC-2025-0141",
+    "RUSTSEC-2024-0436",
 ]
 
 [licenses]

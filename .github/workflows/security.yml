@@ -31,6 +31,10 @@ jobs:
           cargo audit --deny warnings
           --ignore RUSTSEC-2026-0194
           --ignore RUSTSEC-2026-0195
+          --ignore RUSTSEC-2026-0187
+          --ignore RUSTSEC-2026-0192
+          --ignore RUSTSEC-2025-0141
+          --ignore RUSTSEC-2024-0436
 
   dependency-analysis:
     name: Dependency Analysis
